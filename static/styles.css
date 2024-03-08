@@ -1,0 +1,100 @@
+.image-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.image-gallery > li {
+    list-style-type: none;
+    flex-basis: 350px; /* width: 350px; */
+    position: relative;
+    cursor: pointer;
+}
+
+.image-gallery li img {
+    object-fit: cover;
+    max-width: 100%;
+    height: auto;
+    vertical-align: middle;
+    border-radius: 5px;
+}
+
+.image-gallery::after {
+    content: "";
+    flex-basis: 350px;
+}
+
+.overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(57, 57, 57, 0.502);
+    top: 0;
+    left: 0;
+    transform: scale(0);
+    color: #fff;
+    border-radius: 5px;
+    /* center overlay text */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* hover */
+.image-gallery li:hover .overlay {
+    transform: scale(1);
+}
+
+.micromodal {
+    display: none;
+}
+
+.micromodal.is-open {
+    display: block;
+}
+
+.micromodal__overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.65);
+}
+
+.micromodal__container {
+    box-sizing: border-box;
+    overflow-y: auto;
+    max-width: 500px;
+    max-height: 100vh;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 4px;
+}
+
+.micromodal[aria-hidden="false"] .micromodal__overlay {
+    animation: microModalFadeIn .2s cubic-bezier(0.0, 0.0, 0.2, 1);
+}
+
+.micromodal[aria-hidden="false"] .micromodal__container {
+    animation: microModalSlideIn .2s cubic-bezier(0, 0, .2, 1);
+}
+
+.micromodal .micromodal__container,
+.micromodal .micromodal__overlay {
+    will-change: transform;
+}
+
+@keyframes microModalFadeIn {
+    from { opacity: 0; }
+        to { opacity: 1; }
+}
+
+@keyframes microModalSlideIn {
+    from { transform: translateY(15%); }
+        to { transform: translateY(0); }
+}

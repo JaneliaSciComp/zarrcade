@@ -1,0 +1,15 @@
+name: ngffbrowse
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - ome-zarr
+  - fsspec
+  - s3fs
+  - pydantic
+  - fastapi
+  - jinja2
+  - uvicorn
+  - loguru
