@@ -1,46 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>NGFF Browse</title>
-    <link href="{{ url_for('static', path='/styles.css') }}" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NGFF Browse</title>
+<link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
 </head>
 <body>
-    <section>
-        <h2>NGFF Browse: {{ base_url }}</h2>
-    </section>
 
+<section>
+    <h2>NGFF Browse: {{ base_url }}</h2>
+</section>
+
+<div>
+    <div class="gallery">
+
+    {% for image in images %}
     <div class="container">
-        <ul class="image-gallery">
-        {% for image in images %}
-        <li>
-            <img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="Thumbnail">
-            <div class="overlay">
-                <button data-micromodal-trigger="modal-{{loop.index}}">Open Modal Dialog</button>
-                <div style="display: block">{{ image.id }}</div>    
-            </div>
-        </li>
-        {% endfor %}
-        </ul>
-    </div>
-
-
-{% for image in images %}
-<div class="micromodal micromodal-slide" id="modal-{{loop.index}}" aria-hidden="true">
-    <div class="micromodal__overlay" tabindex="-{{loop.index}}" data-micromodal-close>
-        <div class="micromodal__container" role="dialog" aria-modal="true" aria-labelledby="modal-{{loop.index}}-title">
-            <button aria-label="Close modal" data-micromodal-close>X</button>
-            <p>
-                {{ image }}
-            </p>
+        <img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="Thumbnail" />
+        <div class="overlay">
+            <a href="{{ url_for('views', image_id=image.id) }}">Open</a>
         </div>
+        <div class="label">{{ image.id }}</div>
+    </div>
+    {% endfor %}
+
+    {% for image in images %}
+    <div class="container">
+        <img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="Thumbnail" />
+        <div class="overlay">
+            <a href="{{ url_for('views', image_id=image.id) }}">Open</a>
+        </div>
+        <div class="label">{{ image.id }}</div>
+    </div>
+    {% endfor %}
+
+    {% for image in images %}
+    <div class="container">
+        <img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="Thumbnail" />
+        <div class="overlay">
+            <a href="{{ url_for('views', image_id=image.id) }}">Open</a>
+        </div>
+        <div class="label">{{ image.id }}</div>
+    </div>
+    {% endfor %}
+
     </div>
 </div>
-{% endfor %}
-
-<script src="https://unpkg.com/micromodal/dist/micromodal.min.js"></script>
-<script>
-MicroModal.init();
-</script> 
 
 </body>
 </html>
