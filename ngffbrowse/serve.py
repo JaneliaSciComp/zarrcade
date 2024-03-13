@@ -11,8 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from ngffbrowse.images import yield_ome_zarrs, yield_images, get_fs
 
-
-base_url = "http://127.0.0.1:8000/"
+base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
 
 # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
 data_url = os.getenv("DATA_LOCATION")
@@ -42,7 +41,7 @@ for zarr_path in yield_ome_zarrs(fs, fsroot):
 
 def get_viewer_url(image, viewer):
     if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
-        url = base_url + "data/" + image.relative_path
+        url = os.path.join(base_url, "data", image.relative_path)
     else:
         url = image.full_path
     return viewer.get_viewer_url(url)
@@ -85,7 +84,7 @@ async def views(request: Request, image_id: str):
     image = id2image[image_id]
     return templates.TemplateResponse(
         request=request, name="views.html", context={
-            "base_url": base_url,
+            "data_url": data_url,
             "image": image,
             "get_viewer_url": partial(get_viewer_url, image)
         }
