@@ -7,12 +7,19 @@ import re
 import itertools
 import zarr
 import fsspec
+from dataclasses import dataclass
+from typing import Optional
+
 from urllib.parse import urlparse
 from pydantic import BaseModel, Field, ConfigDict
 from loguru import logger
 from ngffbrowse.viewer_config import viewers
 
-class Image(BaseModel):
+def get(dict, key, default=None):
+    if not dict: return default
+    return dict[key] if key in dict else default
+
+class ImagePy(BaseModel):
     model_config = ConfigDict(extra='forbid') 
     id: str = Field(title="Id", description="Id for the data set container (unique within the parent folder)")
     full_path: str = Field(title="Absolute Path", description="Absolute path to the image")
@@ -25,11 +32,44 @@ class Image(BaseModel):
     chunk_size: str = Field(title="Chunk size", description="Size of Zarr chunks")
     voxel_sizes: str = Field(title="Voxel Size", description="Size of voxels in nanometers. XYZ ordering.")
     compression: str = Field(title="Compression", description="Description of the compression used on the image data")
-
+    
     def get_url(self):
         """
         """
         return self.full_path
+    
+@dataclass
+class Channel:
+    name: str
+    color: str
+    pixel_intensity_min: Optional[float] = None
+    pixel_intensity_max: Optional[float] = None
+    contrast_limit_start: Optional[float] = None
+    contrast_limit_end: Optional[float] = None
+
+@dataclass
+class Axis:
+    name: str
+    scale: float
+    unit: str
+    extent: int
+    chunk: int
+
+@dataclass
+class Image:
+    id: str
+    full_path: str
+    relative_path: str
+    num_channels: int
+    num_timepoints: int
+    dimensions: str 
+    dimensions_voxels: str
+    chunk_size: str
+    voxel_sizes: str
+    compression: str
+    channels: list[Channel]
+    axes_order: str
+    axes: dict[str, Axis]
 
     def get_compatible_viewers(self):
         for viewer in viewers:
@@ -55,8 +95,9 @@ def encode_image(id, full_path, relative_path, image_group):
     array = image_group[array_path]
     
     # TODO: shouldn't assume a single transform
-    scale = dataset['coordinateTransformations'][0]['scale']
+    scales = dataset['coordinateTransformations'][0]['scale']
 
+    axes_map = {}
     axes_names = []
     dimensions_voxels = []
     voxel_sizes = []
@@ -65,37 +106,71 @@ def encode_image(id, full_path, relative_path, image_group):
     num_channels = 1
     num_timepoints = 1
     for i, axis in enumerate(axes):
-        axes_names.append(axis['name'].upper())
+        name = axis['name']
+        axes_names.append(name)
+        extent = array.shape[i]
+        chunk = array.chunks[i]
+        scale = scales[i]
         unit = ''
         if axis['type']=='space':
             unit = axis['unit']
-            if unit in ['micrometer','micron']: unit = " μm"
-            if unit=='nanometer': unit = " nm"
-            voxel_sizes.append("%.2f%s" % (round(scale[i],2), unit))
-            dimensions.append("%.2f%s" % (round(array.shape[i] * scale[i],2), unit))
+            # TODO: better unit translation support
+            if unit in ['micrometer','micron']: unit = 'um'
+            if unit=='nanometer': unit = 'nm'
+
+            print_unit = unit
+            if unit == 'um': print_unit = "μm"
+
+            voxel_sizes.append("%.2f %s" % (round(scale,2), print_unit))
+            dimensions.append("%.2f %s" % (round(extent * scale,2), print_unit))
         elif axis['type']=='channel':
-            num_channels = array.shape[i]
-            voxel_sizes.append("%i" % scale[i])
-            dimensions.append("%i" % (array.shape[i] * scale[i]))
+            num_channels = extent
+            voxel_sizes.append("%i" % scale)
+            dimensions.append("%i" % (extent * scale))
         elif axis['type']=='time':
-            num_timepoints = array.shape[i]
-            voxel_sizes.append("%i" % scale[i])
-            dimensions.append("%i" % (array.shape[i] * scale[i]))
-        dimensions_voxels.append(str(array.shape[i]))
-        chunks.append("%i" % array.chunks[i])
+            num_timepoints = extent
+            voxel_sizes.append("%i" % scale)
+            dimensions.append("%i" % (extent * scale))
+        dimensions_voxels.append(str(extent))
+        chunks.append("%i" % chunk)
+        axes_map[name] = Axis(name, scale, unit, extent, chunk)
+
+    def yield_color():
+        for c in ['magenta','green','cyan','white','red','green','blue']:
+            yield c
+
+    channels = []
+    if 'omero' in image_group and 'channels' in image_group['omero']:
+        for channel_meta in image_group['omero']['channels']:
+            window = channel_meta['window']
+            channels.append(Channel(
+                name = get(channel_meta, 'label', f"Ch{c}"),
+                color = get(channel_meta, 'color', next(yield_color())),
+                pixel_intensity_min = get(window, 'min'),
+                pixel_intensity_max = get(window, 'max'),
+                contrast_limit_start = get(window, 'start'),
+                contrast_limit_end = get(window, 'end')
+            ))
+    else:
+        for c in range(num_channels):
+            name = f"Ch{c}"
+            color = next(yield_color())
+            channels.append(Channel(name, color))
 
     return Image(
         id = id,
         full_path = full_path,
         relative_path = relative_path,
-        axes = ''.join(axes_names),
         num_channels = num_channels,
         num_timepoints = num_timepoints,
         voxel_sizes = ' ✕ '.join(voxel_sizes),
         dimensions = ' ✕ '.join(dimensions),
         dimensions_voxels = ' ✕ '.join(dimensions_voxels),
         chunk_size = ' ✕ '.join(chunks),
-        compression = str(array.compressor)
+        compression = str(array.compressor),
+        channels = channels,
+        axes_order = ''.join(axes_names),
+        axes = axes_map
     )
     
 

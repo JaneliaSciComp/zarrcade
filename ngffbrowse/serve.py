@@ -5,10 +5,12 @@ import fsspec
 import s3fs
 from loguru import logger
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+
+from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
 from ngffbrowse.images import yield_ome_zarrs, yield_images, get_fs
 
@@ -44,11 +46,14 @@ for zarr_path in yield_ome_zarrs(fs, fsroot):
         id2image[image.id] = image
         logger.debug(image.__repr__())
 
-def get_viewer_url(image, viewer):
+def get_data_url(image):
     if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
-        url = os.path.join(base_url, "data", image.relative_path)
+        return os.path.join(base_url, "data", image.relative_path)
     else:
-        url = image.absolute_path
+        return image.absolute_path
+
+def get_viewer_url(image, viewer):
+    url = get_data_url(image)
     return viewer.get_viewer_url(url)
 
 # Create the API
@@ -120,3 +125,61 @@ async def data_proxy_get(relative_path: str):
             return Response(status_code=200, headers=headers, content=data)
     except FileNotFoundError:
         return Response(status_code=404)
+
+
+
+@app.get("/neuroglancer/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
+async def neuroglancer_state(image_id: str):
+
+    image = id2image[image_id]
+    url = get_data_url(image)
+
+    if image.axes_order != 'tczyx':
+        logger.error("Neuroglancer states can currently only be generated for TCZYX images")
+        return Response(status_code=400)
+
+    state = ViewerState()
+
+    names = ['x','y','z','t']
+    scales = []
+    units = []
+    position = []
+    for name in names:
+        axis = image.axes[name]
+        scales.append(axis.scale)
+        units.append(axis.unit)
+        position.append(int(axis.extent / 2))
+
+    state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
+    state.position = position
+    #state.crossSectionScale = 4.687971627022003
+    #state.projectionScale = 2048
+
+    for i, channel in enumerate(image.channels):
+
+        min = channel.pixel_intensity_min or 0
+        max = channel.pixel_intensity_max or 4096
+
+        layer = ImageLayer(
+                source='zarr://'+url,
+                layerDimensions=CoordinateSpace(names=["c'"], scales=[1], units=['']),
+                localPosition=[i],
+                tab='rendering',
+                opacity=1,
+                blend='additive',
+                shader=f"#uicontrol vec3 hue color(default=\"{channel.color}\")\n#uicontrol invlerp normalized(range=[{min},{max}])\nvoid main(){{emitRGBA(vec4(hue*normalized(),1));}}",
+            )
+
+        start = channel.contrast_limit_start
+        end = channel.contrast_limit_end
+        if start and end:
+            layer.shaderControls={
+                    'normalized': {
+                        'range': [start, end]
+                    }
+                }
+
+        state.layers.append(name=channel.name, layer=layer)
+
+    state.layout = '4panel'
+    return state.to_json()
