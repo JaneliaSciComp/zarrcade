@@ -2,6 +2,7 @@ import os
 from functools import partial
 
 import fsspec
+import s3fs
 from loguru import logger
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
@@ -12,16 +13,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from ngffbrowse.images import yield_ome_zarrs, yield_images, get_fs
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
+logger.debug(f"Base URL is {base_url}")
 
 # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-data_url = os.getenv("DATA_LOCATION")
+data_url = os.getenv("DATA_URL")
 if not data_url:
     raise Exception("You must define a DATA_URL environment variable " \
                     "pointing to a location where OME-Zarr images are found.")
-logger.debug(f"Base URL is {data_url}")
+logger.debug(f"Data URL is {data_url}")
 
 fs, fsroot = get_fs(data_url)
 logger.debug(f"Filesystem root is {fsroot}")
+
 fsroot_dir = os.path.join(fsroot, '')
 logger.debug(f"Filesystem dir is {fsroot_dir}")
 
@@ -32,9 +35,11 @@ for zarr_path in yield_ome_zarrs(fs, fsroot):
     logger.info("Removing prefix "+fsroot_dir)
     relative_path = zarr_path.removeprefix(fsroot_dir)
     logger.info("Relative path is "+relative_path)
-    full_path = fsroot_dir + relative_path
-    logger.info("Reading images in "+full_path)
-    for image in yield_images(full_path, relative_path):
+    absolute_path = fsroot_dir + relative_path
+    if isinstance(fs,s3fs.core.S3FileSystem):
+        absolute_path = 's3://' + absolute_path
+    logger.info("Reading images in "+absolute_path)
+    for image in yield_images(absolute_path, relative_path):
         images.append(image)
         id2image[image.id] = image
         logger.debug(image.__repr__())
@@ -43,7 +48,7 @@ def get_viewer_url(image, viewer):
     if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
         url = os.path.join(base_url, "data", image.relative_path)
     else:
-        url = image.full_path
+        url = image.absolute_path
     return viewer.get_viewer_url(url)
 
 # Create the API

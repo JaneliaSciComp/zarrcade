@@ -167,7 +167,7 @@ def get_fs(url):
 
 
 def _yield_ome_zarrs(fs, root, path, depth=0, maxdepth=10):
-    if depth>maxdepth: return 
+    if depth>maxdepth: return
     logger.trace("ls "+path)
     children = fs.ls(path, detail=True)
     child_names = [os.path.basename(c['name']) for c in children]
@@ -175,7 +175,7 @@ def _yield_ome_zarrs(fs, root, path, depth=0, maxdepth=10):
         yield path
     elif '.zarray' in child_names:
         # This is a sign that we have gone too far 
-        return
+        pass
     else:
         # drill down until we find a zarr
         for d in [i['name'] for i in children if i['type']=='directory']:
@@ -186,7 +186,7 @@ def _yield_ome_zarrs(fs, root, path, depth=0, maxdepth=10):
             logger.trace(f"Searching {d}")
             for zarr_path in _yield_ome_zarrs(fs, root, d, depth+1):
                 yield zarr_path
-            
+
 
 def yield_ome_zarrs(fs, root):
     for zarr_path in _yield_ome_zarrs(fs, root, root):
@@ -203,4 +203,4 @@ if __name__ == '__main__':
         logger.debug(f"Reading images in {full_path}")
         for image in yield_images(full_path, relative_path):
             print(image.__repr__())
-        
+
