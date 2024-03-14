@@ -1,0 +1,15 @@
+name: ngffbrowse
+services:
+    nginx:
+        image: nginx
+        volumes:
+            - ./nginx.conf:/etc/nginx/conf.d/sam.conf
+        ports:
+            - 80:80
+            - 443:443
+        restart: unless-stopped
+    ngffbrowse:
+        image: ghcr.io/janeliascicomp/ngffbrowse:latest
+        depends_on:
+            - nginx
+        restart: unless-stopped
