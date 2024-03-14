@@ -18,8 +18,7 @@ uvicorn ngffbrowse:serve
 
 To rebuild the Docker container:
 ```
-cd docker
-docker build --no-cache . -t ghcr.io/janeliascicomp/ngffbrowse:latest
+docker build --no-cache docker -t ghcr.io/janeliascicomp/ngffbrowse:latest
 docker push ghcr.io/janeliascicomp/ngffbrowse:latest
 ```
 
