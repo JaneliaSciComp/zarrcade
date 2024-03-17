@@ -25,3 +25,7 @@ To rebuild the Docker container:
 docker build --no-cache docker -t ghcr.io/janeliascicomp/ngffbrowse:latest
 docker push ghcr.io/janeliascicomp/ngffbrowse:latest
 ```
+
+## Attributions
+
+<https://www.iconsdb.com/black-icons/copy-link-icon.html>

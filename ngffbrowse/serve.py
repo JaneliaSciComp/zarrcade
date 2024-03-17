@@ -95,7 +95,8 @@ async def index(request: Request):
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "base_url": base_url,
-            "images": images
+            "images": images,
+            "get_viewer_url": get_viewer_url,
         }
     )
 
@@ -109,7 +110,8 @@ async def views(request: Request, image_id: str):
         request=request, name="views.html", context={
             "data_url": data_url,
             "image": image,
-            "get_viewer_url": partial(get_viewer_url, image)
+            "get_viewer_url": get_viewer_url,
+            "image_data_url": get_data_url(image)
         }
     )
 

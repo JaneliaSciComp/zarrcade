@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NGFF Browse</title>
 <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+<script type="text/javascript" src="{{ url_for('static', path='/functions.js') }}"></script>
 </head>
 <body>
 
@@ -12,17 +13,27 @@
     <h2>NGFF Browse: {{ image.id }}</h2>
 </section>
 
+<section>
+Copy data link: 
+<a href="#" onclick="copyTextToClipboard(this, '{{ image_data_url }}')" class="icon">
+    <div class="tooltip">
+        <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
+        <span class="tooltiptext">Copy image data URL</span>
+    </div>
+</a>
+</section>
 
-<div>
+<section>
 Open with: 
 {% for viewer in image.get_compatible_viewers() %}
-
-    <a title="View in {{ viewer.name }}" href="{{ get_viewer_url(viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
-        <img src="{{ url_for('static', path=viewer.icon) }}" class="icon" alt="{{ viewer.name }} icon">
+    <a href="{{ get_viewer_url(image, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
+        <div class="tooltip">
+            <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
+            <span class="tooltiptext">View in {{ viewer.name }}</span>
+        </div>
     </a>
-
 {% endfor %}
-</div>
+</section>
 
 <img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="MIP" class="full" />
 
