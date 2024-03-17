@@ -13,7 +13,8 @@ from typing import Optional
 from urllib.parse import urlparse
 from pydantic import BaseModel, Field, ConfigDict
 from loguru import logger
-from ngffbrowse.viewer_config import viewers
+
+from .viewers import viewers
 
 def get(dict, key, default=None):
     if not dict: return default
@@ -139,22 +140,24 @@ def encode_image(id, full_path, relative_path, image_group):
         for c in ['magenta','green','cyan','white','red','green','blue']:
             yield c
 
+    color_generator = yield_color()
+
     channels = []
-    if 'omero' in image_group and 'channels' in image_group['omero']:
-        for channel_meta in image_group['omero']['channels']:
+    if 'omero' in image_group.attrs and 'channels' in image_group.attrs['omero']:
+        for i, channel_meta in enumerate(image_group.attrs['omero']['channels']):
             window = channel_meta['window']
             channels.append(Channel(
-                name = get(channel_meta, 'label', f"Ch{c}"),
-                color = get(channel_meta, 'color', next(yield_color())),
+                name = get(channel_meta, 'label', f"Ch{i}"),
+                color = get(channel_meta, 'color', next(color_generator)),
                 pixel_intensity_min = get(window, 'min'),
                 pixel_intensity_max = get(window, 'max'),
                 contrast_limit_start = get(window, 'start'),
                 contrast_limit_end = get(window, 'end')
             ))
     else:
-        for c in range(num_channels):
-            name = f"Ch{c}"
-            color = next(yield_color())
+        for i in range(num_channels):
+            name = f"Ch{i}"
+            color = next(color_generator)
             channels.append(Channel(name, color))
 
     return Image(

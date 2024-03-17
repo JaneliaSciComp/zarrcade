@@ -1,4 +1,5 @@
 import os
+import re
 from functools import partial
 
 import fsspec
@@ -12,7 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
-from ngffbrowse.images import yield_ome_zarrs, yield_images, get_fs
+from .images import yield_ome_zarrs, yield_images, get_fs
+from .viewers import Neuroglancer
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
 logger.debug(f"Base URL is {base_url}")
@@ -46,15 +48,26 @@ for zarr_path in yield_ome_zarrs(fs, fsroot):
         id2image[image.id] = image
         logger.debug(image.__repr__())
 
+
 def get_data_url(image):
+    # TODO: this should probably be the other way around: return paths we know
+    # are web-accessible, and proxy everything else
     if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
+        # Proxy the data using the REST API
         return os.path.join(base_url, "data", image.relative_path)
     else:
+        # Assume the path is web-accessible
         return image.absolute_path
+
 
 def get_viewer_url(image, viewer):
     url = get_data_url(image)
+    if viewer==Neuroglancer and image.axes_order == 'tczyx':
+        # Generate a config on-the-fly
+        url = os.path.join(base_url, "neuroglancer", image.relative_path)
+
     return viewer.get_viewer_url(url)
+
 
 # Create the API
 app = FastAPI(
@@ -152,13 +165,20 @@ async def neuroglancer_state(image_id: str):
 
     state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
     state.position = position
-    #state.crossSectionScale = 4.687971627022003
-    #state.projectionScale = 2048
+
+    # TODO: how do we determine the best zoom from the data?
+    state.crossSectionScale = 4.5
+    state.projectionScale = 2048
 
     for i, channel in enumerate(image.channels):
 
         min = channel.pixel_intensity_min or 0
         max = channel.pixel_intensity_max or 4096
+
+        color = channel.color
+        if re.match(r'^([\dA-F]){6}$', color):
+            # bare hex color, add leading hash for rendering
+            color = '#' + color    
 
         layer = ImageLayer(
                 source='zarr://'+url,
@@ -167,7 +187,7 @@ async def neuroglancer_state(image_id: str):
                 tab='rendering',
                 opacity=1,
                 blend='additive',
-                shader=f"#uicontrol vec3 hue color(default=\"{channel.color}\")\n#uicontrol invlerp normalized(range=[{min},{max}])\nvoid main(){{emitRGBA(vec4(hue*normalized(),1));}}",
+                shader=f"#uicontrol vec3 hue color(default=\"{color}\")\n#uicontrol invlerp normalized(range=[{min},{max}])\nvoid main(){{emitRGBA(vec4(hue*normalized(),1));}}",
             )
 
         start = channel.contrast_limit_start
