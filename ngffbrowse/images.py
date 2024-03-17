@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 from urllib.parse import urlparse
-from pydantic import BaseModel, Field, ConfigDict
 from loguru import logger
 
 from .viewers import viewers
@@ -20,24 +19,6 @@ def get(dict, key, default=None):
     if not dict: return default
     return dict[key] if key in dict else default
 
-class ImagePy(BaseModel):
-    model_config = ConfigDict(extra='forbid') 
-    id: str = Field(title="Id", description="Id for the data set container (unique within the parent folder)")
-    full_path: str = Field(title="Absolute Path", description="Absolute path to the image")
-    relative_path: str = Field(title="Relative Path", description="Path to the image, relative to the overall root")
-    axes: str = Field(title="Axes", description="String indicating the axes order in the Zarr array (e.g. TCZYX)")
-    num_channels: int = Field(title="Num Channels", description="Number of channels in the image")
-    num_timepoints: int = Field(title="Num Timepoints", description="Number of timepoints in the image")
-    dimensions: str = Field(title="Dimensions", description="Size of the whole data set in nanometers")
-    dimensions_voxels: str = Field(title="Dimensions (voxels)", description="Size of the whole data set in voxels")
-    chunk_size: str = Field(title="Chunk size", description="Size of Zarr chunks")
-    voxel_sizes: str = Field(title="Voxel Size", description="Size of voxels in nanometers. XYZ ordering.")
-    compression: str = Field(title="Compression", description="Description of the compression used on the image data")
-    
-    def get_url(self):
-        """
-        """
-        return self.full_path
     
 @dataclass
 class Channel:
@@ -59,8 +40,9 @@ class Axis:
 @dataclass
 class Image:
     id: str
-    full_path: str
+    absolute_path: str
     relative_path: str
+    thumbnail_path: str
     num_channels: int
     num_timepoints: int
     dimensions: str 
@@ -77,16 +59,17 @@ class Image:
             yield viewer
 
 
-def encode_image(id, full_path, relative_path, image_group):
+def encode_image(id, absolute_path, relative_path, image_group):
     multiscales = image_group.attrs['multiscales']
     # TODO: what to do if there are multiple multiscales?
     multiscale = multiscales[0]
     axes = multiscale['axes']
 
     # Use highest resolution 
-    dataset = multiscale['datasets'][0]
+    fullres_dataset = multiscale['datasets'][0]
+    fullres_path = fullres_dataset['path']
 
-    array_path = image_group.name+'/'+dataset['path']
+    array_path = image_group.name+'/'+fullres_dataset['path']
     array_path, _ = re.subn('/+', '/', array_path)
 
     if array_path not in image_group:
@@ -96,7 +79,7 @@ def encode_image(id, full_path, relative_path, image_group):
     array = image_group[array_path]
     
     # TODO: shouldn't assume a single transform
-    scales = dataset['coordinateTransformations'][0]['scale']
+    scales = fullres_dataset['coordinateTransformations'][0]['scale']
 
     axes_map = {}
     axes_names = []
@@ -160,10 +143,20 @@ def encode_image(id, full_path, relative_path, image_group):
             color = next(color_generator)
             channels.append(Channel(name, color))
 
+    thumbnail_path = None
+    if 'janelia' in image_group.attrs:
+        janelia = image_group.attrs['janelia']
+        if 'projections' in janelia:
+            projections = janelia['projections']
+            if fullres_path in projections:
+                fullres_projections = projections[fullres_path]
+                thumbnail_path = fullres_projections['xy']
+
     return Image(
         id = id,
-        full_path = full_path,
+        absolute_path = absolute_path,
         relative_path = relative_path,
+        thumbnail_path = thumbnail_path,
         num_channels = num_channels,
         num_timepoints = num_timepoints,
         voxel_sizes = ' ✕ '.join(voxel_sizes),
@@ -220,7 +213,7 @@ def yield_images(absolute_path, relative_path):
         for image_group in yield_image_groups(absolute_path):
             group_abspath = absolute_path
             group_relpath = relative_path
-            id = os.path.basename(relative_path)
+            id = relative_path
             if image_group.path:
                 gp = '/'+image_group.path
                 id += gp
@@ -277,8 +270,8 @@ if __name__ == '__main__':
     for zarr_path in yield_ome_zarrs(fs, fsroot):
         logger.debug(f"Found images in {zarr_path}")
         relative_path = zarr_path.removeprefix(fsroot)
-        full_path = base_url + relative_path
-        logger.debug(f"Reading images in {full_path}")
-        for image in yield_images(full_path, relative_path):
+        absolute_path = base_url + relative_path
+        logger.debug(f"Reading images in {absolute_path}")
+        for image in yield_images(absolute_path, relative_path):
             print(image.__repr__())
 

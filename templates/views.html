@@ -35,10 +35,14 @@ Open with:
 {% endfor %}
 </section>
 
-<img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="MIP" class="full" />
+{% if not image.thumbnail_path %}
+    <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="full" />
+{% else %}
+    <img src="{{ get_thumbnail_url(image) }}" alt="Image thumbnail" class="full" />
+{% endif %}
 
 <table>
-<tr><td>Path:</td><td><span class="data">{{ image.full_path }}</span></td></tr>
+<tr><td>Path:</td><td><span class="data">{{ image.absolute_path }}</span></td></tr>
 <tr><td>Axes:</td><td><span class="data">{{ image.axes_order.upper() }}</span></td></tr>
 <tr><td>Chunk size:</td><td><span class="data">{{ image.chunk_size }}</span></td></tr>
 <tr><td>Dimensions (voxels):</td><td><span class="data">{{ image.dimensions_voxels }}</span></td></tr>

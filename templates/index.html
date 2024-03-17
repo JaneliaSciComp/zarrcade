@@ -17,7 +17,11 @@
 
     {% for image in images %}
     <div class="container">
-        <img src="{{ url_for('static', path='/MAX_NP01_5_1_SS00790_sNPF_546_Crz_647_1x_LOL.jpg') }}" alt="Thumbnail" class="thumbnail" />
+        {% if not image.thumbnail_path %}
+            <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
+        {% else %}
+            <img src="{{ get_thumbnail_url(image) }}" alt="Image thumbnail" class="thumbnail" />
+        {% endif %}
         <div class="overlay">
 
             <div class="buttons">
@@ -38,6 +42,9 @@
             </div>
 
             <a href="{{ url_for('views', image_id=image.id) }}">View details</a>
+            
+            <div class="title">{{ image.id }}</div>
+
         </div>
         <div class="label">{{ image.id }}</div>
     </div>

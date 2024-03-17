@@ -1,6 +1,5 @@
 import os
 import re
-from functools import partial
 
 import fsspec
 import s3fs
@@ -13,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
-from .images import yield_ome_zarrs, yield_images, get_fs
-from .viewers import Neuroglancer
+from .images import Image, yield_ome_zarrs, yield_images, get_fs
+from .viewers import Viewer, Neuroglancer
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
 logger.debug(f"Base URL is {base_url}")
@@ -32,8 +31,8 @@ logger.debug(f"Filesystem root is {fsroot}")
 fsroot_dir = os.path.join(fsroot, '')
 logger.debug(f"Filesystem dir is {fsroot_dir}")
 
-images = []
-id2image = {}
+images: list[Image] = []
+id2image: dict[str, Image] = {}
 for zarr_path in yield_ome_zarrs(fs, fsroot):
     logger.info("Found images in "+zarr_path)
     logger.info("Removing prefix "+fsroot_dir)
@@ -49,7 +48,7 @@ for zarr_path in yield_ome_zarrs(fs, fsroot):
         logger.debug(image.__repr__())
 
 
-def get_data_url(image):
+def get_data_url(image: Image):
     # TODO: this should probably be the other way around: return paths we know
     # are web-accessible, and proxy everything else
     if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
@@ -60,11 +59,21 @@ def get_data_url(image):
         return image.absolute_path
 
 
-def get_viewer_url(image, viewer):
+def get_thumbnail_url(image: Image):
+    if image.thumbnail_path:
+        return os.path.join(get_data_url(image), image.thumbnail_path)
+    return None
+
+
+def get_viewer_url(image: Image, viewer: Viewer):
     url = get_data_url(image)
-    if viewer==Neuroglancer and image.axes_order == 'tczyx':
-        # Generate a config on-the-fly
-        url = os.path.join(base_url, "neuroglancer", image.relative_path)
+    if viewer==Neuroglancer:
+        if image.axes_order == 'tczyx':
+            # Generate a config on-the-fly
+            url = os.path.join(base_url, "neuroglancer", image.relative_path)
+        else:
+            # Prepend format for Neuroglancer to understand
+            url = 'zarr://' + url
 
     return viewer.get_viewer_url(url)
 
@@ -97,6 +106,8 @@ async def index(request: Request):
             "base_url": base_url,
             "images": images,
             "get_viewer_url": get_viewer_url,
+            "get_thumbnail_url": get_thumbnail_url,
+            "image_data_url": get_data_url(image)
         }
     )
 
@@ -111,6 +122,7 @@ async def views(request: Request, image_id: str):
             "data_url": data_url,
             "image": image,
             "get_viewer_url": get_viewer_url,
+            "get_thumbnail_url": get_thumbnail_url,
             "image_data_url": get_data_url(image)
         }
     )
