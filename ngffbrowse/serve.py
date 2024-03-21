@@ -80,7 +80,7 @@ def get_viewer_url(image: Image, viewer: Viewer):
 
 # Create the API
 app = FastAPI(
-    title="NGFF Browse Service",
+    title="NGFFBrowse Service",
     license_info={
         "name": "Janelia Open-Source Software License",
         "url": "https://www.janelia.org/open-science/software-licensing",
@@ -91,7 +91,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET","HEAD","OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -180,7 +180,7 @@ async def neuroglancer_state(image_id: str):
     state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
     state.position = position
 
-    # TODO: how do we determine the best zoom from the data?
+    # TODO: how do we determine the best zoom from the metadata?
     state.crossSectionScale = 4.5
     state.projectionScale = 2048
 
@@ -216,4 +216,4 @@ async def neuroglancer_state(image_id: str):
         state.layers.append(name=channel.name, layer=layer)
 
     state.layout = '4panel'
-    return state.to_json()
+    return JSONResponse(state.to_json())
