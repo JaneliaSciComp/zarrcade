@@ -1,6 +1,5 @@
 #!/bin/bash
-source /opt/conda/etc/profile.d/conda.sh
-conda activate ngffbrowse
+source /opt/conda/bin/activate ngffbrowse
 cd /app/ngffbrowse || exit
 
 # Set variables for uvicorn
