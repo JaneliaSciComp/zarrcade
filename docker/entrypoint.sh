@@ -11,7 +11,7 @@ PORT="${PORT:=8000}"
 # Export variables for ngffbrowse
 export DATA_URL="${DATA_URL:=/data}"
 
-uvicorn ngffbrowse:serve --access-log \
+uvicorn ngffbrowse.serve:app --access-log \
     --workers $WORKERS --host $HOST --port $PORT \
     --forwarded-allow-ips='*' --proxy-headers \ 
      --ssl-keyfile "$KEY_FILE" --ssl-certfile "$CERT_FILE" "$@"
