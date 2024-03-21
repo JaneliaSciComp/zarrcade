@@ -1,7 +1,7 @@
 
-# NGFF Browse
+# ngffbrowse
 
-Web service for easily viewing a directory of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
+Web application for easily browsing a directory of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
 
 * Automatic discovery of images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
 * Web gallery with convenient viewing links to OME-Zarr-compliant viewers
