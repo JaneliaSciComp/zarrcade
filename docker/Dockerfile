@@ -7,7 +7,6 @@ RUN git clone --branch $GIT_TAG --depth 1 https://github.com/krokicki/ngffbrowse
 WORKDIR /app/ngffbrowse
 RUN mamba env create -f environment.yml \
     && mamba clean --all -y \
-    && mamba activate ngffbrowse \
-    && pip install neuroglancer  --no-dependencies
+    && mamba run -n ngffbrowse pip install neuroglancer --no-dependencies
 
 ENTRYPOINT [ "/app/ngffbrowse/docker/entrypoint.sh" ]
