@@ -1,4 +1,4 @@
-#!/bin/bash -euo pipefail
+#!/bin/bash
 source /opt/conda/etc/profile.d/conda.sh
 conda activate ngffbrowse
 cd /app/ngffbrowse || exit
