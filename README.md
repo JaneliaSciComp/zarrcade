@@ -29,7 +29,8 @@ If your server is running remotely it will need to use HTTPS in order to be able
 
 ```bash
 docker run -it -v /path/to/data:/data \
-    -e KEY_FILE=/path/to/keyfile -e CERT_FILE=/path/to/certfile \
+    -e KEY_FILE=/path/to/keyfile \
+    -e CERT_FILE=/path/to/certfile \
     -e BASE_URL=https://yourdomainname.org \
     ghcr.io/janeliascicomp/ngffbrowse
 ```
