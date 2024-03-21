@@ -16,14 +16,14 @@ from .images import Image, yield_ome_zarrs, yield_images, get_fs
 from .viewers import Viewer, Neuroglancer
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
-logger.debug(f"Base URL is {base_url}")
+logger.info(f"Base URL is {base_url}")
 
 # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
 data_url = os.getenv("DATA_URL")
 if not data_url:
     raise Exception("You must define a DATA_URL environment variable " \
                     "pointing to a location where OME-Zarr images are found.")
-logger.debug(f"Data URL is {data_url}")
+logger.info(f"Data URL is {data_url}")
 
 fs, fsroot = get_fs(data_url)
 logger.debug(f"Filesystem root is {fsroot}")
