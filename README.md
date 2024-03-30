@@ -16,13 +16,7 @@ The [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) tool can be used 
 To run the server locally with Docker, just point it at your OME-Zarr data:
 
 ```bash
-docker run -it -v /path/to/data:/data ghcr.io/janeliascicomp/ngffbrowse
-```
-
-By default your server will run port 8000, so it will be accessible at <http://127.0.0.1:8000>. You can change the port by setting the `PORT` environment variable:
-
-```bash
-docker run -it -v /path/to/data:/data -e PORT=80 ghcr.io/janeliascicomp/ngffbrowse
+docker run -it -v /path/to/data:/data -p 8000:8000 ghcr.io/janeliascicomp/ngffbrowse
 ```
 
 If your server is running remotely it will need to use HTTPS in order to be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server.
