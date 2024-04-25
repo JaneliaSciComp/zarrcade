@@ -1,7 +1,7 @@
 
 # ngffbrowse
 
-Web application for easily browsing a directory of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
+Web application for easily browsing collections of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
 
 * Automatic discovery of images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
 * Web gallery with convenient viewing links to OME-Zarr-compliant viewers
@@ -43,6 +43,13 @@ Start the development server, pointing it to your OME-Zarr data:
 
 ```bash
 DATA_URL=/path/to/data uvicorn ngffbrowse.serve:app --host 0.0.0.0 --reload
+```
+
+If you are running the service remote, you'll need to use HTTPS. Just point Uvicorn to your certificate and set your BASE_URL:
+
+```bash
+BASE_URL=https://myserver.mydomain.org:8000 DATA_URL=/path/to/data uvicorn ngffbrowse.serve:app --host 0.0.0.0 \
+    --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
 ```
 
 ## Docker build
