@@ -81,7 +81,7 @@ a.icon img:active {
 }
 
 .gallery .buttons {
-    margin: 30% auto 0 auto;
+    margin: 20% auto 0 auto;
     opacity: 1;
 }
 
@@ -106,8 +106,12 @@ a.icon img:active {
     opacity: 1;
 }
 
+div.detail_button {
+    margin: 1em;
+}
+
 /* From https://getcssscan.com/css-buttons-examples */
-.gallery1 a {
+div.detail_button a {
     font-family: "Open Sans", sans-serif;
     font-size: 16px;
     letter-spacing: 2px;
@@ -125,14 +129,14 @@ a.icon img:active {
     touch-action: manipulation;
 }
 
-.gallery1 a:active {
+div.detail_button a:active {
     box-shadow: 0px 0px 0px 0px;
     top: 5px;
     left: 5px;
 }
 
 @media (min-width: 768px) {
-    .gallery1 a {
+    div.detail_button a {
         padding: 0.25em 0.75em;
     }
 }

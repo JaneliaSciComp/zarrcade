@@ -41,7 +41,9 @@
                 {% endfor %}
             </div>
 
-            <a href="{{ url_for('views', image_id=image.id) }}">View details</a>
+            <div class="detail_button">
+                <a href="{{ url_for('views', image_id=image.id) }}">View details</a>
+            </div>
             
             <div class="title">{{ image.id }}</div>
 
