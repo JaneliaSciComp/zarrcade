@@ -10,7 +10,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
+import pandas as pd
+from sqlalchemy import create_engine, text, Table, MetaData, func, select
+
 from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
+
+from dataclasses import dataclass, asdict
+import json
 
 from .images import Image, yield_ome_zarrs, yield_images, get_fs
 from .viewers import Viewer, Neuroglancer
@@ -25,28 +31,95 @@ if not data_url:
                     "pointing to a location where OME-Zarr images are found.")
 logger.info(f"Data URL is {data_url}")
 
+# Initialize database
+engine = create_engine('sqlite:///database.db')
+
+# Read the attribute naming map from the database, if they exist
+attr_map = {}
+try:
+    query = "SELECT * FROM metadata_columns"
+    result_df = pd.read_sql_query(query, con=engine)
+    for index, row in result_df.iterrows():
+        attr_map[row['db_name']] = row['original_name']
+except:
+    logger.info("No metadata columns defined")
+
+# Create metadata table if necessary
+try:
+    df = pd.DataFrame({
+        'relpath': [],
+        'image_info': []
+    })
+    df.set_index('relpath', inplace=True)
+    df.to_sql('metadata', con=engine, if_exists='fail', index=True, index_label='relpath')
+except ValueError:
+    logger.info("Metadata table already exists")
+
+metadata_table = Table('metadata', MetaData(), autoload_with=engine)
+
 fs, fsroot = get_fs(data_url)
 logger.debug(f"Filesystem root is {fsroot}")
 
 fsroot_dir = os.path.join(fsroot, '')
 logger.debug(f"Filesystem dir is {fsroot_dir}")
 
-images: list[Image] = []
-id2image: dict[str, Image] = {}
-for zarr_path in yield_ome_zarrs(fs, fsroot):
-    logger.info("Found images in "+zarr_path)
-    logger.info("Removing prefix "+fsroot_dir)
-    relative_path = zarr_path.removeprefix(fsroot_dir)
-    logger.info("Relative path is "+relative_path)
-    absolute_path = fsroot_dir + relative_path
-    if isinstance(fs,s3fs.core.S3FileSystem):
-        absolute_path = 's3://' + absolute_path
-    logger.info("Reading images in "+absolute_path)
-    for image in yield_images(absolute_path, relative_path):
-        images.append(image)
-        id2image[image.id] = image
-        logger.debug(image.__repr__())
+with engine.connect() as connection:
+    # Check if the image info is already populated
+    query = select(func.count()).select_from(metadata_table) \
+            .where(metadata_table.c.image_info.isnot(None))
+    result = connection.execute(query)
+    count = result.scalar()
 
+    if count:
+        logger.info(f"Found {count} images in the database")
+    else:
+        # Walk the storage root and populate the database
+        for zarr_path in yield_ome_zarrs(fs, fsroot):
+            logger.info("Found images in "+zarr_path)
+            logger.info("Removing prefix "+fsroot_dir)
+            relative_path = zarr_path.removeprefix(fsroot_dir)
+            logger.info("Relative path is "+relative_path)
+            absolute_path = fsroot_dir + relative_path
+            if isinstance(fs,s3fs.core.S3FileSystem):
+                absolute_path = 's3://' + absolute_path
+            logger.info("Reading images in "+absolute_path)
+            for image in yield_images(absolute_path, relative_path):
+                logger.debug(image.__repr__())
+                data = {
+                    'image_info': json.dumps(asdict(image))
+                }
+                # Try to update first
+                update_stmt = metadata_table.update().\
+                    where(metadata_table.c.relpath == image.id).\
+                    values(data)
+                result = connection.execute(update_stmt)
+                logger.info(f"Updating {image.id}")
+
+                if result.rowcount == 0:  # Check if the update took place
+                    # Perform insert
+                    insert_stmt = metadata_table.insert().values(data)
+                    connection.execute(insert_stmt)
+                    logger.info(f"Inserting {image.id}")
+
+        # Persist database to disk
+        connection.commit()
+
+
+def parse_image_info(image_info: str):
+    json_obj = json.loads(image_info)
+    return Image(**json_obj)
+
+
+def get_image(image_id: str):
+    with engine.connect() as connection:
+        select_stmt = metadata_table.select().where(metadata_table.c.relpath == image_id)
+        existing_record = connection.execute(select_stmt).fetchone()
+        print(existing_record)
+        image_info = existing_record['image_info']
+        if image_info: 
+            return parse_image_info(image_info)
+        return None
+            
 
 def get_data_url(image: Image):
     # TODO: this should probably be the other way around: return paths we know
@@ -78,6 +151,25 @@ def get_viewer_url(image: Image, viewer: Viewer):
     return viewer.get_viewer_url(url)
 
 
+def find_images(search_string: str):
+    if not search_string: 
+        full_query = text(f"SELECT * FROM metadata")
+        result_df = pd.read_sql_query(full_query, con=engine)
+    else:
+        query_string = " OR ".join([f"{col} LIKE :search_string" for col in attr_map.keys()])
+        full_query = text(f"SELECT * FROM metadata WHERE {query_string}")
+        result_df = pd.read_sql_query(full_query, con=engine, params={'search_string': '%'+search_string+'%'})
+
+    images = []
+    for _, row in result_df.iterrows():
+        image_info = row['image_info']
+        if image_info:
+            image = parse_image_info(image_info)
+            images.append(image)
+
+    return images
+
+
 # Create the API
 app = FastAPI(
     title="NGFFBrowse Service",
@@ -100,27 +192,41 @@ templates = Jinja2Templates(directory="templates")
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def index(request: Request):
+async def index(request: Request, search_string: str = None, page: int = 0):
+    images = find_images(search_string)
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "base_url": base_url,
             "images": images,
             "get_viewer_url": get_viewer_url,
             "get_thumbnail_url": get_thumbnail_url,
-            "image_data_url": get_data_url(image)
+            "get_image_data_url": get_data_url,
+            "search_string": search_string,
+            "page": page
         }
     )
 
 
 @app.get("/views/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
 async def views(request: Request, image_id: str):
-    if image_id not in id2image:
+
+    image = get_image(image_id)
+    if not image:
         return Response(status_code=404)
-    image = id2image[image_id]
+
+    query = text(f"SELECT * FROM metadata WHERE c_path = :path")
+    result_df = pd.read_sql_query(query, con=engine, params={'path': image_id})
+    metadata = result_df.iloc[0].to_dict()
+    attrs = {}
+    for k in metadata.keys():
+        if k == 'c_path': continue
+        attrs[attr_map[k]] = metadata[k]
+
     return templates.TemplateResponse(
         request=request, name="views.html", context={
             "data_url": data_url,
             "image": image,
+            "attrs": attrs,
             "get_viewer_url": get_viewer_url,
             "get_thumbnail_url": get_thumbnail_url,
             "image_data_url": get_data_url(image)
@@ -158,7 +264,10 @@ async def data_proxy_get(relative_path: str):
 @app.get("/neuroglancer/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
 async def neuroglancer_state(image_id: str):
 
-    image = id2image[image_id]
+    image = get_image(image_id)
+    if not image:
+        return Response(status_code=404)
+    
     url = get_data_url(image)
 
     if image.axes_order != 'tczyx':

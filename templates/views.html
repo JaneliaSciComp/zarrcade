@@ -35,21 +35,30 @@ Open with:
 {% endfor %}
 </section>
 
-{% if not image.thumbnail_path %}
-    <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="full" />
-{% else %}
-    <img src="{{ get_thumbnail_url(image) }}" alt="Image thumbnail" class="full" />
-{% endif %}
+<div class="content">
+    {% if not image.thumbnail_path %}
+    <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="image" />
+    {% else %}
+    <img src="{{ get_thumbnail_url(image) }}" alt="Image thumbnail" class="image" />
+    {% endif %}
 
-<table>
-<tr><td>Path:</td><td><span class="data">{{ image.absolute_path }}</span></td></tr>
-<tr><td>Axes:</td><td><span class="data">{{ image.axes_order.upper() }}</span></td></tr>
-<tr><td>Chunk size:</td><td><span class="data">{{ image.chunk_size }}</span></td></tr>
-<tr><td>Dimensions (voxels):</td><td><span class="data">{{ image.dimensions_voxels }}</span></td></tr>
-<tr><td>Dimensions:</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
-<tr><td>Voxel sizes:</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
-<tr><td>Compression:</td><td><span class="data">{{ image.compression }}</span></td></tr>
-</table>
+    <table class="attrs">
+        <colgroup>
+            <col style="width: 12em;">
+            <col style="width: auto;">
+        </colgroup>
+        <tr><td>Axes:</td><td><span class="data">{{ image.axes_order.upper() }}</span></td></tr>
+        <tr><td>Chunk size:</td><td><span class="data">{{ image.chunk_size }}</span></td></tr>
+        <tr><td>Dimensions (voxels):</td><td><span class="data">{{ image.dimensions_voxels }}</span></td></tr>
+        <tr><td>Dimensions:</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
+        <tr><td>Voxel sizes:</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
+        <tr><td>Compression:</td><td><span class="data">{{ image.compression }}</span></td></tr>
+        {% for attr in attrs.keys() %}
+        <tr><td>{{ attr }}:</td><td>{{ attrs[attr] }}</td></tr>
+        {% endfor %}
+    </table>
+
+</div>
 
 </body>
 </html>

@@ -12,6 +12,11 @@
     <h2>NGFF Browse: {{ data_url }}</h2>
 </section>
 
+<form style="margin-bottom: 2em">
+    Search terms: <input type="text" name="search_string" value="{{ search_string }}"/>
+    <button type="submit">Search</button>
+</form>
+
 <div>
     <div class="gallery">
 
@@ -25,7 +30,7 @@
         <div class="overlay">
 
             <div class="buttons">
-                <a href="#" onclick="copyTextToClipboard(this, '{{ image_data_url }}')" class="icon" >
+                <a href="#" onclick="copyTextToClipboard(this, '{{ get_image_data_url(image) }}')" class="icon" >
                     <div class="tooltip">
                         <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
                         <span class="tooltiptext">Copy image data URL</span>

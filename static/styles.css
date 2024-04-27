@@ -10,9 +10,38 @@ span.data {
     font-family: Verdana, Geneva, Tahoma, sans-serif;
 }
 
-img.full {
-    max-width: 800px;
+.content {
+    display: flex;
+    flex-wrap: wrap; /* This allows the items to wrap onto the next line as needed */
+    align-items: flex-start; /* Align items at the start of the flex container */
+    gap: 30px; /* Space between the image and the table */
 }
+
+.image {
+    max-width: 800px;
+    flex: 1 1 auto; /* Allows the image to grow and shrink as needed */
+    height: auto; /* Keeps the image aspect ratio intact */
+}
+
+.attrs {
+    flex: 1 1 300px; /* Basis at 300px but allows shrinking */
+    max-width: 100%; /* Ensures the table is not wider than its container */
+    table-layout: fixed; /* Enables more control over column widths */
+    width: 100%; /* Ensures table uses the maximum width available */
+}
+
+.attrs tbody tr:nth-child(odd) {
+    background-color: #eef1f6;
+  }
+
+/* Media Query for smaller screens */
+@media (max-width: 1400px) {
+    .content {
+        flex-direction: column; /* Stack flex items vertically on smaller screens */
+    }
+}
+
+
 
 a.icon {
     display: inline;
