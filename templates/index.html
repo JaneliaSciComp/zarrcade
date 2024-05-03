@@ -20,7 +20,8 @@
 <div>
     <div class="gallery">
 
-    {% for image in images %}
+    {% for metaimage in metaimages %}
+    {% set image = metaimage.image %}
     <div class="container">
         {% if not image.thumbnail_path %}
             <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />

@@ -8,6 +8,8 @@
 </head>
 <body>
 
+{% set image = metaimage.image %}
+
 <section>
     <a href="/">Back to index</a>
     <h2>NGFF Browse: {{ image.id }}</h2>
@@ -53,6 +55,7 @@ Open with:
         <tr><td>Dimensions:</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
         <tr><td>Voxel sizes:</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
         <tr><td>Compression:</td><td><span class="data">{{ image.compression }}</span></td></tr>
+        {% set attrs = metaimage.metadata %}
         {% for attr in attrs.keys() %}
         <tr><td>{{ attr }}:</td><td>{{ attrs[attr] }}</td></tr>
         {% endfor %}

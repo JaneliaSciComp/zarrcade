@@ -58,6 +58,12 @@ class Image:
         for viewer in viewers:
             yield viewer
 
+@dataclass
+class MetadataImage:
+    id: str
+    image: Image
+    metadata: dict[str, str]
+
 
 def encode_image(id, absolute_path, relative_path, image_group):
     multiscales = image_group.attrs['multiscales']
