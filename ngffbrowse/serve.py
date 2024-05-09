@@ -42,9 +42,9 @@ attr_map = {}
 try:
     query = "SELECT * FROM metadata_columns"
     result_df = pd.read_sql_query(query, con=engine)
-    for index, row in result_df.iterrows():
-        db_name = row['db_name']
-        original_name = row['original_name']
+    for row in result_df.itertuples():
+        db_name = row.db_name
+        original_name = row.original_name
         print(f"Registering column '{db_name}' for {original_name}")
         attr_map[db_name] = original_name
 except:
@@ -158,6 +158,12 @@ def get_metadata(row_dict):
             metadata[attr_map[k]] = row_dict[k]
     return metadata
 
+def get_tuple_metadata(row):
+    metadata = {}
+    for k in attr_map:
+        if k in row._fields:
+            metadata[attr_map[k]] = getattr(row, k)
+    return metadata
 
 def get_metaimage(image_id: str):
     full_query = text("""
@@ -171,13 +177,13 @@ def get_metaimage(image_id: str):
     """)
     full_query = text(f"{full_query} WHERE i.image_path = :image_path")
     result_df = pd.read_sql_query(full_query, con=engine, params={'image_path': image_id})
-    for _, row_dict in result_df.iterrows():
-        relpath = row_dict['relpath']
-        image_info_json = row_dict['image_info']
-        logger.info(f"Found {row_dict['image_path']} in image collection")
+    for row in result_df.itertuples():
+        relpath = row.relpath
+        image_info_json = row.image_info
+        logger.info(f"Found {row.image_path} in image collection")
         if image_info_json:
             image = parse_image_info(image_info_json)
-            metadata = get_metadata(row_dict)
+            metadata = get_tuple_metadata(row)
             metaimage = MetadataImage(relpath, image, metadata)
             return metaimage
         else:
@@ -207,10 +213,10 @@ def find_metaimages(search_string: str):
         result_df = pd.read_sql_query(full_query, con=engine, params={'search_string': '%'+search_string+'%'})
 
     images = []
-    for _, row_dict in result_df.iterrows():
-        metadata = get_metadata(row_dict)
-        image_info_json = row_dict['image_info']
-        image_path = row_dict['image_path']
+    for row in result_df.itertuples():
+        metadata = get_tuple_metadata(row)
+        image_info_json = row.image_info
+        image_path = row.image_path
         if image_info_json:
             image = parse_image_info(image_info_json)
             metaimage = MetadataImage(image_path, image, metadata)
