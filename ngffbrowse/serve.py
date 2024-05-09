@@ -11,7 +11,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 
 import pandas as pd
-from sqlalchemy import create_engine, text, Table, Column, String, Integer, MetaData, func, select
+from sqlalchemy import create_engine, text, MetaData, Table, Column, String, Integer, Index, ForeignKey, func, select
+# import logging
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
@@ -47,16 +50,30 @@ try:
 except:
     logger.info("No metadata columns defined")
 
+# Create empty metadata table if necessary
+meta = MetaData()
+meta.reflect(bind=engine)
+
+metadata_table = Table('metadata', meta,
+    Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
+    Column('collection', String, nullable=False),
+    Column('relpath', String, nullable=False),
+    extend_existing=True
+)
+meta.create_all(engine)
+
 # Create image table if necessary
-metadata = MetaData()
-images_table = Table('images', metadata,
+images_table = Table('images', meta,
                     Column('id', Integer, primary_key=True),
                     Column('collection', String, nullable=False),
                     Column('relpath', String, nullable=False),
                     Column('dataset', String, nullable=False),
                     Column('image_path', String, nullable=False, index=True),
-                    Column('image_info', String, nullable=False))
-metadata.create_all(engine)
+                    Column('image_info', String, nullable=False),
+                    Column('metadata_id', Integer, ForeignKey('metadata.id', ondelete='SET NULL'), nullable=True, index=True),
+                    Index('collection_relpath_idx', 'collection', 'relpath'),
+                    extend_existing=True)
+meta.create_all(engine)
 
 fs, fsroot = get_fs(data_url)
 logger.debug(f"Filesystem root is {fsroot}")
@@ -65,6 +82,13 @@ fsroot_dir = os.path.join(fsroot, '')
 logger.debug(f"Filesystem dir is {fsroot_dir}")
 
 with engine.connect() as connection:
+    # Temporarily cache relpath -> metadata id lookup table
+    metadata_ids = {}
+    query = "SELECT id,relpath FROM metadata WHERE collection = :collection"
+    result_df = pd.read_sql_query(query, con=engine, params={'collection': fsroot})
+    for row in result_df.itertuples():
+        metadata_ids[row.relpath] = row.id
+
     # Check if the image info is already populated
     query = select(func.count()).select_from(images_table) \
             .where(images_table.c.image_info.isnot(None))
@@ -83,30 +107,38 @@ with engine.connect() as connection:
             absolute_path = fsroot_dir + relative_path
             if isinstance(fs,s3fs.core.S3FileSystem):
                 absolute_path = 's3://' + absolute_path
+
             logger.info("Reading images in "+absolute_path)
             for image in yield_images(absolute_path, relative_path):
                 logger.debug(f"Persisting {image}")
-                logger.debug(f"Persisting repr {image.__repr__()}")
                 stmt = select(images_table).where(images_table.c.image_path == image.id)
                 existing_row = connection.execute(stmt).fetchone()
                 image_info = json.dumps(asdict(image))
                 dataset = image.id.removeprefix(relative_path)
+
+                if relative_path in metadata_ids:
+                    metadata_id = metadata_ids[relative_path]
+                else:
+                    metadata_id = None
+
                 if existing_row:
                     update_stmt = images_table.update(). \
                         where((images_table.c.collection == fsroot) &
                               (images_table.c.image_path == image.id)). \
                         values(relpath=relative_path,
                                dataset=dataset,
-                               image_info=image_info)
+                               image_info=image_info,
+                               metadata_id=metadata_id)
                     result = connection.execute(update_stmt)
                     logger.info(f"Updated {image.id}")
                 else:
                     insert_stmt = images_table.insert() \
-                            .values(collection=fsroot, \
-                                    relpath=relative_path, \
-                                    dataset=dataset, \
-                                    image_path=image.id, \
-                                    image_info=image_info)
+                            .values(collection=fsroot, 
+                                    relpath=relative_path, 
+                                    dataset=dataset, 
+                                    image_path=image.id, 
+                                    image_info=image_info, 
+                                    metadata_id=metadata_id)
                     connection.execute(insert_stmt)
                     logger.info(f"Inserted {image.id}")
 
@@ -128,57 +160,64 @@ def get_metadata(row_dict):
 
 
 def get_metaimage(image_id: str):
-    with engine.connect() as connection:
-        select_stmt = images_table.select().where(images_table.c.image_path == image_id)
-        existing_record = connection.execute(select_stmt).fetchone()
-        if existing_record:
-            row_dict = existing_record._mapping
-            relpath = row_dict['relpath']
-            image_info_json = row_dict['image_info']
-            logger.info(f"Found {row_dict['image_path']} in image collection")
-            if image_info_json:
-                image = parse_image_info(image_info_json)
-                full_query = text(f"SELECT * FROM metadata WHERE relpath = :relpath")
-                result_df = pd.read_sql_query(full_query, con=engine, params={'relpath': relpath})
-                for _, row_dict in result_df.iterrows():
-                    metadata = get_metadata(row_dict)
-                    metaimage = MetadataImage(relpath, image, metadata)
-                    return metaimage
-                logger.info(f"No metadata found, returning plain image {image.id}")
-                return MetadataImage(relpath, image, {})
-            else:
-                logger.info(f"Image has no image_info: {image_id}")
+    full_query = text("""
+        SELECT m.*, i.image_path, i.image_info
+        FROM 
+            images i
+        LEFT JOIN 
+            metadata m
+        ON 
+            m.id = i.metadata_id
+    """)
+    full_query = text(f"{full_query} WHERE i.image_path = :image_path")
+    result_df = pd.read_sql_query(full_query, con=engine, params={'image_path': image_id})
+    for _, row_dict in result_df.iterrows():
+        relpath = row_dict['relpath']
+        image_info_json = row_dict['image_info']
+        logger.info(f"Found {row_dict['image_path']} in image collection")
+        if image_info_json:
+            image = parse_image_info(image_info_json)
+            metadata = get_metadata(row_dict)
+            metaimage = MetadataImage(relpath, image, metadata)
+            return metaimage
         else:
-            logger.info(f"No image found with relpath: {image_id}")
-        return None
+            logger.info(f"Image has no image_info: {image_id}")
+            return None
+        
+    logger.info(f"Image not found: {image_id}")
+    return None
 
 
 def find_metaimages(search_string: str):
-    with engine.connect() as connection:
-        if not search_string: 
-            full_query = text(f"SELECT * FROM metadata")
-            result_df = pd.read_sql_query(full_query, con=engine)
-        else:
-            cols = attr_map.keys() or ['relpath']
-            query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
-            full_query = text(f"SELECT * FROM metadata WHERE {query_string}")
-            result_df = pd.read_sql_query(full_query, con=engine, params={'search_string': '%'+search_string+'%'})
+    full_query = text("""
+        SELECT m.*, i.image_path, i.image_info
+        FROM 
+            images i
+        LEFT JOIN 
+            metadata m
+        ON 
+            m.id = i.metadata_id
+    """)
+    if not search_string: 
+        result_df = pd.read_sql_query(full_query, con=engine)
+    else:
+        cols = attr_map.keys() or ['relpath']
+        query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
+        full_query = text(f"{full_query} WHERE {query_string}")
+        result_df = pd.read_sql_query(full_query, con=engine, params={'search_string': '%'+search_string+'%'})
 
-        images = []
-        for _, row_dict in result_df.iterrows():
-            metadata = get_metadata(row_dict)
-            #TODO: improve performance by fetching all images in single query
-            stmt = select(images_table).where(images_table.c.relpath == row_dict['relpath'])
-            results = connection.execute(stmt).fetchall()
-            if results:
-                for record in results:
-                    image_info_json = record.image_info
-                    if image_info_json:
-                        image = parse_image_info(image_info_json)
-                        metaimage = MetadataImage(record.image_path, image, metadata)
-                        images.append(metaimage)
+    images = []
+    for _, row_dict in result_df.iterrows():
+        metadata = get_metadata(row_dict)
+        image_info_json = row_dict['image_info']
+        image_path = row_dict['image_path']
+        if image_info_json:
+            image = parse_image_info(image_info_json)
+            metaimage = MetadataImage(image_path, image, metadata)
+            logger.info(f"  adding {metaimage.id}")
+            images.append(metaimage)
 
-        return images
+    return images
 
 
 def get_data_url(image: Image):
