@@ -5,7 +5,7 @@ from loguru import logger
 from dataclasses import asdict
 from sqlalchemy import create_engine, text, MetaData, Table, Column, String, Integer, Index, ForeignKey, func, select
 
-from .images import Image, MetadataImage
+from .model import Image, MetadataImage
 
 # import logging
 # logging.basicConfig()

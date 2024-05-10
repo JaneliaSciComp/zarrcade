@@ -14,7 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
 from .database import Database
-from .images import Image, MetadataImage, yield_ome_zarrs, yield_images, get_fs
+from .model import Image
+from .images import yield_ome_zarrs, yield_images, get_fs
 from .viewers import Viewer, Neuroglancer
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
