@@ -95,6 +95,12 @@ if overwrite or 'metadata' not in meta.tables:
     df.rename(columns={path_column_name: 'relpath'}, inplace=True)
     df.insert(0, 'collection', fs_root)
 
+    if 'metadata' in meta.tables: 
+        print(f"Dropping existing metadata table")
+        meta.tables.get('metadata').drop(engine)
+
+    # Create table
+
     table_columns = [
         Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
         Column('collection', String, nullable=False),
@@ -103,17 +109,12 @@ if overwrite or 'metadata' not in meta.tables:
     for colname in col2slug.keys():
         table_columns.append(Column(colname, String))
     
-    if 'metadata' in meta.tables: 
-        print(f"Dropping existing metadata table")
-        meta.tables.get('metadata').drop(engine)
-
-    # Create table
     metadata_table = Table('metadata', meta, *table_columns, extend_existing=True)
     meta.create_all(engine)
     print(f"Created metadata table")
 
     # Load data
-    df.to_sql(metadata_table.name, con=engine, if_exists='replace', index=False)
+    df.to_sql(metadata_table.name, con=engine, if_exists='append', index=False)
     print(f"Imported {df.shape[0]} images into metadata table")
 
 elif not overwrite:
