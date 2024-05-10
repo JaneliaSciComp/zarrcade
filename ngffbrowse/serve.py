@@ -1,6 +1,5 @@
 import os
 import re
-import json
 import fsspec
 import s3fs
 import pandas as pd
@@ -29,8 +28,10 @@ if not data_url:
 logger.info(f"Data URL is {data_url}")
 fs, fsroot = get_fs(data_url)
 logger.debug(f"Filesystem root is {fsroot}")
+
+# Ensure dir ends in a path separator
 fsroot_dir = os.path.join(fsroot, '')
-logger.debug(f"Filesystem dir is {fsroot_dir}")
+logger.trace(f"Filesystem dir is {fsroot_dir}")
 
 db_url = os.getenv("DB_URL", 'sqlite:///:memory:')
 logger.info(f"Database URL is {db_url}")
@@ -44,6 +45,7 @@ if count:
     logger.info(f"Found {count} images in the database")
 else:
     # Walk the storage root and populate the database
+    count = 0
     for zarr_path in yield_ome_zarrs(fs, fsroot):
         logger.info("Found images in "+zarr_path)
         logger.trace("Removing prefix "+fsroot_dir)
@@ -67,11 +69,10 @@ else:
                         dataset=image.id.removeprefix(relative_path),
                         image=image,
                         metadata_id=metadata_id)
+            count += 1
 
+    logger.info(f"Persisted {count} images to the database")
 
-count = db.get_images_count()
-if count:
-    logger.info(f"Found {count} images in the database")
 
 def get_data_url(image: Image):
     # TODO: this should probably be the other way around: return paths we know
