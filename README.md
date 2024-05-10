@@ -28,6 +28,23 @@ docker run -it -v /path/to/data:/data \
     -e BASE_URL=https://yourdomainname.org \
     ghcr.io/janeliascicomp/ngffbrowse
 ```
+## Importing metadata
+
+You can import metadata into ngffbrowse by pre-populating the database from a CSV file:
+
+```bash
+conda env create -f environment.yml -y
+conda activate ngffbrowse
+bin/import_metadata.py -i input.csv -r /root/data/dir --overwrite
+```
+
+The CSV file's first column must be a relative path pointing to OME-Zarr images within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery:
+
+```csv
+Path,Line,Marker
+relative/path/to/ome1.zarr,JKF6363,Blu
+relative/path/to/ome2.zarr,JDH3562,Blu
+```
 
 ## Development
 
