@@ -1,26 +1,19 @@
 import os
 import re
-
+import json
 import fsspec
 import s3fs
+import pandas as pd
+
 from loguru import logger
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-
-import pandas as pd
-from sqlalchemy import create_engine, text, MetaData, Table, Column, String, Integer, Index, ForeignKey, func, select
-# import logging
-# logging.basicConfig()
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
 from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
-from dataclasses import dataclass, asdict
-import json
-
+from .database import Database
 from .images import Image, MetadataImage, yield_ome_zarrs, yield_images, get_fs
 from .viewers import Viewer, Neuroglancer
 
@@ -33,198 +26,51 @@ if not data_url:
     raise Exception("You must define a DATA_URL environment variable " \
                     "pointing to a location where OME-Zarr images are found.")
 logger.info(f"Data URL is {data_url}")
-
-# Initialize database
-engine = create_engine('sqlite:///database.db')
-
-# Read the attribute naming map from the database, if they exist
-attr_map = {}
-try:
-    query = "SELECT * FROM metadata_columns"
-    result_df = pd.read_sql_query(query, con=engine)
-    for row in result_df.itertuples():
-        db_name = row.db_name
-        original_name = row.original_name
-        print(f"Registering column '{db_name}' for {original_name}")
-        attr_map[db_name] = original_name
-except:
-    logger.info("No metadata columns defined")
-
-# Create empty metadata table if necessary
-meta = MetaData()
-meta.reflect(bind=engine)
-
-metadata_table = Table('metadata', meta,
-    Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
-    Column('collection', String, nullable=False),
-    Column('relpath', String, nullable=False),
-    extend_existing=True
-)
-meta.create_all(engine)
-
-# Create image table if necessary
-images_table = Table('images', meta,
-                    Column('id', Integer, primary_key=True),
-                    Column('collection', String, nullable=False),
-                    Column('relpath', String, nullable=False),
-                    Column('dataset', String, nullable=False),
-                    Column('image_path', String, nullable=False, index=True),
-                    Column('image_info', String, nullable=False),
-                    Column('metadata_id', Integer, ForeignKey('metadata.id', ondelete='SET NULL'), nullable=True, index=True),
-                    Index('collection_relpath_idx', 'collection', 'relpath'),
-                    extend_existing=True)
-meta.create_all(engine)
-
 fs, fsroot = get_fs(data_url)
 logger.debug(f"Filesystem root is {fsroot}")
-
 fsroot_dir = os.path.join(fsroot, '')
 logger.debug(f"Filesystem dir is {fsroot_dir}")
 
-with engine.connect() as connection:
-    # Temporarily cache relpath -> metadata id lookup table
-    metadata_ids = {}
-    query = "SELECT id,relpath FROM metadata WHERE collection = :collection"
-    result_df = pd.read_sql_query(query, con=engine, params={'collection': fsroot})
-    for row in result_df.itertuples():
-        metadata_ids[row.relpath] = row.id
+db_url = os.getenv("DB_URL", 'sqlite:///:memory:')
+logger.info(f"Database URL is {db_url}")
+db = Database(db_url)
 
-    # Check if the image info is already populated
-    query = select(func.count()).select_from(images_table) \
-            .where(images_table.c.image_info.isnot(None))
-    result = connection.execute(query)
-    count = result.scalar()
+# Temporarily cache relpath -> metadata id lookup table
+metadata_ids = db.get_relpath_to_metadata_id_map(fsroot)
 
-    if count:
-        logger.info(f"Found {count} images in the database")
-    else:
-        # Walk the storage root and populate the database
-        for zarr_path in yield_ome_zarrs(fs, fsroot):
-            logger.info("Found images in "+zarr_path)
-            logger.info("Removing prefix "+fsroot_dir)
-            relative_path = zarr_path.removeprefix(fsroot_dir)
-            logger.info("Relative path is "+relative_path)
-            absolute_path = fsroot_dir + relative_path
-            if isinstance(fs,s3fs.core.S3FileSystem):
-                absolute_path = 's3://' + absolute_path
+count = db.get_images_count()
+if count:
+    logger.info(f"Found {count} images in the database")
+else:
+    # Walk the storage root and populate the database
+    for zarr_path in yield_ome_zarrs(fs, fsroot):
+        logger.info("Found images in "+zarr_path)
+        logger.trace("Removing prefix "+fsroot_dir)
+        relative_path = zarr_path.removeprefix(fsroot_dir)
+        logger.info("Relative path is "+relative_path)
+        absolute_path = fsroot_dir + relative_path
+        if isinstance(fs,s3fs.core.S3FileSystem):
+            absolute_path = 's3://' + absolute_path
 
-            logger.info("Reading images in "+absolute_path)
-            for image in yield_images(absolute_path, relative_path):
-                logger.debug(f"Persisting {image}")
-                stmt = select(images_table).where(images_table.c.image_path == image.id)
-                existing_row = connection.execute(stmt).fetchone()
-                image_info = json.dumps(asdict(image))
-                dataset = image.id.removeprefix(relative_path)
+        logger.info("Reading images in "+absolute_path)
+        for image in yield_images(absolute_path, relative_path):
 
-                if relative_path in metadata_ids:
-                    metadata_id = metadata_ids[relative_path]
-                else:
-                    metadata_id = None
+            if relative_path in metadata_ids:
+                metadata_id = metadata_ids[relative_path]
+            else:
+                metadata_id = None
 
-                if existing_row:
-                    update_stmt = images_table.update(). \
-                        where((images_table.c.collection == fsroot) &
-                              (images_table.c.image_path == image.id)). \
-                        values(relpath=relative_path,
-                               dataset=dataset,
-                               image_info=image_info,
-                               metadata_id=metadata_id)
-                    result = connection.execute(update_stmt)
-                    logger.info(f"Updated {image.id}")
-                else:
-                    insert_stmt = images_table.insert() \
-                            .values(collection=fsroot, 
-                                    relpath=relative_path, 
-                                    dataset=dataset, 
-                                    image_path=image.id, 
-                                    image_info=image_info, 
-                                    metadata_id=metadata_id)
-                    connection.execute(insert_stmt)
-                    logger.info(f"Inserted {image.id}")
-
-        # Persist database to disk
-        connection.commit()
+            logger.debug(f"Persisting {image}")
+            db.persist_image(fsroot, 
+                        relpath=relative_path, 
+                        dataset=image.id.removeprefix(relative_path),
+                        image=image,
+                        metadata_id=metadata_id)
 
 
-def parse_image_info(image_info: str):
-    json_obj = json.loads(image_info)
-    return Image(**json_obj)
-
-
-def get_metadata(row_dict):
-    metadata = {}
-    for k in attr_map:
-        if k in row_dict:
-            metadata[attr_map[k]] = row_dict[k]
-    return metadata
-
-def get_tuple_metadata(row):
-    metadata = {}
-    for k in attr_map:
-        if k in row._fields:
-            metadata[attr_map[k]] = getattr(row, k)
-    return metadata
-
-def get_metaimage(image_id: str):
-    full_query = text("""
-        SELECT m.*, i.image_path, i.image_info
-        FROM 
-            images i
-        LEFT JOIN 
-            metadata m
-        ON 
-            m.id = i.metadata_id
-    """)
-    full_query = text(f"{full_query} WHERE i.image_path = :image_path")
-    result_df = pd.read_sql_query(full_query, con=engine, params={'image_path': image_id})
-    for row in result_df.itertuples():
-        relpath = row.relpath
-        image_info_json = row.image_info
-        logger.info(f"Found {row.image_path} in image collection")
-        if image_info_json:
-            image = parse_image_info(image_info_json)
-            metadata = get_tuple_metadata(row)
-            metaimage = MetadataImage(relpath, image, metadata)
-            return metaimage
-        else:
-            logger.info(f"Image has no image_info: {image_id}")
-            return None
-        
-    logger.info(f"Image not found: {image_id}")
-    return None
-
-
-def find_metaimages(search_string: str):
-    full_query = text("""
-        SELECT m.*, i.image_path, i.image_info
-        FROM 
-            images i
-        LEFT JOIN 
-            metadata m
-        ON 
-            m.id = i.metadata_id
-    """)
-    if not search_string: 
-        result_df = pd.read_sql_query(full_query, con=engine)
-    else:
-        cols = attr_map.keys() or ['relpath']
-        query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
-        full_query = text(f"{full_query} WHERE {query_string}")
-        result_df = pd.read_sql_query(full_query, con=engine, params={'search_string': '%'+search_string+'%'})
-
-    images = []
-    for row in result_df.itertuples():
-        metadata = get_tuple_metadata(row)
-        image_info_json = row.image_info
-        image_path = row.image_path
-        if image_info_json:
-            image = parse_image_info(image_info_json)
-            metaimage = MetadataImage(image_path, image, metadata)
-            logger.info(f"  adding {metaimage.id}")
-            images.append(metaimage)
-
-    return images
-
+count = db.get_images_count()
+if count:
+    logger.info(f"Found {count} images in the database")
 
 def get_data_url(image: Image):
     # TODO: this should probably be the other way around: return paths we know
@@ -256,7 +102,6 @@ def get_viewer_url(image: Image, viewer: Viewer):
     return viewer.get_viewer_url(url)
 
 
-
 # Create the API
 app = FastAPI(
     title="NGFFBrowse Service",
@@ -280,7 +125,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index(request: Request, search_string: str = '', page: int = 0):
-    metaimages = find_metaimages(search_string)
+    metaimages = db.find_metaimages(search_string)
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "base_url": base_url,
@@ -297,7 +142,7 @@ async def index(request: Request, search_string: str = '', page: int = 0):
 @app.get("/views/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
 async def views(request: Request, image_id: str):
 
-    metaimage = get_metaimage(image_id)
+    metaimage = db.get_metaimage(image_id)
     if not metaimage:
         return Response(status_code=404)
 
@@ -342,7 +187,7 @@ async def data_proxy_get(relative_path: str):
 @app.get("/neuroglancer/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
 async def neuroglancer_state(image_id: str):
 
-    metaimage = get_metaimage(image_id)
+    metaimage = db.get_metaimage(image_id)
     if not metaimage:
         return Response(status_code=404)
     
