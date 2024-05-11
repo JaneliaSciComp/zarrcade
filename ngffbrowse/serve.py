@@ -95,7 +95,7 @@ def get_viewer_url(image: Image, viewer: Viewer):
     url = get_data_url(image)
     if viewer==Neuroglancer:
         if image.axes_order == 'tczyx':
-            # Generate a config on-the-fly
+            # Generate a multichannel config on-the-fly
             url = os.path.join(base_url, "neuroglancer", image.relative_path)
         else:
             # Prepend format for Neuroglancer to understand
@@ -106,7 +106,7 @@ def get_viewer_url(image: Image, viewer: Viewer):
 
 # Create the API
 app = FastAPI(
-    title="NGFFBrowse Service",
+    title="Zarrcade OME-NGFF Gallery",
     license_info={
         "name": "Janelia Open-Source Software License",
         "url": "https://www.janelia.org/open-science/software-licensing",
@@ -126,17 +126,17 @@ templates = Jinja2Templates(directory="templates")
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def index(request: Request, search_string: str = '', page: int = 0):
-    metaimages = db.find_metaimages(search_string)
+async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=10):
+    result = db.find_metaimages(search_string, page, page_size)
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "base_url": base_url,
-            "metaimages": metaimages,
+            "metaimages": result['images'],
             "get_viewer_url": get_viewer_url,
             "get_thumbnail_url": get_thumbnail_url,
             "get_image_data_url": get_data_url,
             "search_string": search_string,
-            "page": page
+            "pagination": result['pagination']
         }
     )
 
@@ -183,7 +183,6 @@ async def data_proxy_get(relative_path: str):
             return Response(status_code=200, headers=headers, content=data)
     except FileNotFoundError:
         return Response(status_code=404)
-
 
 
 @app.get("/neuroglancer/{image_id:path}", response_class=JSONResponse, include_in_schema=False)

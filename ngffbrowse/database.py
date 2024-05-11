@@ -21,6 +21,9 @@ IMAGES_AND_METADATA_SQL = text("""
         m.id = i.metadata_id
 """)
 
+LIMIT_AND_OFFSET = text("""
+    LIMIT :limit OFFSET :offset
+""")
 
 def deserialize_image_info(image_info: str):
     return Image(**json.loads(image_info))
@@ -46,7 +49,7 @@ class Database:
             for row in result_df.itertuples():
                 db_name = row.db_name
                 original_name = row.original_name
-                print(f"Registering column '{db_name}' for {original_name}")
+                logger.trace(f"Registering column '{db_name}' for {original_name}")
                 self.attr_map[db_name] = original_name
         except:
             logger.info("No metadata columns defined")
@@ -154,15 +157,51 @@ class Database:
         return None
 
 
-    def find_metaimages(self, search_string: str):
-        full_query = IMAGES_AND_METADATA_SQL
-        if not search_string: 
-            result_df = pd.read_sql_query(full_query, con=self.engine)
+    def find_metaimages(self, search_string: str = '', page: int = 1, page_size: int = 10):
+        """
+        Find meta images with optional search and pagination.
+
+        Args:
+            search_string (str): The string to search for within image metadata.
+            page (int): The one-indexed page number.
+            page_size (int): The number of results per page.
+
+        Returns:
+            tuple: A tuple containing:
+                - List of `MetadataImage` objects.
+                - Total number of pages.
+        """
+        if page < 0:
+            raise ValueError("Page index must be a non-negative integer.")
+
+        offset = (page - 1) * page_size
+
+        # Base queries for fetching data and counting total records
+        base_query = IMAGES_AND_METADATA_SQL
+
+        # Modify queries based on whether a search string is provided
+        if not search_string:
+            paginated_query = text(f"{base_query} LIMIT :limit OFFSET :offset")
+            count_query = text(f"SELECT COUNT(*) FROM ({base_query})")
+            result_df = pd.read_sql_query(paginated_query, con=self.engine, params={'limit': page_size, 'offset': offset})
+            total_count = pd.read_sql_query(count_query, con=self.engine).iloc[0, 0]
         else:
             cols = [f"m.{k}" for k in self.attr_map.keys()] or ['i.relpath']
             query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
-            full_query = text(f"{full_query} WHERE {query_string}")
-            result_df = pd.read_sql_query(full_query, con=self.engine, params={'search_string': '%'+search_string+'%'})
+            paginated_query = text(f"{base_query} WHERE {query_string} LIMIT :limit OFFSET :offset")
+            count_query = text(f"SELECT COUNT(*) FROM ({base_query} WHERE {query_string})")
+            
+            result_df = pd.read_sql_query(paginated_query, con=self.engine, params={
+                'search_string': f'%{search_string}%',
+                'limit': page_size,
+                'offset': offset
+            })
+            total_count = pd.read_sql_query(count_query, con=self.engine, params={
+                'search_string': f'%{search_string}%'
+            }).iloc[0, 0]
+
+        # Calculate the total number of pages
+        total_pages = (total_count + page_size - 1) // page_size
 
         images = []
         for row in result_df.itertuples():
@@ -175,4 +214,12 @@ class Database:
                 logger.info(f"  adding {metaimage.id}")
                 images.append(metaimage)
 
-        return images
+        return {
+            'images': images,
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total_pages': total_pages,
+                'total_count': total_count
+            }
+        }

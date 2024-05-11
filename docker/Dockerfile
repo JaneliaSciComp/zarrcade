@@ -2,11 +2,11 @@ FROM condaforge/mambaforge
 ARG GIT_TAG=main
 
 WORKDIR /app
-RUN git clone --branch $GIT_TAG --depth 1 https://github.com/krokicki/ngffbrowse.git
+RUN git clone --branch $GIT_TAG --depth 1 https://github.com/krokicki/zarrcade.git
 
-WORKDIR /app/ngffbrowse
+WORKDIR /app/zarrcade
 RUN mamba env create -f environment.yml \
     && mamba clean --all -y \
-    && mamba run -n ngffbrowse pip install neuroglancer --no-dependencies
+    && mamba run -n zarrcade pip install neuroglancer --no-dependencies
 
-ENTRYPOINT [ "/app/ngffbrowse/docker/entrypoint.sh" ]
+ENTRYPOINT [ "/app/zarrcade/docker/entrypoint.sh" ]

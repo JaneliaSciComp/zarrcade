@@ -7,7 +7,7 @@ import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table
 
 parser = argparse.ArgumentParser(
-    description='Create an ngffbrowse database by importing metadata from a CSV file')
+    description='Create an zarrcade database by importing metadata from a CSV file')
 parser.add_argument('-i', '--input_path', type=str, required=True, 
     help='Path to the CSV file containing the metadata')
 parser.add_argument('-r', '--root_url', type=str, required=True, 

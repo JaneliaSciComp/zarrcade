@@ -1,4 +1,4 @@
-name: ngffbrowse
+name: zarrcade
 channels:
   - conda-forge
   - defaults

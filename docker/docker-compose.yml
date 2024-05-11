@@ -1,4 +1,4 @@
-name: ngffbrowse
+name: zarrcade
 services:
     nginx:
         image: nginx
@@ -8,8 +8,8 @@ services:
             - 80:80
             - 443:443
         restart: unless-stopped
-    ngffbrowse:
-        image: ghcr.io/janeliascicomp/ngffbrowse:latest
+    zarrcade:
+        image: ghcr.io/janeliascicomp/zarrcade:latest
         depends_on:
             - nginx
         restart: unless-stopped
