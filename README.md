@@ -22,14 +22,30 @@ If your server is running remotely it will need to use HTTPS in order to be able
 
 ```bash
 docker run -it -v /path/to/data:/data \
-    -e KEY_FILE=/path/to/keyfile \
-    -e CERT_FILE=/path/to/certfile \
+    -v /path/to/keyfile:/certs/keyfile \
+    -v /path/to/certfile:/certs/certfile \
+    -e KEY_FILE=/certs/keyfile \
+    -e CERT_FILE=/certs/certfile \
     -e BASE_URL=https://yourdomainname.org \
     ghcr.io/janeliascicomp/zarrcade
 ```
+
+By default, Zarrcade uses an in-memory Sqlite database. If you want to use something else, set the DB_URL variable to point to a SQL database:
+
+```bash
+docker run -it -v /path/to/data:/data \
+    -v /path/to/keyfile:/certs/keyfile \
+    -v /path/to/certfile:/certs/certfile \
+    -e KEY_FILE=/certs/keyfile \
+    -e CERT_FILE=/certs/certfile \
+    -e BASE_URL=https://yourdomainname.org \
+    -e DB_URL=sqlite:///database.db \
+    ghcr.io/janeliascicomp/zarrcade
+```
+
 ## Importing metadata
 
-You can import metadata into zarrcade by pre-populating the database from a CSV file:
+You can import metadata into Zarrcade by pre-populating the SQLite database from a CSV file:
 
 ```bash
 conda env create -f environment.yml -y
@@ -50,7 +66,7 @@ relative/path/to/ome2.zarr,JDH3562,Blu
 Install the necessary packages using conda and pip:
 
 ```bash
-conda env create -f environment.yml -y
+conda env create -f environment.yml
 conda activate zarrcade
 pip install neuroglancer  --no-dependencies
 ```
