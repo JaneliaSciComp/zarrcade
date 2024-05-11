@@ -1,78 +1,88 @@
-body {
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
     font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
 }
 
 section {
-    margin: 5pt 0pt 10pt 0pt;
+    margin: 5pt 10pt 10pt 10pt;
 }
 
 span.data {
     font-family: Verdana, Geneva, Tahoma, sans-serif;
 }
 
-.content {
+/* Top bar */
+
+.top-bar {
+    background-color: #1b2e41; /* Dark background color */
+    color: white;
     display: flex;
-    flex-wrap: wrap; /* This allows the items to wrap onto the next line as needed */
-    align-items: flex-start; /* Align items at the start of the flex container */
-    gap: 30px; /* Space between the image and the table */
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
 }
 
-.image {
-    max-width: 800px;
-    flex: 1 1 auto; /* Allows the image to grow and shrink as needed */
-    height: auto; /* Keeps the image aspect ratio intact */
+.top-bar .logo img {
+    height: 50px; /* Adjust size as needed */
 }
 
-.attrs {
-    flex: 1 1 300px; /* Basis at 300px but allows shrinking */
-    max-width: 100%; /* Ensures the table is not wider than its container */
-    table-layout: fixed; /* Enables more control over column widths */
-    width: 100%; /* Ensures table uses the maximum width available */
-}
-
-.attrs tbody tr:nth-child(odd) {
-    background-color: #eef1f6;
-  }
-
-/* Media Query for smaller screens */
-@media (max-width: 1400px) {
-    .content {
-        flex-direction: column; /* Stack flex items vertically on smaller screens */
-    }
-}
-
-
-
-a.icon {
-    display: inline;
-    margin-right: 5px;
-    margin-left: 5px;
-}
-
-a.icon:link {
+.top-bar .icons a {
+    color: white;
     text-decoration: none;
+    padding: 0 10px;
+    font-size: 24px; /* Adjust size as needed */
 }
 
-a.icon:visited {
+.top-bar .icons a:hover {
+    color: #ccc; /* Lighter grey on hover */
+}
+
+/* Search form */
+
+form {
+    margin-bottom: 2em;
+    display: flex;
+    justify-content: center;
+}
+
+form input[type="text"], form button {
+    margin: 0 5px;
+    padding: 8px;
+}
+
+/* Pagination */
+
+.pagination a, .pagination span {
+    margin: 0 5px;
+    padding: 8px 12px;
     text-decoration: none;
+    border: 1px solid #ddd;
+    border-radius: 5px;
 }
 
-a.icon:hover {
-    text-decoration: none;
+.pagination a {
+    color: #1a3959;
+    cursor: pointer;
 }
 
-a.icon:active {
-    text-decoration: none;
+.pagination a:hover {
+    background-color: #ddd;
 }
 
-a.icon img {
-    width: 36px;
-    height: 36px;
+.pagination .active {
+    background-color: #1a3959;
+    color: white;
+    cursor: default;
 }
 
-a.icon img:active {
-    transform: scale(0.9);
+.pagination .disabled {
+    color: #ccc;
+    cursor: not-allowed;
 }
+
+/* Gallery */
 
 .gallery {
     display: grid;
@@ -87,8 +97,8 @@ a.icon img:active {
 .gallery .container img.thumbnail {
     opacity: 1;
     display: block;
-    max-width: 300px;
-    height: auto;
+    width: 300px;
+    height: 300px;
     backface-visibility: hidden;
 }
 
@@ -135,6 +145,8 @@ a.icon img:active {
     opacity: 1;
 }
 
+/* View Details button */
+
 div.detail_button {
     margin: 1em;
 }
@@ -169,6 +181,74 @@ div.detail_button a:active {
         padding: 0.25em 0.75em;
     }
 }
+
+/* Detail view */
+
+.content {
+    display: flex;
+    flex-wrap: wrap; /* This allows the items to wrap onto the next line as needed */
+    align-items: flex-start; /* Align items at the start of the flex container */
+    gap: 30px; /* Space between the image and the table */
+}
+
+.image {
+    max-width: 800px;
+    flex: 1 1 auto; /* Allows the image to grow and shrink as needed */
+    height: auto; /* Keeps the image aspect ratio intact */
+}
+
+.attrs {
+    flex: 1 1 300px; /* Basis at 300px but allows shrinking */
+    max-width: 100%; /* Ensures the table is not wider than its container */
+    table-layout: fixed; /* Enables more control over column widths */
+    width: 100%; /* Ensures table uses the maximum width available */
+}
+
+.attrs tbody tr:nth-child(odd) {
+    background-color: #eef1f6;
+}
+
+/* Media Query for smaller screens */
+@media (max-width: 1400px) {
+    .content {
+        flex-direction: column; /* Stack flex items vertically on smaller screens */
+    }
+}
+
+/* External tool buttons */
+
+a.icon {
+    display: inline;
+    margin-right: 5px;
+    margin-left: 5px;
+}
+
+a.icon:link {
+    text-decoration: none;
+}
+
+a.icon:visited {
+    text-decoration: none;
+}
+
+a.icon:hover {
+    text-decoration: none;
+}
+
+a.icon:active {
+    text-decoration: none;
+}
+
+a.icon img {
+    width: 36px;
+    height: 36px;
+}
+
+a.icon img:active {
+    transform: scale(0.9); /* Shrink when pressing */
+}
+
+/* Tool tips */
 
 .tooltip {
     position: relative;
@@ -213,44 +293,4 @@ div.detail_button a:active {
     justify-content: center;
     margin-top: 1em;
     margin-bottom: 2em;
-}
-
-.pagination a, .pagination span {
-    margin: 0 5px;
-    padding: 8px 12px;
-    text-decoration: none;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.pagination a {
-    color: #1a3959;
-    cursor: pointer;
-}
-
-.pagination a:hover {
-    background-color: #ddd;
-}
-
-.pagination .active {
-    background-color: #1a3959;
-    color: white;
-    cursor: default;
-}
-
-.pagination .disabled {
-    color: #ccc;
-    cursor: not-allowed;
-}
-
-
-form {
-    margin-bottom: 2em;
-    display: flex;
-    justify-content: center;
-}
-
-form input[type="text"], form button {
-    margin: 0 5px;
-    padding: 8px;
 }
