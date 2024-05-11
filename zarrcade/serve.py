@@ -200,6 +200,7 @@ async def neuroglancer_state(image_id: str):
         return Response(status_code=400)
 
     state = ViewerState()
+    #TODO:dataclasses don't dsupport nested deserialization which makes this strange. Should switch to Pydantic.
 
     names = ['x','y','z','t']
     scales = []
@@ -207,9 +208,9 @@ async def neuroglancer_state(image_id: str):
     position = []
     for name in names:
         axis = image.axes[name]
-        scales.append(axis.scale)
-        units.append(axis.unit)
-        position.append(int(axis.extent / 2))
+        scales.append(axis['scale'])
+        units.append(axis['unit'])
+        position.append(int(axis['extent'] / 2))
 
     state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
     state.position = position
@@ -220,10 +221,10 @@ async def neuroglancer_state(image_id: str):
 
     for i, channel in enumerate(image.channels):
 
-        min = channel.pixel_intensity_min or 0
-        max = channel.pixel_intensity_max or 4096
+        min = channel['pixel_intensity_min'] or 0
+        max = channel['pixel_intensity_max'] or 4096
 
-        color = channel.color
+        color = channel['color']
         if re.match(r'^([\dA-F]){6}$', color):
             # bare hex color, add leading hash for rendering
             color = '#' + color    
@@ -238,8 +239,8 @@ async def neuroglancer_state(image_id: str):
                 shader=f"#uicontrol vec3 hue color(default=\"{color}\")\n#uicontrol invlerp normalized(range=[{min},{max}])\nvoid main(){{emitRGBA(vec4(hue*normalized(),1));}}",
             )
 
-        start = channel.contrast_limit_start
-        end = channel.contrast_limit_end
+        start = channel['contrast_limit_start']
+        end = channel['contrast_limit_end']
         if start and end:
             layer.shaderControls={
                     'normalized': {
@@ -247,7 +248,7 @@ async def neuroglancer_state(image_id: str):
                     }
                 }
 
-        state.layers.append(name=channel.name, layer=layer)
+        state.layers.append(name=channel['name'], layer=layer)
 
     state.layout = '4panel'
     return JSONResponse(state.to_json())
