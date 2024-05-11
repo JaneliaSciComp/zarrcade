@@ -18,7 +18,7 @@ To run the server locally with Docker, just point it at your OME-Zarr data:
 docker run -it -v /path/to/data:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
 ```
 
-If your server is running remotely it will need to use HTTPS in order to be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server.
+If your server is running remotely it will need to use HTTPS in order to be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server. 
 
 ```bash
 docker run -it -v /path/to/data:/data \
