@@ -1,4 +1,4 @@
-# ![zarrcade](https://github.com/JaneliaSciComp/zarrcade/assets/607324/c0935b03-7b93-4b48-b8bf-4ec7b5116cb9)
+# ![zarrcade](https://github.com/JaneliaSciComp/zarrcade/assets/607324/d6fbcab2-9a1d-482d-91b6-7d06a65189e9)
 
 Web application for easily browsing collections of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
 
