@@ -5,3 +5,5 @@ certs
 database.db
 *.csv
 .env
+.notes
+
