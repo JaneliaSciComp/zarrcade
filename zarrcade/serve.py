@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
 
 from .database import Database
 from .model import Image
@@ -126,7 +125,7 @@ templates = Jinja2Templates(directory="templates")
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=10):
+async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
     result = db.find_metaimages(search_string, page, page_size)
     return templates.TemplateResponse(
         request=request, name="index.html", context={
@@ -188,10 +187,12 @@ async def data_proxy_get(relative_path: str):
 @app.get("/neuroglancer/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
 async def neuroglancer_state(image_id: str):
 
+    from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
+
     metaimage = db.get_metaimage(image_id)
     if not metaimage:
         return Response(status_code=404)
-    
+
     image = metaimage.image
     url = get_data_url(image)
 
@@ -227,7 +228,7 @@ async def neuroglancer_state(image_id: str):
         color = channel['color']
         if re.match(r'^([\dA-F]){6}$', color):
             # bare hex color, add leading hash for rendering
-            color = '#' + color    
+            color = '#' + color
 
         layer = ImageLayer(
                 source='zarr://'+url,
