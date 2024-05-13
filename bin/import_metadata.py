@@ -106,7 +106,7 @@ if overwrite or 'metadata' not in meta.tables:
         Column('collection', String, nullable=False),
         Column('relpath', String, nullable=False)
     ]
-    for colname in col2slug.keys():
+    for colname in col2slug.values():
         table_columns.append(Column(colname, String))
     
     metadata_table = Table('metadata', meta, *table_columns, extend_existing=True)
