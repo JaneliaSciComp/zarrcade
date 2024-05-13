@@ -1,15 +1,28 @@
 name: zarrcade
 services:
+
+    webapp:
+        image: ghcr.io/janeliascicomp/zarrcade:latest
+        ports:
+          - 8000
+        restart: unless-stopped
+        volumes:
+          - ${DATA_DIR}:/data:ro,shared
+          - ${DB_DIR}:/db:rw,shared
+        environment:
+          - BASE_URL=${BASE_URL}
+          - DB_URL=${DB_URL}
+
     nginx:
         image: nginx
-        volumes:
-            - ./nginx.conf:/etc/nginx/conf.d/sam.conf
-        ports:
-            - 80:80
-            - 443:443
-        restart: unless-stopped
-    zarrcade:
-        image: ghcr.io/janeliascicomp/zarrcade:latest
         depends_on:
-            - nginx
+          - webapp
+        ports:
+          - 80:80
+          - 443:443
         restart: unless-stopped
+        volumes:
+          - $PWD/nginx.conf:/etc/nginx/conf.d/zarrcade.conf
+          - ${CERT_FILE}:/certs/default.crt
+          - ${KEY_FILE}:/certs/default.key
+

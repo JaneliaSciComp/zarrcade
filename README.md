@@ -10,37 +10,35 @@ Web application for easily browsing collections of [NGFF](https://github.com/ome
 
 The [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) tool can be used to easily generate OME-Zarrs with thumbnails which are compatible with this web service.
 
-## Usage
 
-To run the server locally with Docker, just point it at your OME-Zarr data:
+## Basic Usage
+
+To run the service locally using Docker, just point it at your OME-Zarr data:
 
 ```bash
 docker run -it -v /path/to/data:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
 ```
 
-If your server is running remotely it will need to use HTTPS in order to be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server. 
+This will index your data and make it available at http://0.0.0.0:8000.
+
+
+## Production Deployment
+
+If your server is running remotely it will need to use HTTPS in order to be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server. This is possible with Uvicorn, but using an Nginx reverse proxy server is usually preferred. Furthermore, by default Zarrcade uses an in-memory Sqlite database. If you want to use something else, set the `DB_URL` variable to point to a SQL database.
+
+You can do this using [Docker Compose](https://docs.docker.com/compose/). Make sure you have this installed on your system before proceeding.
+
+First, create a `.env` file in the `./docker` folder. You can copy the template like this:
 
 ```bash
-docker run -it -v /path/to/data:/data \
-    -v /path/to/keyfile:/certs/keyfile \
-    -v /path/to/certfile:/certs/certfile \
-    -e KEY_FILE=/certs/keyfile \
-    -e CERT_FILE=/certs/certfile \
-    -e BASE_URL=https://yourdomainname.org \
-    ghcr.io/janeliascicomp/zarrcade
+cd docker
+cp env.template .env
 ```
 
-By default, Zarrcade uses an in-memory Sqlite database. If you want to use something else, set the DB_URL variable to point to a SQL database:
+Customize the `.env` file and then start the services:
 
 ```bash
-docker run -it -v /path/to/data:/data \
-    -v /path/to/keyfile:/certs/keyfile \
-    -v /path/to/certfile:/certs/certfile \
-    -e KEY_FILE=/certs/keyfile \
-    -e CERT_FILE=/certs/certfile \
-    -e BASE_URL=https://yourdomainname.org \
-    -e DB_URL=sqlite:///database.db \
-    ghcr.io/janeliascicomp/zarrcade
+docker compose up -d
 ```
 
 ## Importing metadata

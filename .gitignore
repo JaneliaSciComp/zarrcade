@@ -4,3 +4,4 @@ __pycache__
 certs
 database.db
 *.csv
+.env
