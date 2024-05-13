@@ -11,7 +11,7 @@ Web application for easily browsing collections of [NGFF](https://github.com/ome
 The [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) tool can be used to easily generate OME-Zarrs with thumbnails which are compatible with this web service.
 
 
-## Basic Usage
+## Local Usage
 
 To run the service locally using Docker, just point it at your OME-Zarr data:
 
@@ -19,7 +19,7 @@ To run the service locally using Docker, just point it at your OME-Zarr data:
 docker run -it -v /path/to/data:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
 ```
 
-This will index your data and make it available at http://0.0.0.0:8000.
+This will index your data and make it browseable at [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 
 ## Production Deployment
@@ -40,6 +40,7 @@ Customize the `.env` file and then start the services:
 ```bash
 docker compose up -d
 ```
+
 
 ## Importing metadata
 
