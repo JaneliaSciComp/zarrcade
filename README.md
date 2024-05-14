@@ -1,6 +1,8 @@
-# ![zarrcade](https://github.com/JaneliaSciComp/zarrcade/assets/607324/43ba87c6-0002-4f0e-a941-00261c4ac61d)
+<p align="center">
+    <img src="https://github.com/JaneliaSciComp/zarrcade/assets/607324/43ba87c6-0002-4f0e-a941-00261c4ac61d">
+</p>
 
-Web application for easily browsing collections of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
+Zarrcade is a web application for easily browsing collections of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
 
 * Automatic discovery of images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
 * Web gallery with convenient viewing links to compliant viewers
