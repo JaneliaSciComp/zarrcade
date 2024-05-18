@@ -192,7 +192,7 @@ div.detail_button a:active {
 }
 
 .image {
-    max-width: 800px;
+    max-width: 300px;
     flex: 1 1 auto; /* Allows the image to grow and shrink as needed */
     height: auto; /* Keeps the image aspect ratio intact */
 }

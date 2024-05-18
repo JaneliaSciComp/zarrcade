@@ -1,4 +1,3 @@
-
 import os
 import sys
 import re
@@ -11,12 +10,13 @@ from loguru import logger
 
 from zarrcade.model import Image, Channel, Axis
 
-def get(dict, key, default=None):
-    if not dict: return default
-    return dict[key] if key in dict else default
+def get(mydict, key, default=None):
+    if not mydict: 
+        return default
+    return mydict[key] if key in mydict else default
 
 
-def encode_image(id, absolute_path, relative_path, image_group):
+def encode_image(image_id, absolute_path, relative_path, image_group):
     multiscales = image_group.attrs['multiscales']
     # TODO: what to do if there are multiple multiscales?
     multiscale = multiscales[0]
@@ -100,17 +100,13 @@ def encode_image(id, absolute_path, relative_path, image_group):
             color = next(color_generator)
             channels.append(Channel(name, color))
 
-    thumbnail_path = None
-    if 'janelia' in image_group.attrs:
-        janelia = image_group.attrs['janelia']
-        if 'projections' in janelia:
-            projections = janelia['projections']
-            if fullres_path in projections:
-                fullres_projections = projections[fullres_path]
-                thumbnail_path = fullres_projections['xy']
+    # TODO: hack
+    zarr_relpath = os.path.dirname(relative_path)
+    rel_zarr_dir, _ = os.path.splitext(zarr_relpath)
+    thumbnail_path = os.path.join(".zarrcade", rel_zarr_dir, "zmax_300.jpg")
 
     return Image(
-        id = id,
+        id = image_id,
         absolute_path = absolute_path,
         relative_path = relative_path,
         thumbnail_path = thumbnail_path,
@@ -170,13 +166,13 @@ def yield_images(absolute_path, relative_path):
         for image_group in yield_image_groups(absolute_path):
             group_abspath = absolute_path
             group_relpath = relative_path
-            id = relative_path
+            image_id = relative_path
             if image_group.path:
                 gp = '/'+image_group.path
-                id += gp
+                image_id += gp
                 group_abspath += gp
                 group_relpath += gp
-            yield encode_image(id, group_abspath, group_relpath, image_group)
+            yield encode_image(image_id, group_abspath, group_relpath, image_group)
 
 
 def get_fs(url):

@@ -49,7 +49,12 @@ def get_data_url(image: Image):
 
 def get_thumbnail_url(image: Image):
     if image.thumbnail_path:
-        return os.path.join(get_data_url(image), image.thumbnail_path)
+        if fs.is_local():
+            # Proxy the data using the REST API
+            return os.path.join(base_url, "data", image.thumbnail_path)
+        else:
+            # Assume the path is web-accessible
+            return os.path.join(data_url, image.thumbnail_path)
     return None
 
 

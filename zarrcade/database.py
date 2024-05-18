@@ -8,9 +8,10 @@ from sqlalchemy import create_engine, text, MetaData, Table, Column, \
 
 from zarrcade.model import Image, MetadataImage
 
-import logging
-logging.basicConfig()
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+# Uncomment for debugging purposes
+# import logging
+# logging.basicConfig()
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 IMAGES_AND_METADATA_SQL = text("""
     SELECT m.*, i.image_path, i.image_info
