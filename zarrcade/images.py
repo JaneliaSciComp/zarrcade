@@ -9,7 +9,7 @@ import fsspec
 from urllib.parse import urlparse
 from loguru import logger
 
-from .model import *
+from zarrcade.model import Image, Channel, Axis
 
 def get(dict, key, default=None):
     if not dict: return default
