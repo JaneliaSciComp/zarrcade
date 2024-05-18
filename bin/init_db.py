@@ -6,7 +6,6 @@ sys.path.insert(0, '..')
 
 import re
 import unicodedata
-
 import argparse
 import pandas as pd
 from loguru import logger
@@ -21,7 +20,7 @@ parser.add_argument('-r', '--root_url', type=str, required=True,
 parser.add_argument('-m', '--metadata_path', type=str, required=True,
     help='Path to the CSV file containing additional metadata')
 parser.add_argument('-t', '--thumbnail_url', type=str, required=False,
-    help='Path to the folder containing thumbnail images. Default: <root_url>/.thumbnails')
+    help='Path to the folder containing thumbnail images. Default: <root_url>/.zarrcade')
 parser.add_argument('-d', '--db_url', type=str, default="sqlite:///database.db",
     help='URL for the output database')
 parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False,
@@ -31,6 +30,7 @@ args = parser.parse_args()
 metadata_path = args.metadata_path
 fs_root = args.root_url
 tb_root = args.thumbnail_url
+# TODO: default this to .zarrcade/
 db_url = args.db_url
 overwrite = args.overwrite
 
@@ -117,7 +117,6 @@ if overwrite or 'metadata' not in meta.tables:
         Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
         Column('collection', String, nullable=False),
         Column('relpath', String, nullable=False),
-        Column('thumbnail_path', String),
     ]
     for colname in col2slug.values():
         table_columns.append(Column(colname, String))
