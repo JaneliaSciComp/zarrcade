@@ -1,15 +1,16 @@
 import json
-import pandas as pd
-
-from loguru import logger
 from dataclasses import asdict
-from sqlalchemy import create_engine, text, MetaData, Table, Column, String, Integer, Index, ForeignKey, func, select
 
-from .model import Image, MetadataImage
+import pandas as pd
+from loguru import logger
+from sqlalchemy import create_engine, text, MetaData, Table, Column, \
+    String, Integer, Index, ForeignKey, func, select
 
-# import logging
-# logging.basicConfig()
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+from zarrcade.model import Image, MetadataImage
+
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 IMAGES_AND_METADATA_SQL = text("""
     SELECT m.*, i.image_path, i.image_info
@@ -33,6 +34,9 @@ def serialize_image_info(image: Image):
 
 
 class Database:
+    """ Database which contains cached information about discovered images,
+        as well as optional metadata for supporting searchability.
+    """
 
     def __init__(self, db_url: str):
 
@@ -43,7 +47,7 @@ class Database:
 
         # Read the attribute naming map from the database, if they exist
         self.attr_map = {}
-        try:
+        if 'metadata_columns' in self.meta.tables:
             query = "SELECT * FROM metadata_columns"
             result_df = pd.read_sql_query(query, con=self.engine)
             for row in result_df.itertuples():
@@ -51,11 +55,10 @@ class Database:
                 original_name = row.original_name
                 logger.trace(f"Registering column '{db_name}' for {original_name}")
                 self.attr_map[db_name] = original_name
-        except:
+        else:
             logger.info("No metadata columns defined")
 
         # Create empty metadata table if necessary
-
         self.metadata_table = Table('metadata', self.meta,
             Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
             Column('collection', String, nullable=False),
@@ -79,15 +82,20 @@ class Database:
 
 
     def get_tuple_metadata(self, row):
+        """ Get the image metadata out of a row and return it as a dictionary.
+        """
         metadata = {}
-        for k in self.attr_map:
+        for k, v in self.attr_map.items():
             if k in row._fields:
-                metadata[self.attr_map[k]] = getattr(row, k)
+                metadata[v] = getattr(row, k)
         return metadata
 
 
     def get_images_count(self):
+        """ Get the total number of images in the database.
+        """
         with self.engine.begin() as conn:
+            # pylint: disable-next=not-callable
             query = select(func.count()) \
                 .select_from(self.images_table) \
                 .where(self.images_table.c.image_info.isnot(None))
@@ -96,6 +104,9 @@ class Database:
 
 
     def get_relpath_to_metadata_id_map(self, collection: str):
+        """ Build and return a dictionary which maps relative paths to 
+            metadata ids. 
+        """
         metadata_ids = {}
         query = "SELECT id,relpath FROM metadata WHERE collection = :collection"
         result_df = pd.read_sql_query(query, con=self.engine, params={'collection': collection})
@@ -104,8 +115,10 @@ class Database:
         return metadata_ids
 
 
-    def persist_image(self, collection: str, relpath: str, 
+    def persist_image(self, collection: str, relpath: str,
                       dataset: str, image: Image, metadata_id: int):
+        """ Persist (update or insert) the given image.
+        """
         image_path = f"{relpath}{dataset}"
         image_info = serialize_image_info(image)
 
@@ -127,17 +140,20 @@ class Database:
                 logger.info(f"Updated {image_path}")
             else:
                 insert_stmt = self.images_table.insert() \
-                        .values(collection=collection, 
-                                relpath=relpath, 
-                                dataset=dataset, 
-                                image_path=image_path, 
-                                image_info=image_info, 
+                        .values(collection=collection,
+                                relpath=relpath,
+                                dataset=dataset,
+                                image_path=image_path,
+                                image_info=image_info,
                                 metadata_id=metadata_id)
                 conn.execute(insert_stmt)
                 logger.info(f"Inserted {image_path}")
 
 
     def get_metaimage(self, image_path: str):
+        """ Returns the MetadataImage for the given image path, or 
+            None if it doesn't exist.
+        """
         full_query = text(f"{IMAGES_AND_METADATA_SQL} WHERE i.image_path = :image_path")
         result_df = pd.read_sql_query(full_query, con=self.engine, params={'image_path': image_path})
         for row in result_df.itertuples():
@@ -186,7 +202,7 @@ class Database:
             result_df = pd.read_sql_query(paginated_query, con=self.engine, params={'limit': page_size, 'offset': offset})
             total_count = pd.read_sql_query(count_query, con=self.engine).iloc[0, 0]
         else:
-            cols = [f"m.{k}" for k in self.attr_map.keys()] or ['i.relpath']
+            cols = [f"m.{k}" for k in self.attr_map] + ['i.relpath']
             query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
             paginated_query = text(f"{base_query} WHERE {query_string} LIMIT :limit OFFSET :offset")
             count_query = text(f"SELECT COUNT(*) FROM ({base_query} WHERE {query_string})")
