@@ -52,7 +52,7 @@ for zarr_path in yield_ome_zarrs(fs, fsroot):
 
     sized_filename = f"{proj_name}_{SIZE}.jpg"
     sized_thumbnail_path = os.path.join(proj_path, relpath, zarr_name, sized_filename)
-    
+
     # Avoid "cannot write mode P as JPEG" error (e.g. when there is transparency)
     image = image.convert("RGB")
 

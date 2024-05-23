@@ -22,7 +22,7 @@ def encode_image(image_id, absolute_path, relative_path, image_group):
     multiscale = multiscales[0]
     axes = multiscale['axes']
 
-    # Use highest resolution 
+    # Use highest resolution
     fullres_dataset = multiscale['datasets'][0]
     fullres_path = fullres_dataset['path']
 
@@ -34,7 +34,7 @@ def encode_image(image_id, absolute_path, relative_path, image_group):
         raise Exception(f"Dataset with path {array_path} does not exist. Available paths: {paths}")
 
     array = image_group[array_path]
-    
+
     # TODO: shouldn't assume a single transform
     scales = fullres_dataset['coordinateTransformations'][0]['scale']
 
@@ -121,7 +121,7 @@ def encode_image(image_id, absolute_path, relative_path, image_group):
         axes_order = ''.join(axes_names),
         axes = axes_map
     )
-    
+
 
 def yield_nested_image_groups(z):
     for _,group in z.groups():

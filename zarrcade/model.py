@@ -46,3 +46,4 @@ class MetadataImage:
     id: str
     image: Image
     metadata: dict[str, str]
+    
