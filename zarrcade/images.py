@@ -11,7 +11,7 @@ from loguru import logger
 from zarrcade.model import Image, Channel, Axis
 
 def get(mydict, key, default=None):
-    if not mydict: 
+    if not mydict:
         return default
     return mydict[key] if key in mydict else default
 
@@ -215,6 +215,7 @@ def _yield_ome_zarrs(fs, root, path, depth=0, maxdepth=10):
 def yield_ome_zarrs(fs, root):
     for zarr_path in _yield_ome_zarrs(fs, root, root):
         yield zarr_path
+
 
 if __name__ == '__main__':
     base_url = sys.argv[1]

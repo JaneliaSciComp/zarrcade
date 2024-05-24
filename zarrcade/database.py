@@ -64,6 +64,8 @@ class Database:
             Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
             Column('collection', String, nullable=False),
             Column('relpath', String, nullable=False),
+            Column('aux_image_path', String, nullable=True),
+            Column('thumbnail_path', String, nullable=True),
             extend_existing=True
         )
         self.meta.create_all(self.engine)
