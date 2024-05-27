@@ -25,7 +25,6 @@ class Image:
     id: str
     absolute_path: str
     relative_path: str
-    thumbnail_path: str
     num_channels: int
     num_timepoints: int
     dimensions: str 
@@ -45,5 +44,7 @@ class Image:
 class MetadataImage:
     id: str
     image: Image
+    aux_image_path: str
+    thumbnail_path: str
     metadata: dict[str, str]
     

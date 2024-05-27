@@ -166,7 +166,12 @@ class Database:
             if image_info_json:
                 image = deserialize_image_info(image_info_json)
                 metadata = self.get_tuple_metadata(row)
-                metaimage = MetadataImage(relpath, image, metadata)
+                metaimage = MetadataImage(
+                    id=relpath,
+                    image=image,
+                    aux_image_path=row.aux_image_path,
+                    thumbnail_path=row.thumbnail_path,
+                    metadata=metadata)
                 return metaimage
             else:
                 logger.info(f"Image has no image_info: {image_path}")
@@ -229,8 +234,14 @@ class Database:
             image_path = row.image_path
             if image_info_json:
                 image = deserialize_image_info(image_info_json)
-                metaimage = MetadataImage(image_path, image, metadata)
-                logger.info(f"  adding {metaimage.id}")
+                metaimage = MetadataImage(
+                    id=image_path,
+                    image=image,
+                    aux_image_path=row.aux_image_path,
+                    thumbnail_path=row.thumbnail_path,
+                    metadata=metadata
+                )
+                logger.debug(f"  adding {metaimage.id}")
                 images.append(metaimage)
 
         return {

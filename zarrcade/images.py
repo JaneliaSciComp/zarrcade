@@ -100,16 +100,10 @@ def encode_image(image_id, absolute_path, relative_path, image_group):
             color = next(color_generator)
             channels.append(Channel(name, color))
 
-    # TODO: hack
-    zarr_relpath = os.path.dirname(relative_path)
-    rel_zarr_dir, _ = os.path.splitext(zarr_relpath)
-    thumbnail_path = os.path.join(".zarrcade", rel_zarr_dir, "zmax_300.jpg")
-
     return Image(
         id = image_id,
         absolute_path = absolute_path,
         relative_path = relative_path,
-        thumbnail_path = thumbnail_path,
         num_channels = num_channels,
         num_timepoints = num_timepoints,
         voxel_sizes = ' ✕ '.join(voxel_sizes),

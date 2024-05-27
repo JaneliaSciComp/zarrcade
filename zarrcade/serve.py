@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from zarrcade.filestore import Filestore
 from zarrcade.database import Database
-from zarrcade.model import Image
+from zarrcade.model import Image, MetadataImage
 from zarrcade.viewers import Viewer, Neuroglancer
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
@@ -47,14 +47,14 @@ def get_data_url(image: Image):
         return image.absolute_path
 
 
-def get_thumbnail_url(image: Image):
-    if image.thumbnail_path:
+def get_relative_path_url(relative_path: str):
+    if relative_path:
         if fs.is_local():
             # Proxy the data using the REST API
-            return os.path.join(base_url, "data", image.thumbnail_path)
+            return os.path.join(base_url, "data", relative_path)
         else:
             # Assume the path is web-accessible
-            return os.path.join(data_url, image.thumbnail_path)
+            return os.path.join(data_url, relative_path)
     return None
 
 
@@ -100,7 +100,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "base_url": base_url,
             "metaimages": result['images'],
             "get_viewer_url": get_viewer_url,
-            "get_thumbnail_url": get_thumbnail_url,
+            "get_relative_path_url": get_relative_path_url,
             "get_image_data_url": get_data_url,
             "search_string": search_string,
             "pagination": result['pagination']
@@ -120,7 +120,7 @@ async def views(request: Request, image_id: str):
             "data_url": data_url,
             "metaimage": metaimage,
             "get_viewer_url": get_viewer_url,
-            "get_thumbnail_url": get_thumbnail_url,
+            "get_relative_path_url": get_relative_path_url,
             "image_data_url": get_data_url(metaimage.image)
         }
     )

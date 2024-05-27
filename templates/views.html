@@ -42,10 +42,10 @@ Open with:
 <section>
 
 <div class="content">
-    {% if not image.thumbnail_path %}
+    {% if not metaimage.aux_image_path %}
     <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="image" />
     {% else %}
-    <img src="{{ get_thumbnail_url(image) }}" alt="Image thumbnail" class="image" />
+    <img src="{{ get_relative_path_url(metaimage.aux_image_path) }}" alt="Image thumbnail" class="image" />
     {% endif %}
 
     <table class="attrs">
