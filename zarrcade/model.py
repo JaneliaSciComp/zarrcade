@@ -47,6 +47,13 @@ class Image:
         for viewer in viewers:
             yield viewer
 
+    def get_id(self):
+        return self.relative_path
+    
+    def get_title(self):
+        return self.relative_path
+
+
 @dataclass
 class MetadataImage:
     """ Additional metadata about an OME-Zarr image that is 

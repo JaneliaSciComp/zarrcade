@@ -51,10 +51,10 @@
                 <a href="{{ url_for('details', image_id=image.relative_path) }}">View details</a>
             </div>
             
-            <div class="title">{{ image.id }}</div>
+            <div class="title">{{ image.get_title() }}</div>
 
         </div>
-        <div class="label">{{ image.id }}</div>
+        <div class="label">{{ image.get_title() }}</div>
     </div>
     {% endfor %}
 

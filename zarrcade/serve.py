@@ -109,15 +109,15 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
     )
 
 
-@app.get("/views/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
-async def views(request: Request, image_id: str):
+@app.get("/details/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
+async def details(request: Request, image_id: str):
 
     metaimage = db.get_metaimage(image_id)
     if not metaimage:
         return Response(status_code=404)
 
     return templates.TemplateResponse(
-        request=request, name="views.html", context={
+        request=request, name="details.html", context={
             "data_url": data_url,
             "metaimage": metaimage,
             "get_viewer_url": get_viewer_url,
