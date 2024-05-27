@@ -1,11 +1,8 @@
 import os
-import sys
 import re
 import itertools
 import zarr
-import fsspec
 
-from urllib.parse import urlparse
 from loguru import logger
 
 from zarrcade.model import Image, Channel, Axis
@@ -16,7 +13,7 @@ def get(mydict, key, default=None):
     return mydict[key] if key in mydict else default
 
 
-def encode_image(image_id, absolute_path, relative_path, image_group):
+def encode_image(zarr_path, image_group):
     multiscales = image_group.attrs['multiscales']
     # TODO: what to do if there are multiple multiscales?
     multiscale = multiscales[0]
@@ -26,16 +23,18 @@ def encode_image(image_id, absolute_path, relative_path, image_group):
     fullres_dataset = multiscale['datasets'][0]
     fullres_path = fullres_dataset['path']
 
-    array_path = image_group.name+'/'+fullres_dataset['path']
+    group_path = image_group.name
+    array_path = group_path+'/'+fullres_dataset['path']
     array_path, _ = re.subn('/+', '/', array_path)
 
     if array_path not in image_group:
         paths = ', '.join(image_group.keys())
-        raise Exception(f"Dataset with path {array_path} does not exist. Available paths: {paths}")
+        raise Exception(f"Dataset with path {array_path} does not exist. " +
+                         "Available paths: {paths}")
 
     array = image_group[array_path]
 
-    # TODO: shouldn't assume a single transform
+    # TODO: we shouldn't assume a single transform
     scales = fullres_dataset['coordinateTransformations'][0]['scale']
 
     axes_map = {}
@@ -101,9 +100,9 @@ def encode_image(image_id, absolute_path, relative_path, image_group):
             channels.append(Channel(name, color))
 
     return Image(
-        id = image_id,
-        absolute_path = absolute_path,
-        relative_path = relative_path,
+        relative_path = zarr_path + group_path,
+        zarr_path = zarr_path,
+        group_path = group_path,
         num_channels = num_channels,
         num_timepoints = num_timepoints,
         voxel_sizes = ' ✕ '.join(voxel_sizes),
@@ -121,8 +120,8 @@ def yield_nested_image_groups(z):
     for _,group in z.groups():
         if 'multiscales' in group.attrs:
             yield group
-        for image in yield_nested_image_groups(group):
-            yield image
+        for nested_group in yield_nested_image_groups(group):
+            yield nested_group
 
 
 def yield_image_groups(url):
@@ -137,25 +136,30 @@ def yield_image_groups(url):
                 # We treat this as a single image for easier consumption
                 yield z[series[0]]
             else:
-                # Spec: "series" MUST be a list of string objects, each of which is a path to an image group.
+                # Spec: "series" MUST be a list of string objects,
+                # each of which is a path to an image group.
                 for image_id in series:
                     yield z[image_id]
         else:
             # Spec: If the "series" attribute does not exist and no "plate" is present:
-            # - separate "multiscales" images MUST be stored in consecutively numbered groups starting from 0 (i.e. "0/", "1/", "2/", "3/", ...).
+            # - separate "multiscales" images MUST be stored in consecutively numbered
+            #   groups starting from 0 (i.e. "0/", "1/", "2/", "3/", ...).
             for i in itertools.count():
                 try:
                     yield z[str(i)]
-                except:
+                except IndexError:
                     break
     elif 'multiscales' in z.attrs:
         yield z
     else:
-        for image in yield_nested_image_groups(z):
-            yield image
+        for group in yield_nested_image_groups(z):
+            yield group
 
 
+# TODO: should work on a Filesystem and relative path
 def yield_images(absolute_path, relative_path):
+    logger.trace(f"absolute_path: {absolute_path}")
+    logger.trace(f"relative_path: {relative_path}")
     with logger.catch(message=f"Failed to process {absolute_path}"):
         for image_group in yield_image_groups(absolute_path):
             group_abspath = absolute_path
@@ -166,60 +170,34 @@ def yield_images(absolute_path, relative_path):
                 image_id += gp
                 group_abspath += gp
                 group_relpath += gp
-            yield encode_image(image_id, group_abspath, group_relpath, image_group)
+            yield encode_image(relative_path, image_group)
 
 
-def get_fs(url):
-    pu = urlparse(url)
-    if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
-        # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
-        fs = fsspec.filesystem('s3')
-        p = pu.netloc.split('.')[0] + pu.path
-    else:
-        fs = fsspec.filesystem(pu.scheme)
-        p = pu.netloc + pu.path
-        if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
-            # Normalize the path
-            p = os.path.abspath(p)
-    return fs, p
-
-
-def _yield_ome_zarrs(fs, root, path, depth=0, maxdepth=10):
+def _yield_ome_zarrs(fs, path, depth=0, maxdepth=10):
     if depth>maxdepth: return
     logger.trace("ls "+path)
-    children = fs.ls(path, detail=True)
-    child_names = [os.path.basename(c['name']) for c in children]
+    children = fs.get_children(path)
+    child_names = [c['name'] for c in children]
     if '.zattrs' in child_names:
         yield path
     elif '.zarray' in child_names:
-        # This is a sign that we have gone too far 
+        # This is a sign that we have gone too far
         pass
     else:
         # drill down until we find a zarr
-        for d in [i['name'] for i in children if i['type']=='directory']:
+        for d in [c['path'] for c in children if c['type']=='directory']:
+
+            # TODO: temporary hack for dealing with CellMap data
             dname = os.path.basename(d)
             if dname.endswith('.n5') or dname.endswith('align') or dname.startswith('mag') \
-                    or dname in ['raw', 'align', 'dat', 'tiles_destreak', 'mag1']: 
+                    or dname in ['raw', 'align', 'dat', 'tiles_destreak', 'mag1']:
                 continue
-            logger.trace(f"Searching {d}")
-            for zarr_path in _yield_ome_zarrs(fs, root, d, depth+1):
+
+            logger.trace(f"Searching for zarrs in {d}")
+            for zarr_path in _yield_ome_zarrs(fs, d, depth+1):
                 yield zarr_path
 
 
-def yield_ome_zarrs(fs, root):
-    for zarr_path in _yield_ome_zarrs(fs, root, root):
+def yield_ome_zarrs(fs):
+    for zarr_path in _yield_ome_zarrs(fs, ''):
         yield zarr_path
-
-
-if __name__ == '__main__':
-    base_url = sys.argv[1]
-    fs, fsroot = get_fs(base_url)
-    logger.debug(f"Root is {fsroot}")
-    for zarr_path in yield_ome_zarrs(fs, fsroot):
-        logger.debug(f"Found images in {zarr_path}")
-        relative_path = zarr_path.removeprefix(fsroot)
-        absolute_path = base_url + relative_path
-        logger.debug(f"Reading images in {absolute_path}")
-        for image in yield_images(absolute_path, relative_path):
-            print(image.__repr__())
-

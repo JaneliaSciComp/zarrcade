@@ -1,10 +1,28 @@
 import os
 import fsspec
 import s3fs
+from typing import Iterator
 
 from loguru import logger
+from urllib.parse import urlparse
 
-from zarrcade.images import yield_ome_zarrs, yield_images, get_fs
+from zarrcade.model import Image
+from zarrcade.images import yield_ome_zarrs, yield_images
+
+
+def get_fs(url):
+    pu = urlparse(url)
+    if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
+        # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
+        fs = fsspec.filesystem('s3')
+        p = pu.netloc.split('.')[0] + pu.path
+    else:
+        fs = fsspec.filesystem(pu.scheme)
+        p = pu.netloc + pu.path
+        if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
+            # Normalize the path
+            p = os.path.abspath(p)
+    return fs, p
 
 
 class Filestore:
@@ -21,41 +39,21 @@ class Filestore:
         logger.trace(f"Filesystem dir is {self.fsroot_dir}")
 
 
-    def discover_images(self, db, only_with_metadata=False):
+    def yield_images(self) -> Iterator[Image]:
         """ Discover images in the filestore 
             and persist them in the given database.
         """
         logger.info(f"Discovering images in {self.fsroot}")
-        # Temporarily cache relpath -> metadata id lookup table
-        metadata_ids = db.get_relpath_to_metadata_id_map(self.fsroot)
-        # Walk the storage root and populate the database
-        count = 0
-        for zarr_path in yield_ome_zarrs(self.fs, self.fsroot):
-            logger.trace(f"Found images in {zarr_path}")
-            relative_path = zarr_path.removeprefix(self.fsroot_dir)
-            logger.trace(f"Relative path is {relative_path}")
-            absolute_path = self.fsroot_dir + relative_path
+        for relative_path in yield_ome_zarrs(self):
+            logger.trace(f"Found images in {relative_path}")
+            absolute_path = os.path.join(self.fsroot_dir, relative_path)
+            # TODO: move this somewhere else
             if isinstance(self.fs, s3fs.core.S3FileSystem):
                 absolute_path = 's3://' + absolute_path
 
             logger.trace(f"Reading images in {absolute_path}")
             for image in yield_images(absolute_path, relative_path):
-
-                if relative_path in metadata_ids:
-                    metadata_id = metadata_ids[relative_path]
-                else:
-                    metadata_id = None
-
-                if metadata_id or not only_with_metadata:
-                    logger.debug(f"Persisting {image}")
-                    db.persist_image(self.fsroot,
-                                relpath=relative_path,
-                                dataset=image.id.removeprefix(relative_path),
-                                image=image,
-                                metadata_id=metadata_id)
-                    count += 1
-
-        logger.info(f"Persisted {count} images to the database")
+                yield image
 
 
     def is_local(self):
@@ -65,10 +63,14 @@ class Filestore:
         return isinstance(self.fs, fsspec.implementations.local.LocalFileSystem)
 
 
+    def get_absolute_path(self, relative_path):
+        return os.path.join(self.fsroot, relative_path)
+
+            
     def exists(self, relative_path):
         """ Returns true if a file or folder exists at the given relative path.
         """
-        path = os.path.join(self.fsroot, relative_path)
+        path = self.get_absolute_path(relative_path)
         return self.fs.exists(path)
 
 
@@ -76,13 +78,29 @@ class Filestore:
         """ Opens the file at the given relative path and returns
             the file handle.
         """
-        path = os.path.join(self.fsroot, relative_path)
+        path = self.get_absolute_path(relative_path)
         return self.fs.open(path)
 
 
     def get_size(self, relative_path):
         """ Returns the size of the file at the given relative path.
         """
-        path = os.path.join(self.fsroot, relative_path)
+        path = self.get_absolute_path(relative_path)
         info = self.fs.info(path)
         return info['size']
+
+
+    def get_children(self, relative_path):
+        """ Returns the children of the given relative path.
+        """
+        path = self.get_absolute_path(relative_path)
+        children = []
+        for child in self.fs.ls(path, detail=True):
+            abspath = child['name']
+            relpath = os.path.relpath(abspath, self.fsroot)
+            children.append({
+                'path': relpath,
+                'name': os.path.basename(relpath),
+                'type': child['type']
+            })
+        return children

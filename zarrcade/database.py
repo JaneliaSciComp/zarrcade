@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict
+from typing import Iterator
 
 import pandas as pd
 from loguru import logger
@@ -12,6 +13,7 @@ from zarrcade.model import Image, MetadataImage
 # import logging
 # logging.basicConfig()
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
 
 IMAGES_AND_METADATA_SQL = text("""
     SELECT m.*, i.image_path, i.image_info
@@ -56,33 +58,55 @@ class Database:
                 original_name = row.original_name
                 logger.trace(f"Registering column '{db_name}' for {original_name}")
                 self.attr_map[db_name] = original_name
-        else:
-            logger.info("No metadata columns defined")
 
+        self.metadata_table, self.images_table = self.create_tables()
+
+
+    def create_tables(self):
         # Create empty metadata table if necessary
-        self.metadata_table = Table('metadata', self.meta,
+        if 'metadata' in self.meta.tables:
+            metadata_table = self.meta.tables['metadata']
+        else:
+            logger.info("Creating empty metadata table")
+            metadata_table = Table('metadata', self.meta,
+                *self.get_metadata_columns(),
+                extend_existing=True
+            )
+            metadata_table.create(self.engine)
+
+        # Create empty images table if necessary
+        if 'images' in self.meta.tables:
+            images_table = self.meta.tables['images']
+        else:
+            logger.info("Creating empty images table")
+            images_table = Table('images', self.meta,
+                Column('id', Integer, primary_key=True),
+                Column('collection', String, nullable=False),
+                Column('zarr_path', String, nullable=False),
+                Column('group_path', String, nullable=False),
+                Column('image_path', String, nullable=False, index=True),
+                Column('image_info', String, nullable=False),
+                Column('metadata_id', Integer,
+                    ForeignKey('metadata.id', ondelete='SET NULL'),
+                    nullable=True, index=True),
+                Index('collection_relpath_idx', 'collection', 'zarr_path'),
+                extend_existing=True)
+            images_table.create(self.engine)
+
+        return metadata_table, images_table
+
+
+    def get_metadata_columns(self):
+        """ Returns the static columns which are always present 
+            in the metadata table.
+        """
+        return [
             Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
             Column('collection', String, nullable=False),
             Column('relpath', String, nullable=False),
             Column('aux_image_path', String, nullable=True),
             Column('thumbnail_path', String, nullable=True),
-            extend_existing=True
-        )
-        self.meta.create_all(self.engine)
-
-        # Create image table if necessary
-        self.images_table = Table('images', self.meta,
-            Column('id', Integer, primary_key=True),
-            Column('collection', String, nullable=False),
-            Column('relpath', String, nullable=False),
-            Column('dataset', String, nullable=False),
-            Column('image_path', String, nullable=False, index=True),
-            Column('image_info', String, nullable=False),
-            Column('metadata_id', Integer, ForeignKey('metadata.id', ondelete='SET NULL'), nullable=True, index=True),
-            Index('collection_relpath_idx', 'collection', 'relpath'),
-            extend_existing=True)
-        self.meta.create_all(self.engine)
-
+        ]
 
     def get_tuple_metadata(self, row):
         """ Get the image metadata out of a row and return it as a dictionary.
@@ -118,11 +142,48 @@ class Database:
         return metadata_ids
 
 
-    def persist_image(self, collection: str, relpath: str,
-                      dataset: str, image: Image, metadata_id: int):
+    def persist_images(
+            self,
+            collection: str,
+            image_generator: Iterator[Image],
+            only_with_metadata: bool = False
+        ):
+        """ Discover images in the filestore 
+            and persist them in the given database.
+        """
+        # Temporarily cache relpath -> metadata id lookup table
+        metadata_ids = self.get_relpath_to_metadata_id_map(collection)
+        logger.info(f"Loaded {len(metadata_ids)} metadata ids")
+        # Walk the storage root and populate the database
+        count = 0
+        
+        for image in image_generator():
+            relative_path = image.zarr_path
+            if relative_path in metadata_ids:
+                metadata_id = metadata_ids[relative_path]
+            else:
+                metadata_id = None
+
+            if metadata_id or not only_with_metadata:
+                logger.debug(f"Persisting {image}")
+                self.persist_image(
+                            collection=collection,
+                            image=image,
+                            metadata_id=metadata_id
+                )
+                count += 1
+            else:
+                logger.debug(f"Skipping image missing metadata: {image.zarr_path}")
+
+        logger.info(f"Persisted {count} images to the database")
+
+
+    def persist_image(self, collection: str, image: Image, metadata_id: int):
         """ Persist (update or insert) the given image.
         """
-        image_path = f"{relpath}{dataset}"
+        image_path = image.relative_path
+        zarr_path = image.zarr_path
+        group_path = image.group_path
         image_info = serialize_image_info(image)
 
         with self.engine.begin() as conn:
@@ -135,8 +196,8 @@ class Database:
                 update_stmt = self.images_table.update(). \
                     where((self.images_table.c.collection == collection) &
                             (self.images_table.c.image_path == image_path)). \
-                    values(relpath=relpath,
-                            dataset=dataset,
+                    values(zarr_path=zarr_path,
+                            group_path=group_path,
                             image_info=image_info,
                             metadata_id=metadata_id)
                 conn.execute(update_stmt)
@@ -144,8 +205,8 @@ class Database:
             else:
                 insert_stmt = self.images_table.insert() \
                         .values(collection=collection,
-                                relpath=relpath,
-                                dataset=dataset,
+                                zarr_path=zarr_path,
+                                group_path=group_path,
                                 image_path=image_path,
                                 image_info=image_info,
                                 metadata_id=metadata_id)

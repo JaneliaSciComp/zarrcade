@@ -1,6 +1,5 @@
 import os
 import re
-import pandas as pd
 
 from loguru import logger
 from fastapi import FastAPI, Request, Response
@@ -11,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from zarrcade.filestore import Filestore
 from zarrcade.database import Database
-from zarrcade.model import Image, MetadataImage
+from zarrcade.model import Image
 from zarrcade.viewers import Viewer, Neuroglancer
 
 base_url = os.getenv("BASE_URL", 'http://127.0.0.1:8000/')
@@ -33,7 +32,7 @@ count = db.get_images_count()
 if count:
     logger.info(f"Found {count} images in the database")
 else:
-    fs.discover_images(db)
+    db.persist_images(fs.fsroot, fs.yield_images)
 
 
 def get_data_url(image: Image):
@@ -44,7 +43,7 @@ def get_data_url(image: Image):
         return os.path.join(base_url, "data", image.relative_path)
     else:
         # Assume the path is web-accessible
-        return image.absolute_path
+        return fs.get_absolute_path(image.relative_path)
 
 
 def get_relative_path_url(relative_path: str):

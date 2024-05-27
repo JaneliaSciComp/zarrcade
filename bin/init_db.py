@@ -53,9 +53,9 @@ fs = Filestore(fs_root)
 
 # Connect to the database
 logger.info(f"Database URL is {db_url}")
-engine = create_engine(db_url)
-meta = MetaData()
-meta.reflect(bind=engine)
+db = Database(db_url)
+engine = db.engine
+meta = db.meta
 
 # Read the metadata
 logger.info(f"Reading {metadata_path}")
@@ -120,7 +120,7 @@ elif not overwrite:
 if overwrite or 'metadata' not in meta.tables:
 
     # Process metadata into table format
-    def rename_logic(x, idx): 
+    def rename_logic(x, idx):
         return x if idx == 0 else col2slug[x]
     df.columns = [rename_logic(x, i) for i, x in enumerate(df.columns)]
     df.rename(columns={path_column_name: 'relpath'}, inplace=True)
@@ -129,16 +129,10 @@ if overwrite or 'metadata' not in meta.tables:
     if 'metadata' in meta.tables:
         logger.info("Dropping existing metadata table")
         meta.tables.get('metadata').drop(engine)
+        meta.remove(Table('metadata', meta))
 
     # Create metadata table
-    # TODO: reconcile with table creation in database.py
-    table_columns = [
-        Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
-        Column('collection', String, nullable=False),
-        Column('relpath', String, nullable=False),
-        Column('aux_image_path', String, nullable=True),
-        Column('thumbnail_path', String, nullable=True),
-    ]
+    table_columns = db.get_metadata_columns()
     for colname in col2slug.values():
         table_columns.append(Column(colname, String))
 
@@ -146,10 +140,10 @@ if overwrite or 'metadata' not in meta.tables:
         zarr_name, _ = os.path.splitext(relpath)
         aux_path = os.path.join(args.aux_path, zarr_name, filename)
         if fs.exists(aux_path):
-            logger.trace(f"Found auxiliary file: {fs_root}/{aux_path}")
+            #logger.trace(f"Found auxiliary file: {fs_root}/{aux_path}")
             return aux_path
         else:
-            logger.trace(f"Missing auxiliary file: {fs_root}/{aux_path}")
+            #logger.trace(f"Missing auxiliary file: {fs_root}/{aux_path}")
             return None
 
     if args.aux_image_name:
@@ -175,9 +169,11 @@ if overwrite or 'images' not in meta.tables:
     if 'images' in meta.tables:
         logger.info("Dropping existing images table")
         meta.tables.get('images').drop(engine)
+        meta.remove(Table('images', meta))
 
-    db = Database(db_url)
-    fs.discover_images(db, only_with_metadata=args.only_with_metadata)
+    db.create_tables()
+    db.persist_images(fs.fsroot, fs.yield_images,
+        only_with_metadata=args.only_with_metadata)
 
 elif not overwrite:
     logger.info("Images table already exists. Pass --overwrite if you want to recreate it.")

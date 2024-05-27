@@ -19,8 +19,8 @@ import pandas as pd
 import ray
 
 from PIL import Image
-# from loguru import logger
-from zarrcade.images import yield_ome_zarrs, get_fs
+from zarrcade import Filestore
+from zarrcade.images import yield_ome_zarrs
 
 JPEG_QUALITY = 90
 
@@ -139,9 +139,6 @@ if __name__ == '__main__':
         aux_paths = dict(zip(df['zarr_path'], df['aux_path']))
         print(f"Read {len(aux_paths)} auxiliary paths from provided CSV file")
 
-    fs, fsroot = get_fs(root_path)
-    print(f"Filesystem root is {fsroot}")
-
     # Initialize Ray
     cpus = args.cores
     if cpus:
@@ -168,14 +165,12 @@ if __name__ == '__main__':
             dashboard_port=dashboard_port,
             address=address)
 
-    # Ensure dir ends in a path separator
-    fsroot_dir = os.path.join(fsroot, '')
-    print(f"Filesystem dir is {fsroot_dir}")
+    fs = Filestore(root_path)
 
     total_count = 0
     try:
         unfinished = []
-        for zarr_path in yield_ome_zarrs(fs, fsroot):
+        for zarr_path in yield_ome_zarrs(fs):
             unfinished.append(process_zarr.remote(zarr_path, root_path, aux_path, \
                 aux_paths, args.aux_image_name, thumbnail_size, args.apply_clahe))
         while unfinished:

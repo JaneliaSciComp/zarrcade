@@ -5,6 +5,9 @@ from .viewers import viewers
 
 @dataclass
 class Channel:
+    """ Information about a single channel in the image. 
+        Currently loaded from OMERO metadata.
+    """
     name: str
     color: str
     pixel_intensity_min: Optional[float] = None
@@ -14,6 +17,8 @@ class Channel:
 
 @dataclass
 class Axis:
+    """ Information about one axis of the image.
+    """
     name: str
     scale: float
     unit: str
@@ -22,19 +27,21 @@ class Axis:
 
 @dataclass
 class Image:
-    id: str
-    absolute_path: str
+    """ Information about an OME-Zarr image.
+    """
     relative_path: str
+    zarr_path: str
+    group_path: str
     num_channels: int
     num_timepoints: int
-    dimensions: str 
+    dimensions: str
     dimensions_voxels: str
     chunk_size: str
     voxel_sizes: str
     compression: str
     channels: list[Channel]
-    axes_order: str
     axes: dict[str, Axis]
+    axes_order: str
 
     def get_compatible_viewers(self):
         for viewer in viewers:
@@ -42,6 +49,9 @@ class Image:
 
 @dataclass
 class MetadataImage:
+    """ Additional metadata about an OME-Zarr image that is 
+        provided outside of the zarr container.
+    """
     id: str
     image: Image
     aux_image_path: str
