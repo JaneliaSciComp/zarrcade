@@ -1,8 +1,8 @@
 import os
-import fsspec
-import s3fs
 from typing import Iterator
 
+import fsspec
+import s3fs
 from loguru import logger
 from urllib.parse import urlparse
 
@@ -11,6 +11,9 @@ from zarrcade.images import yield_ome_zarrs, yield_images
 
 
 def get_fs(url):
+    """ Parses the given URL and returns an Fsspec filesystem, 
+        along with a normalized root path, as a tuple.
+    """
     pu = urlparse(url)
     if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
         # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
@@ -64,6 +67,8 @@ class Filestore:
 
 
     def get_absolute_path(self, relative_path):
+        """ Returns the full absolute path to the given path.
+        """
         return os.path.join(self.fsroot, relative_path)
 
             

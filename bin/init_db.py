@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Initialized a Zarrcade database by walking a filesystem and discovering Zarrs. 
+Initialize a Zarrcade database by walking a filesystem and discovering Zarrs. 
 Optionally uses an auxilary image store for finding 2d thumbnails.
 """
 
@@ -15,7 +15,7 @@ import argparse
 import pandas as pd
 from functools import partial
 from loguru import logger
-from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table
+from sqlalchemy import Column, String, Table
 
 from zarrcade import Database, Filestore
 

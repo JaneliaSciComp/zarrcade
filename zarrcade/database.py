@@ -14,7 +14,6 @@ from zarrcade.model import Image, MetadataImage
 # logging.basicConfig()
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
-
 IMAGES_AND_METADATA_SQL = text("""
     SELECT m.*, i.image_path, i.image_info
     FROM 
@@ -29,10 +28,14 @@ LIMIT_AND_OFFSET = text("""
     LIMIT :limit OFFSET :offset
 """)
 
-def deserialize_image_info(image_info: str):
+def deserialize_image_info(image_info: str) -> Image:
+    """ Deserialize the Image from a JSON string.
+    """
     return Image(**json.loads(image_info))
 
-def serialize_image_info(image: Image):
+def serialize_image_info(image: Image) -> str:
+    """ Serialize the Image into a JSON string.
+    """
     return json.dumps(asdict(image))
 
 
@@ -63,7 +66,9 @@ class Database:
 
 
     def create_tables(self):
-        # Create empty metadata table if necessary
+        """ Create tables if necessary and return the metadata and images tables 
+            as a tuple.
+        """
         if 'metadata' in self.meta.tables:
             metadata_table = self.meta.tables['metadata']
         else:
@@ -74,7 +79,6 @@ class Database:
             )
             metadata_table.create(self.engine)
 
-        # Create empty images table if necessary
         if 'images' in self.meta.tables:
             images_table = self.meta.tables['images']
         else:

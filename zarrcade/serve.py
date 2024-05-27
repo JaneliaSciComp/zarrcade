@@ -47,14 +47,14 @@ def get_data_url(image: Image):
 
 
 def get_relative_path_url(relative_path: str):
-    if relative_path:
-        if fs.is_local():
-            # Proxy the data using the REST API
-            return os.path.join(base_url, "data", relative_path)
-        else:
-            # Assume the path is web-accessible
-            return os.path.join(data_url, relative_path)
-    return None
+    if not relative_path: 
+        return None
+    if fs.is_local():
+        # Proxy the data using the REST API
+        return os.path.join(base_url, "data", relative_path)
+    else:
+        # Assume the path is web-accessible
+        return os.path.join(data_url, relative_path)
 
 
 def get_viewer_url(image: Image, viewer: Viewer):
