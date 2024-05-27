@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
+"""
+Initialized a Zarrcade database by walking a filesystem and discovering Zarrs. 
+Optionally uses an auxilary image store for finding 2d thumbnails.
+"""
 
-import os
 import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
+import os
 import re
 import unicodedata
 import argparse
@@ -16,7 +20,10 @@ from sqlalchemy import create_engine, Column, Integer, String, MetaData, Table
 from zarrcade import Database, Filestore
 
 parser = argparse.ArgumentParser(
-    description='Initialize a Zarrcade database')
+    description=__doc__,
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+
 parser.add_argument('-r', '--root-url', type=str, required=True,
     help='Path to the folder containing the images')
 parser.add_argument('-m', '--metadata-path', type=str, required=True,
