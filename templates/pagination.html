@@ -1,0 +1,41 @@
+<div class="pagination">
+    {% if pagination.page > 1 %}
+        <a href="?search_string={{ search_string }}&page={{ pagination.page - 1 }}&page_size={{ pagination.page_size }}">Previous</a>
+    {% else %}
+        <span class="disabled">Previous</span>
+    {% endif %}
+
+    {% if pagination.total_pages <= 10 %}
+        {% for p in range(1, pagination.total_pages + 1) %}
+            {% if p == pagination.page %}
+                <span class="active">{{ p }}</span>
+            {% else %}
+                <a href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        {% if pagination.page > 4 %}
+            <a href="?search_string={{ search_string }}&page=1&page_size={{ pagination.page_size }}">1</a>
+            <span class="ellipses">...</span>
+        {% endif %}
+
+        {% for p in range(max(1, pagination.page - 3), min(pagination.total_pages + 1, pagination.page + 4)) %}
+            {% if p == pagination.page %}
+                <span class="active">{{ p }}</span>
+            {% else %}
+                <a href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination.page < pagination.total_pages - 3 %}
+            <span class="ellipses">...</span>
+            <a href="?search_string={{ search_string }}&page={{ pagination.total_pages }}&page_size={{ pagination.page_size }}">{{ pagination.total_pages }}</a>
+        {% endif %}
+    {% endif %}
+
+    {% if pagination.page < pagination.total_pages %}
+        <a href="?search_string={{ search_string }}&page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">Next</a>
+    {% else %}
+        <span class="disabled">></span>
+    {% endif %}
+</div>

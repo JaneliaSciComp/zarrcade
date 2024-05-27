@@ -56,10 +56,9 @@ form input[type="text"], form button {
 
 .pagination a, .pagination span {
     margin: 0 5px;
-    padding: 8px 12px;
+    padding: 10px 12px;
     text-decoration: none;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    
 }
 
 .pagination a {
@@ -75,11 +74,21 @@ form input[type="text"], form button {
     background-color: #1a3959;
     color: white;
     cursor: default;
+    border: 1px solid #ddd;
+    border-radius: 5px;
 }
 
 .pagination .disabled {
     color: #ccc;
     cursor: not-allowed;
+}
+
+.pagination .ellipses {
+    margin: 0 5px;
+    padding: 8px 12px;
+    text-decoration: none;
+    border: none;
+    font-size: 1.3em;
 }
 
 /* Gallery */

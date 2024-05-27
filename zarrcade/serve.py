@@ -103,7 +103,9 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "get_relative_path_url": get_relative_path_url,
             "get_image_data_url": get_data_url,
             "search_string": search_string,
-            "pagination": result['pagination']
+            "pagination": result['pagination'],
+            "min": min,
+            "max": max
         }
     )
 

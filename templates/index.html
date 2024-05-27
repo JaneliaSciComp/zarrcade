@@ -1,15 +1,9 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zarrcade</title>
-<link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
-<script type="text/javascript" src="{{ url_for('static', path='/functions.js') }}"></script>
-</head>
+{% include "head.html" %}
 <body>
     
-{% include "header.html" %}
+{% include "topbar.html" %}
 
 <section>
 
@@ -18,31 +12,7 @@
     <button type="submit">Search</button>
 </form>
 
-<div class="pagination">
-    {% if pagination.page > 1 %}
-        <a href="?search_string={{ search_string }}&page=1&page_size={{ pagination.page_size }}">First</a>
-        <a href="?search_string={{ search_string }}&page={{ pagination.page - 1 }}&page_size={{ pagination.page_size }}">Previous</a>
-    {% else %}
-        <span class="disabled">First</span>
-        <span class="disabled">Previous</span>
-    {% endif %}
-
-    {% for p in range(1, pagination.total_pages + 1) %}
-        {% if p == pagination.page %}
-            <span class="active">{{ p }}</span>
-        {% else %}
-            <a href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a>
-        {% endif %}
-    {% endfor %}
-
-    {% if pagination.page < pagination.total_pages %}
-        <a href="?search_string={{ search_string }}&page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">Next</a>
-        <a href="?search_string={{ search_string }}&page={{ pagination.total_pages }}&page_size={{ pagination.page_size }}">Last</a>
-    {% else %}
-        <span class="disabled">Next</span>
-        <span class="disabled">Last</span>
-    {% endif %}
-</div>
+{% include "pagination.html" %}
 
 </section>
 
