@@ -48,7 +48,7 @@
             </div>
 
             <div class="detail_button">
-                <a href="{{ url_for('details', image_id=image.relative_path) }}">View details</a>
+                <a href="{{ url_for('details', image_id=image.get_id()) }}">View details</a>
             </div>
             
             <div class="title">{{ image.get_title() }}</div>
