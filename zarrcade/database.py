@@ -305,7 +305,7 @@ class Database:
                     thumbnail_path=row.thumbnail_path,
                     metadata=metadata
                 )
-                logger.debug(f"  adding {metaimage.id}")
+                logger.trace(f"matched {metaimage.id}")
                 images.append(metaimage)
 
         return {

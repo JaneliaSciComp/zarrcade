@@ -17,15 +17,15 @@ from functools import partial
 from loguru import logger
 from sqlalchemy import Column, String, Table
 
-from zarrcade import Database, Filestore
+from zarrcade import Database, Filestore, Settings
+
+SKIP_FILE_CHECKS = True
 
 parser = argparse.ArgumentParser(
     description=__doc__,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 
-parser.add_argument('-r', '--root-url', type=str, required=True,
-    help='Path to the folder containing the images')
 parser.add_argument('-m', '--metadata-path', type=str, required=True,
     help='Path to the CSV file containing additional metadata')
 parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
@@ -34,8 +34,6 @@ parser.add_argument('--aux-image-name', type=str, default='zmax.png',
     help='Filename of the main auxiliary image.')
 parser.add_argument('--thumbnail-name', type=str, default='zmax_300.jpg',
     help='Filename of the thumbnail image.')
-parser.add_argument('-d', '--db-url', type=str, default="sqlite:///database.db",
-    help='URL for the output database')
 parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False,
     help="Overwrite tables if they exist?")
 parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
@@ -43,13 +41,16 @@ parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalActio
 
 args = parser.parse_args()
 metadata_path = args.metadata_path
-fs_root = args.root_url
-db_url = args.db_url
 overwrite = args.overwrite
 
+# Read settings from environment or YAML
+settings = Settings()
+data_url = str(settings.data_url)
+db_url = str(settings.db_url)
+
 # Connect to the filestore
-logger.info(f"Data URL is {fs_root}")
-fs = Filestore(fs_root)
+logger.info(f"Data URL is {data_url}")
+fs = Filestore(data_url)
 
 # Connect to the database
 logger.info(f"Database URL is {db_url}")
@@ -124,7 +125,7 @@ if overwrite or 'metadata' not in meta.tables:
         return x if idx == 0 else col2slug[x]
     df.columns = [rename_logic(x, i) for i, x in enumerate(df.columns)]
     df.rename(columns={path_column_name: 'relpath'}, inplace=True)
-    df.insert(0, 'collection', fs_root)
+    df.insert(0, 'collection', fs.fsroot)
 
     if 'metadata' in meta.tables:
         logger.info("Dropping existing metadata table")
@@ -132,18 +133,21 @@ if overwrite or 'metadata' not in meta.tables:
         meta.remove(Table('metadata', meta))
 
     # Create metadata table
+    logger.info('Creating metadata table')
     table_columns = db.get_metadata_columns()
     for colname in col2slug.values():
         table_columns.append(Column(colname, String))
-
+        
     def get_aux_path(filename, relpath):
         zarr_name, _ = os.path.splitext(relpath)
         aux_path = os.path.join(args.aux_path, zarr_name, filename)
-        if fs.exists(aux_path):
-            #logger.trace(f"Found auxiliary file: {fs_root}/{aux_path}")
+        if SKIP_FILE_CHECKS:
+            return aux_path
+        elif fs.exists(aux_path):
+            logger.trace(f"Found auxiliary file: {fs.fsroot}/{aux_path}")
             return aux_path
         else:
-            #logger.trace(f"Missing auxiliary file: {fs_root}/{aux_path}")
+            logger.trace(f"Missing auxiliary file: {fs.fsroot}/{aux_path}")
             return None
 
     if args.aux_image_name:
@@ -154,7 +158,7 @@ if overwrite or 'metadata' not in meta.tables:
 
     metadata_table = Table('metadata', meta, *table_columns, extend_existing=True)
     meta.create_all(engine)
-    logger.info("Created metadata table")
+    logger.info(f"Created empty metadata table with {len(table_columns)} user-defined columns")
 
     # Load data
     df.to_sql(metadata_table.name, con=engine, if_exists='append', index=False)

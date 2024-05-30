@@ -84,18 +84,19 @@ def get_data_url(image: Image):
         return os.path.join(app.base_url, "data", image.relative_path)
     else:
         # Assume the path is web-accessible
-        return app.fs.get_absolute_path(image.relative_path)
+        return os.path.join(app.fs.url, image.relative_path)
+        #return app.fs.get_absolute_path(image.relative_path)
 
 
 def get_relative_path_url(relative_path: str):
     if not relative_path:
         return None
-    if app.fs.is_local():
+    if app.fs.is_local() or not app.fs.url:
         # Proxy the data using the REST API
         return os.path.join(app.base_url, "data", relative_path)
     else:
         # Assume the path is web-accessible
-        return os.path.join(app.data_url, relative_path)
+        return os.path.join(app.fs.url, relative_path)
 
 
 def get_viewer_url(image: Image, viewer: Viewer):
@@ -138,7 +139,7 @@ async def details(request: Request, image_id: str):
 
     return templates.TemplateResponse(
         request=request, name="details.html", context={
-            "data_url": data_url,
+            "data_url": app.data_url,
             "metaimage": metaimage,
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,

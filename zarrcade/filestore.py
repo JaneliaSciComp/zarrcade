@@ -11,21 +11,20 @@ from zarrcade.images import yield_ome_zarrs, yield_images
 
 
 def get_fs(url):
-    """ Parses the given URL and returns an Fsspec filesystem, 
-        along with a normalized root path, as a tuple.
-    """
     pu = urlparse(url)
     if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
         # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
         fs = fsspec.filesystem('s3')
         p = pu.netloc.split('.')[0] + pu.path
+        u = url
     else:
         fs = fsspec.filesystem(pu.scheme)
         p = pu.netloc + pu.path
-        if isinstance(fs,fsspec.implementations.local.LocalFileSystem):
-            # Normalize the path
-            p = os.path.abspath(p)
-    return fs, p
+        if pu.scheme in ['s3']:
+            u = f"https://{pu.netloc}.s3.amazonaws.com{pu.path}"
+        else:
+            u = None
+    return fs, p, u
 
 
 class Filestore:
@@ -34,7 +33,7 @@ class Filestore:
     """
 
     def __init__(self, data_url):
-        self.fs, self.fsroot = get_fs(data_url)
+        self.fs, self.fsroot, self.url = get_fs(data_url)
         logger.debug(f"Filesystem root is {self.fsroot}")
 
         # Ensure dir ends in a path separator
