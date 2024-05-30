@@ -16,3 +16,5 @@ dependencies:
   - sqlalchemy
   - sqlite
   - ipykernel
+  - pydantic
+  - pydantic-settings

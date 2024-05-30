@@ -50,6 +50,7 @@ class Database:
         self.engine = create_engine(db_url)
         self.meta = MetaData()
         self.meta.reflect(bind=self.engine)
+        self.metadata_table, self.images_table = self.create_tables()
 
         # Read the attribute naming map from the database, if they exist
         self.attr_map = {}
@@ -61,8 +62,6 @@ class Database:
                 original_name = row.original_name
                 logger.trace(f"Registering column '{db_name}' for {original_name}")
                 self.attr_map[db_name] = original_name
-
-        self.metadata_table, self.images_table = self.create_tables()
 
 
     def create_tables(self):
@@ -195,7 +194,7 @@ class Database:
                 where((self.images_table.c.collection == collection) & 
                     (self.images_table.c.image_path == image_path))
             existing_row = conn.execute(stmt).fetchone()
-            
+   
             if existing_row:
                 update_stmt = self.images_table.update(). \
                     where((self.images_table.c.collection == collection) &
@@ -318,3 +317,20 @@ class Database:
                 'total_count': total_count
             }
         }
+
+
+def get_unique_comma_delimited_values(self, column_name):
+    """ Return all unique values from a column whose
+        values are comma delimited lists. 
+    """
+    column = self.metadata_table.c[column_name]
+    with self.engine.connect() as connection:
+        result = connection.execute(select([column]))
+        unique_values = set()
+        for value_tuple in result.fetchall():
+            value = value_tuple[0]
+            if value:
+                for item in value.split(','):
+                    unique_values.add(item.strip())
+        
+        return sorted(unique_values)
