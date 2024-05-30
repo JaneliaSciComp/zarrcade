@@ -9,7 +9,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import ValidationError
 
 from zarrcade.filestore import Filestore
 from zarrcade.database import Database
@@ -26,6 +25,17 @@ app = FastAPI(
     },
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -35,7 +45,7 @@ async def startup_event():
     signal.signal(signal.SIGINT, lambda s,f: sys.exit(128))
 
     # Load settings from config file and environment
-    settings = Settings(0)
+    settings = Settings()
     app.base_url = str(settings.base_url)
     logger.info(f"Base URL is {app.base_url}")
 
@@ -99,18 +109,6 @@ def get_viewer_url(image: Image, viewer: Viewer):
             url = 'zarr://' + url
 
     return viewer.get_viewer_url(url)
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)

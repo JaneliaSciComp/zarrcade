@@ -30,7 +30,7 @@ def encode_image(zarr_path, image_group):
     if array_path not in image_group:
         paths = ', '.join(image_group.keys())
         raise Exception(f"Dataset with path {array_path} does not exist. " +
-                         "Available paths: {paths}")
+                         f"Available paths: {paths}")
 
     array = image_group[array_path]
 
