@@ -14,7 +14,7 @@ from zarrcade.filestore import Filestore
 from zarrcade.database import Database
 from zarrcade.model import Image
 from zarrcade.viewers import Viewer, Neuroglancer
-from zarrcade.settings import Settings, DataType, FilterType
+from zarrcade.settings import get_settings, DataType, FilterType
 
 # Create the API
 app = FastAPI(
@@ -50,17 +50,17 @@ async def startup_event():
     signal.signal(signal.SIGINT, lambda s,f: sys.exit(128))
 
     # Load settings from config file and environment
-    settings = Settings()
+    settings = get_settings()
     app.base_url = str(settings.base_url)
-    logger.info(f"Base URL is {app.base_url}")
+    logger.info(f"User-specified base URL is {app.base_url}")
 
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
     app.data_url = str(settings.data_url)
-    logger.info(f"Data URL is {app.data_url}")
+    logger.info(f"User-specified data URL is {app.data_url}")
     app.fs = Filestore(app.data_url)
 
     app.db_url = str(settings.db_url)
-    logger.info(f"Database URL is {app.db_url}")
+    logger.info(f"User-specified database URL is {app.db_url}")
     app.db = Database(app.db_url)
 
     app.filters = settings.filters
@@ -145,7 +145,15 @@ def get_viewer_url(image: Image, viewer: Viewer):
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
-    result = app.db.find_metaimages(search_string, page, page_size)
+
+    # Did the user select any filters?
+    filter_params = {}
+    for s in app.filters:
+        param_value = request.query_params.get(s.db_name)
+        if param_value:
+            filter_params[s.db_name] = param_value
+
+    result = app.db.find_metaimages(search_string, filter_params, page, page_size)
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "base_url": app.base_url,
@@ -156,6 +164,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "search_string": search_string,
             "pagination": result['pagination'],
             "filters": app.filters,
+            "filter_params": filter_params,
             "FilterType": FilterType,
             "min": min,
             "max": max

@@ -3,6 +3,7 @@
     <div class="search-box">
         <input type="text" name="search_string" value="{{ search_string }}"/>
         <button type="submit">Search</button>
+        <button type="button" onclick="resetForm()">Reset</button>
     </div>
 
     <div class="filters">
@@ -13,7 +14,9 @@
             <select name="{{ filter.db_name }}" onchange="submitForm()">
                 <option value="">Select...</option>
                 {% for value in filter.values %}
-                    <option value="{{ value }}">{{ value }}</option>
+                    <option value="{{ value }}" {% if filter_params.get(filter.db_name) == value %}selected{% endif %}>
+                        {{ value }}
+                    </option>
                 {% endfor %}
             </select>
         {% endif %}
@@ -26,5 +29,8 @@
 <script>
     function submitForm() {
         document.getElementById('filter-form').submit();
+    }
+    function resetForm() {
+        window.location.href = "{{ url_for('index') }}";
     }
 </script>

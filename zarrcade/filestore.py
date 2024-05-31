@@ -1,16 +1,19 @@
 import os
 from typing import Iterator
+from urllib.parse import urlparse
 
 import fsspec
 import s3fs
 from loguru import logger
-from urllib.parse import urlparse
 
 from zarrcade.model import Image
 from zarrcade.images import yield_ome_zarrs, yield_images
 
 
 def get_fs(url):
+    """ Parsers the given URL and returns an fsspec filesystem along with
+        a root path and web-accessible URL.
+    """
     pu = urlparse(url)
     if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
         # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
@@ -34,7 +37,11 @@ class Filestore:
 
     def __init__(self, data_url):
         self.fs, self.fsroot, self.url = get_fs(data_url)
-        logger.debug(f"Filesystem root is {self.fsroot}")
+        logger.info(f"Filesystem root is {self.fsroot}")
+        if self.url:
+            logger.info(f"Web-accessible url root is {self.url}")
+        else:
+            logger.info("Filesystem is not web-accessible and will be proxied")
 
         # Ensure dir ends in a path separator
         self.fsroot_dir = os.path.join(self.fsroot, '')

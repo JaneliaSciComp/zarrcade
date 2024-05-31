@@ -88,7 +88,7 @@ def slugify(value, allow_unicode=False):
 col2slug = {}
 db_names = []
 original_names = []
-# Skip the first column which is the relpath
+# Skip the first column which is the zarr_path
 columns = df.columns[1:]
 # Slugify the column names
 for original_name in columns:
@@ -124,7 +124,7 @@ if overwrite or 'metadata' not in meta.tables:
     def rename_logic(x, idx):
         return x if idx == 0 else col2slug[x]
     df.columns = [rename_logic(x, i) for i, x in enumerate(df.columns)]
-    df.rename(columns={path_column_name: 'relpath'}, inplace=True)
+    df.rename(columns={path_column_name: 'zarr_path'}, inplace=True)
     df.insert(0, 'collection', fs.fsroot)
 
     if 'metadata' in meta.tables:
@@ -138,8 +138,8 @@ if overwrite or 'metadata' not in meta.tables:
     for colname in col2slug.values():
         table_columns.append(Column(colname, String))
         
-    def get_aux_path(filename, relpath):
-        zarr_name, _ = os.path.splitext(relpath)
+    def get_aux_path(filename, zarr_path):
+        zarr_name, _ = os.path.splitext(zarr_path)
         aux_path = os.path.join(args.aux_path, zarr_name, filename)
         if SKIP_FILE_CHECKS:
             return aux_path
@@ -151,10 +151,10 @@ if overwrite or 'metadata' not in meta.tables:
             return None
 
     if args.aux_image_name:
-        df['aux_image_path'] = df['relpath'].apply(partial(get_aux_path, args.aux_image_name))
+        df['aux_image_path'] = df['zarr_path'].apply(partial(get_aux_path, args.aux_image_name))
 
     if args.thumbnail_name:
-        df['thumbnail_path'] = df['relpath'].apply(partial(get_aux_path, args.thumbnail_name))
+        df['thumbnail_path'] = df['zarr_path'].apply(partial(get_aux_path, args.thumbnail_name))
 
     metadata_table = Table('metadata', meta, *table_columns, extend_existing=True)
     meta.create_all(engine)

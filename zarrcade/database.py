@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict
-from typing import Iterator
+from typing import Iterator, Dict
 
 import pandas as pd
 from loguru import logger
@@ -8,11 +8,12 @@ from sqlalchemy import create_engine, text, MetaData, Table, Column, \
     String, Integer, Index, ForeignKey, func, select, distinct
 
 from zarrcade.model import Image, MetadataImage
+from zarrcade.settings import get_settings
 
-# Uncomment for debugging purposes
-# import logging
-# logging.basicConfig()
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+if get_settings().debug_sql:
+    import logging
+    logging.basicConfig()
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 IMAGES_AND_METADATA_SQL = text("""
     SELECT m.*, i.image_path, i.image_info
@@ -94,7 +95,7 @@ class Database:
                 Column('metadata_id', Integer,
                     ForeignKey('metadata.id', ondelete='SET NULL'),
                     nullable=True, index=True),
-                Index('collection_relpath_idx', 'collection', 'zarr_path'),
+                Index('collection_zarr_path_idx', 'collection', 'zarr_path'),
                 extend_existing=True)
             images_table.create(self.engine)
 
@@ -108,7 +109,7 @@ class Database:
         return [
             Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
             Column('collection', String, nullable=False),
-            Column('relpath', String, nullable=False),
+            Column('zarr_path', String, nullable=False),
             Column('aux_image_path', String, nullable=True),
             Column('thumbnail_path', String, nullable=True),
         ]
@@ -135,15 +136,15 @@ class Database:
             return result.scalar()
 
 
-    def get_relpath_to_metadata_id_map(self, collection: str):
+    def get_zarr_path_to_metadata_id_map(self, collection: str):
         """ Build and return a dictionary which maps relative paths to 
             metadata ids. 
         """
         metadata_ids = {}
-        query = "SELECT id,relpath FROM metadata WHERE collection = :collection"
+        query = "SELECT id,zarr_path FROM metadata WHERE collection = :collection"
         result_df = pd.read_sql_query(query, con=self.engine, params={'collection': collection})
         for row in result_df.itertuples():
-            metadata_ids[row.relpath] = row.id
+            metadata_ids[row.zarr_path] = row.id
         return metadata_ids
 
 
@@ -156,12 +157,12 @@ class Database:
         """ Discover images in the filestore 
             and persist them in the given database.
         """
-        # Temporarily cache relpath -> metadata id lookup table
-        metadata_ids = self.get_relpath_to_metadata_id_map(collection)
+        # Temporarily cache zarr_path -> metadata id lookup table
+        metadata_ids = self.get_zarr_path_to_metadata_id_map(collection)
         logger.info(f"Loaded {len(metadata_ids)} metadata ids")
         # Walk the storage root and populate the database
         count = 0
-  
+
         for image in image_generator():
             relative_path = image.zarr_path
             if relative_path in metadata_ids:
@@ -226,14 +227,14 @@ class Database:
         full_query = text(f"{IMAGES_AND_METADATA_SQL} WHERE i.image_path = :image_path")
         result_df = pd.read_sql_query(full_query, con=self.engine, params={'image_path': image_path})
         for row in result_df.itertuples():
-            relpath = row.relpath
+            zarr_path = row.zarr_path
             image_info_json = row.image_info
             logger.info(f"Found {row.image_path} in image collection")
             if image_info_json:
                 image = deserialize_image_info(image_info_json)
                 metadata = self.get_tuple_metadata(row)
                 metaimage = MetadataImage(
-                    id=relpath,
+                    id=zarr_path,
                     image=image,
                     aux_image_path=row.aux_image_path,
                     thumbnail_path=row.thumbnail_path,
@@ -247,7 +248,12 @@ class Database:
         return None
 
 
-    def find_metaimages(self, search_string: str = '', page: int = 1, page_size: int = 10):
+    def find_metaimages(self,
+            search_string: str = '',
+            filter_params: Dict[str,str] = None,
+            page: int = 1,
+            page_size: int = 10
+        ):
         """
         Find meta images with optional search and pagination.
 
@@ -268,27 +274,27 @@ class Database:
 
         # Base queries for fetching data and counting total records
         base_query = IMAGES_AND_METADATA_SQL
+        where_clause = ''
+        params = {}
 
-        # Modify queries based on whether a search string is provided
-        if not search_string:
-            paginated_query = text(f"{base_query} LIMIT :limit OFFSET :offset")
-            count_query = text(f"SELECT COUNT(*) FROM ({base_query})")
-            result_df = pd.read_sql_query(paginated_query, con=self.engine, params={'limit': page_size, 'offset': offset})
-            total_count = pd.read_sql_query(count_query, con=self.engine).iloc[0, 0]
-        else:
-            cols = [f"m.{k}" for k in self.column_map] + ['i.relpath']
-            query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
-            paginated_query = text(f"{base_query} WHERE {query_string} LIMIT :limit OFFSET :offset")
-            count_query = text(f"SELECT COUNT(*) FROM ({base_query} WHERE {query_string})")
- 
-            result_df = pd.read_sql_query(paginated_query, con=self.engine, params={
-                'search_string': f'%{search_string}%',
-                'limit': page_size,
-                'offset': offset
-            })
-            total_count = pd.read_sql_query(count_query, con=self.engine, params={
-                'search_string': f'%{search_string}%'
-            }).iloc[0, 0]
+        if search_string:
+            search_columns = [f"m.{k}" for k in self.column_map] + ['i.zarr_path']
+            or_clauses = " OR ".join([f"{col} LIKE :search_string" for col in search_columns])
+            where_clause += f" AND ({or_clauses})"
+            params['search_string'] = f'%{search_string}%'
+
+        for db_name in filter_params:
+            where_clause += f" AND (m.{db_name} LIKE :{db_name}_value)"
+            params[f"{db_name}_value"] = f'%{filter_params[db_name]}%'
+
+        paginated_query = text(f"{base_query} WHERE 1=1{where_clause} LIMIT :limit OFFSET :offset")
+        count_query = text(f"SELECT COUNT(*) FROM ({base_query} WHERE 1=1{where_clause})")
+
+        result_df = pd.read_sql_query(paginated_query, con=self.engine, params=params | {
+            'limit': page_size,
+            'offset': offset
+        })
+        total_count = pd.read_sql_query(count_query, con=self.engine, params=params).iloc[0, 0]
 
         # Calculate the total number of pages
         total_pages = (total_count + page_size - 1) // page_size
