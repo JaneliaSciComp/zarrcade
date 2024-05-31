@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from zarrcade.filestore import Filestore
 from zarrcade.database import Database
-from zarrcade.model import Image
+from zarrcade.model import Image, MetadataImage
 from zarrcade.viewers import Viewer, Neuroglancer
 from zarrcade.settings import get_settings, DataType, FilterType
 
@@ -143,6 +143,17 @@ def get_viewer_url(image: Image, viewer: Viewer):
     return viewer.get_viewer_url(url)
 
 
+def get_title(metaimage: MetadataImage):
+    """ Returns the title to display underneath the given image.
+    """
+    settings = get_settings()
+    col_name = settings.items.title_column_name
+    if col_name:
+        return metaimage.metadata[col_name]
+
+    return metaimage.image.relative_path
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
 
@@ -161,6 +172,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_image_data_url": get_data_url,
+            "get_title": get_title,
             "search_string": search_string,
             "pagination": result['pagination'],
             "filters": app.filters,
@@ -185,7 +197,8 @@ async def details(request: Request, image_id: str):
             "metaimage": metaimage,
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
-            "image_data_url": get_data_url(metaimage.image)
+            "get_title": get_title,
+            "get_image_data_url": get_data_url
         }
     )
 

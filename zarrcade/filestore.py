@@ -10,7 +10,7 @@ from zarrcade.model import Image
 from zarrcade.images import yield_ome_zarrs, yield_images
 
 
-def get_fs(url):
+def get_fs(url:str):
     """ Parsers the given URL and returns an fsspec filesystem along with
         a root path and web-accessible URL.
     """
@@ -18,16 +18,16 @@ def get_fs(url):
     if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
         # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
         fs = fsspec.filesystem('s3')
-        p = pu.netloc.split('.')[0] + pu.path
-        u = url
+        fsroot = pu.netloc.split('.')[0] + pu.path
+        web_url = url
     else:
         fs = fsspec.filesystem(pu.scheme)
-        p = pu.netloc + pu.path
+        fsroot = pu.netloc + pu.path
         if pu.scheme in ['s3']:
-            u = f"https://{pu.netloc}.s3.amazonaws.com{pu.path}"
+            web_url = f"https://{pu.netloc}.s3.amazonaws.com{pu.path}"
         else:
-            u = None
-    return fs, p, u
+            web_url = None
+    return fs, fsroot, web_url
 
 
 class Filestore:
@@ -56,7 +56,7 @@ class Filestore:
         for relative_path in yield_ome_zarrs(self):
             logger.trace(f"Found images in {relative_path}")
             absolute_path = os.path.join(self.fsroot_dir, relative_path)
-            # TODO: move this somewhere else
+            # TODO: move this logic somewhere else
             if isinstance(self.fs, s3fs.core.S3FileSystem):
                 absolute_path = 's3://' + absolute_path
 
@@ -77,7 +77,7 @@ class Filestore:
         """
         return os.path.join(self.fsroot, relative_path)
 
-            
+ 
     def exists(self, relative_path):
         """ Returns true if a file or folder exists at the given relative path.
         """

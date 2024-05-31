@@ -20,6 +20,10 @@ class FilterType(str, Enum):
     dropdown = 'dropdown'
 
 
+class Items(BaseModel):
+    title_column_name: str = None
+
+
 class Filter(BaseModel):
     db_name: str = None
     column_name: str
@@ -38,7 +42,8 @@ class Settings(BaseSettings):
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     data_url: Union[AnyUrl | Path] = None
     db_url: AnyUrl = 'sqlite:///:memory:'
-    filters: List[Filter]
+    filters: List[Filter] = []
+    items: Items = Items()
     debug_sql: bool = False
 
     model_config = SettingsConfigDict(

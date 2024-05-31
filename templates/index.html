@@ -44,10 +44,10 @@
                 <a href="{{ url_for('details', image_id=image.get_id()) }}">View details</a>
             </div>
             
-            <div class="title">{{ image.get_title() }}</div>
+            <div class="title">{{ image.get_id() }}</div>
 
         </div>
-        <div class="label">{{ image.get_title() }}</div>
+        <div class="label">{{ get_title(metaimage) }}</div>
     </div>
     {% endfor %}
     </div>

@@ -332,9 +332,10 @@ class Database:
         """ Return a map of unique values to their counts 
             from the given column.
         """
-        query = text((f"SELECT {column_name}, COUNT(*) "
-                      f"  FROM {self.metadata_table.name} "
-                      f"  GROUP BY {column_name} "))
+        query = text((f"SELECT m.{column_name}, COUNT(*) "
+                      f"FROM ({IMAGES_AND_METADATA_SQL}) m "
+                      f"GROUP BY m.{column_name}"))
+
         with self.engine.connect() as connection:
             result = connection.execute(query)
             value_counts = {row[0]: row[1] for row in result.fetchall()}
@@ -346,12 +347,14 @@ class Database:
         """ Return a map of unique values to their counts
             from a column whose values are comma delimited lists. 
         """
-        column = self.metadata_table.c[column_name]
+        query = text((f"SELECT m.{column_name} "
+                      f"FROM ({IMAGES_AND_METADATA_SQL}) m"))
+
         with self.engine.connect() as connection:
-            result = connection.execute(select(column))
+            result = connection.execute(query)
             value_counts = defaultdict(int)
-            for value_tuple in result.fetchall():
-                value = value_tuple[0]
+            for row in result.fetchall():
+                value = row[0]
                 if value:
                     for item in value.split(','):
                         item = item.strip()

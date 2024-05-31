@@ -8,12 +8,12 @@
 {% set image = metaimage.image %}
 
 <section>
-    <h2>{{ image.get_title() }}</h2>
+    <h2>{{ get_title(metaimage) }}</h2>
 </section>
 
 <section>
 Copy data link: 
-<a href="#" onclick="copyTextToClipboard(this, '{{ image_data_url }}')" class="icon">
+<a href="#" onclick="copyTextToClipboard(this, '{{ get_image_data_url(image) }}')" class="icon">
     <div class="tooltip">
         <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
         <span class="tooltiptext">Copy image data URL</span>

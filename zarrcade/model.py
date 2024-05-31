@@ -50,8 +50,6 @@ class Image:
     def get_id(self):
         return self.relative_path
     
-    def get_title(self):
-        return self.relative_path
 
 
 @dataclass
