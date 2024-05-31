@@ -1,6 +1,7 @@
 import json
 from dataclasses import asdict
 from typing import Iterator, Dict
+from collections import defaultdict 
 
 import pandas as pd
 from loguru import logger
@@ -328,30 +329,32 @@ class Database:
 
 
     def get_unique_values(self, column_name):
-        """ Return all the unique values from the 
-            given column.
+        """ Return a map of unique values to their counts 
+            from the given column.
         """
-        column = self.metadata_table.c[column_name]
+        query = text((f"SELECT {column_name}, COUNT(*) "
+                      f"  FROM {self.metadata_table.name} "
+                      f"  GROUP BY {column_name} "))
         with self.engine.connect() as connection:
-            stmt = select(distinct(column))
-            unique_value_results = connection.execute(stmt).fetchall()
-            unique_values = [value[0] for value in unique_value_results]
-            return sorted(unique_values)
+            result = connection.execute(query)
+            value_counts = {row[0]: row[1] for row in result.fetchall()}
+
+        return value_counts
 
 
     def get_unique_comma_delimited_values(self, column_name):
-        """ Return all unique values from a column whose
-            values are comma delimited lists. 
+        """ Return a map of unique values to their counts
+            from a column whose values are comma delimited lists. 
         """
         column = self.metadata_table.c[column_name]
         with self.engine.connect() as connection:
-            stmt = select(column)
-            result = connection.execute(stmt)
-            unique_values = set()
+            result = connection.execute(select(column))
+            value_counts = defaultdict(int)
             for value_tuple in result.fetchall():
                 value = value_tuple[0]
                 if value:
                     for item in value.split(','):
-                        unique_values.add(item.strip())
+                        item = item.strip()
+                        value_counts[item] += 1
 
-            return sorted(unique_values)
+        return dict(value_counts)
