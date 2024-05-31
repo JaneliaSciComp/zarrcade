@@ -1,6 +1,7 @@
 from pathlib import Path
 from enum import Enum
 from typing import Union, List
+from functools import cache
 
 from pydantic import AnyUrl, HttpUrl, BaseModel, field_validator
 from pydantic_settings import (
@@ -38,7 +39,7 @@ class Settings(BaseSettings):
     data_url: Union[AnyUrl | Path] = None
     db_url: AnyUrl = 'sqlite:///:memory:'
     filters: List[Filter]
-
+    debug_sql: bool = False
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",
@@ -72,3 +73,8 @@ class Settings(BaseSettings):
                 '(or ZARRCADE_DATA_URL environment variable) '+
                 'pointing to a location where OME-Zarr images are found.')
         return v
+
+
+@cache
+def get_settings():
+    return Settings()
