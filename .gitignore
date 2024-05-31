@@ -1,9 +1,21 @@
+# Python
 *.pyc
-data
 __pycache__
-certs
-database.db
-*.csv
-.env
+
+# Junk
+.nfs*
+.DS_Store
 .notes
+
+# Data
+data
+*.csv
+
+# Zarrcade databases
+*.db
+
+# Zarrcade settings
+certs
+*.env
+settings.yaml
 
