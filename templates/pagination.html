@@ -36,6 +36,6 @@
     {% if pagination.page < pagination.total_pages %}
         <a href="?search_string={{ search_string }}&page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">Next</a>
     {% else %}
-        <span class="disabled">></span>
+        <span class="disabled">Next</span>
     {% endif %}
 </div>

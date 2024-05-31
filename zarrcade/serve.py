@@ -14,7 +14,7 @@ from zarrcade.filestore import Filestore
 from zarrcade.database import Database
 from zarrcade.model import Image
 from zarrcade.viewers import Viewer, Neuroglancer
-from zarrcade.settings import Settings
+from zarrcade.settings import Settings, DataType, FilterType
 
 # Create the API
 app = FastAPI(
@@ -39,6 +39,11 @@ templates = Jinja2Templates(directory="templates")
 
 @app.on_event("startup")
 async def startup_event():
+    """ Runs once when the service is first starting.
+        Reads the configuration and checks the database for images.
+        If the database is not already populated, this walks the file store to 
+        discover images on-the-fly and persist them in the database.
+    """
 
     # Override SIGINT to allow ctrl-c to work if startup takes too long
     orig_handler = signal.getsignal(signal.SIGINT)
@@ -58,6 +63,20 @@ async def startup_event():
     logger.info(f"Database URL is {app.db_url}")
     app.db = Database(app.db_url)
 
+    app.filters = settings.filters
+    for s in app.filters:
+        # Infer db name for the column if the user didn't provide it
+        if s.db_name is None:
+            s.db_name = app.db.reverse_column_map[s.column_name]
+
+        # Get unique values from the database
+        if s.data_type == DataType.string:
+            s.values = app.db.get_unique_values(s.db_name)
+        elif s.data_type == DataType.csv:
+            s.values = app.db.get_unique_comma_delimited_values(s.db_name)
+
+        logger.info(f"Configured {s.filter_type} filter for '{s.column_name}' ({len(s.values)} values)")
+
     count = app.db.get_images_count()
     if count:
         logger.info(f"Found {count} images in the database")
@@ -70,36 +89,48 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """ Clean up database connections when we shut down.
+    """ Clean up database connections when the service is shut down.
     """
     logger.info("Shutting down database connections")
     app.db.engine.dispose()
 
 
+def get_proxy_url(relative_path):
+    """ Returns a web-accessible URL to the file store 
+        which is proxied by this server.
+    """
+    return os.path.join(app.base_url, "data", relative_path)
+
+
 def get_data_url(image: Image):
-    # TODO: this should probably be the other way around: return paths we know
-    # are web-accessible, and proxy everything else
-    if app.fs.is_local():
-        # Proxy the data using the REST API
-        return os.path.join(app.base_url, "data", image.relative_path)
-    else:
-        # Assume the path is web-accessible
+    """ Return a web-accessible URL to the given image.
+    """
+    if app.fs.url:
+        # This filestore is already web-accessible
         return os.path.join(app.fs.url, image.relative_path)
-        #return app.fs.get_absolute_path(image.relative_path)
+
+    # Proxy the data using the REST API
+    return get_proxy_url(image.relative_path)
 
 
 def get_relative_path_url(relative_path: str):
+    """ Return a web-accessible URL to the given relative path.
+    """
     if not relative_path:
         return None
-    if app.fs.is_local() or not app.fs.url:
-        # Proxy the data using the REST API
-        return os.path.join(app.base_url, "data", relative_path)
-    else:
-        # Assume the path is web-accessible
+
+    if app.fs.url:
+        # This filestore is already web-accessible
         return os.path.join(app.fs.url, relative_path)
+
+    # Proxy the data using the REST API
+    return get_proxy_url(relative_path)
 
 
 def get_viewer_url(image: Image, viewer: Viewer):
+    """ Returns a web-accessible URL that opens the given image 
+        in the specified viewer.
+    """
     url = get_data_url(image)
     if viewer==Neuroglancer:
         if image.axes_order == 'tczyx':
@@ -124,6 +155,8 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "get_image_data_url": get_data_url,
             "search_string": search_string,
             "pagination": result['pagination'],
+            "filters": app.filters,
+            "FilterType": FilterType,
             "min": min,
             "max": max
         }

@@ -7,11 +7,7 @@
 
 <section>
 
-<form style="margin: 2em">
-    <input type="text" name="search_string" value="{{ search_string }}"/>
-    <button type="submit">Search</button>
-</form>
-
+{% include "form.html" %}
 {% include "pagination.html" %}
 
 </section>

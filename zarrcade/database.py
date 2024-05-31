@@ -5,7 +5,7 @@ from typing import Iterator
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine, text, MetaData, Table, Column, \
-    String, Integer, Index, ForeignKey, func, select
+    String, Integer, Index, ForeignKey, func, select, distinct
 
 from zarrcade.model import Image, MetadataImage
 
@@ -53,7 +53,8 @@ class Database:
         self.metadata_table, self.images_table = self.create_tables()
 
         # Read the attribute naming map from the database, if they exist
-        self.attr_map = {}
+        self.column_map = {}
+        self.reverse_column_map = {}
         if 'metadata_columns' in self.meta.tables:
             query = "SELECT * FROM metadata_columns"
             result_df = pd.read_sql_query(query, con=self.engine)
@@ -61,7 +62,8 @@ class Database:
                 db_name = row.db_name
                 original_name = row.original_name
                 logger.trace(f"Registering column '{db_name}' for {original_name}")
-                self.attr_map[db_name] = original_name
+                self.column_map[db_name] = original_name
+                self.reverse_column_map[original_name] = db_name
 
 
     def create_tables(self):
@@ -115,7 +117,7 @@ class Database:
         """ Get the image metadata out of a row and return it as a dictionary.
         """
         metadata = {}
-        for k, v in self.attr_map.items():
+        for k, v in self.column_map.items():
             if k in row._fields:
                 metadata[v] = getattr(row, k)
         return metadata
@@ -159,7 +161,7 @@ class Database:
         logger.info(f"Loaded {len(metadata_ids)} metadata ids")
         # Walk the storage root and populate the database
         count = 0
-        
+  
         for image in image_generator():
             relative_path = image.zarr_path
             if relative_path in metadata_ids:
@@ -194,7 +196,7 @@ class Database:
                 where((self.images_table.c.collection == collection) & 
                     (self.images_table.c.image_path == image_path))
             existing_row = conn.execute(stmt).fetchone()
-   
+
             if existing_row:
                 update_stmt = self.images_table.update(). \
                     where((self.images_table.c.collection == collection) &
@@ -240,7 +242,7 @@ class Database:
             else:
                 logger.info(f"Image has no image_info: {image_path}")
                 return None
-            
+     
         logger.info(f"Image not found: {image_path}")
         return None
 
@@ -274,11 +276,11 @@ class Database:
             result_df = pd.read_sql_query(paginated_query, con=self.engine, params={'limit': page_size, 'offset': offset})
             total_count = pd.read_sql_query(count_query, con=self.engine).iloc[0, 0]
         else:
-            cols = [f"m.{k}" for k in self.attr_map] + ['i.relpath']
+            cols = [f"m.{k}" for k in self.column_map] + ['i.relpath']
             query_string = " OR ".join([f"{col} LIKE :search_string" for col in cols])
             paginated_query = text(f"{base_query} WHERE {query_string} LIMIT :limit OFFSET :offset")
             count_query = text(f"SELECT COUNT(*) FROM ({base_query} WHERE {query_string})")
-            
+ 
             result_df = pd.read_sql_query(paginated_query, con=self.engine, params={
                 'search_string': f'%{search_string}%',
                 'limit': page_size,
@@ -319,18 +321,31 @@ class Database:
         }
 
 
-def get_unique_comma_delimited_values(self, column_name):
-    """ Return all unique values from a column whose
-        values are comma delimited lists. 
-    """
-    column = self.metadata_table.c[column_name]
-    with self.engine.connect() as connection:
-        result = connection.execute(select([column]))
-        unique_values = set()
-        for value_tuple in result.fetchall():
-            value = value_tuple[0]
-            if value:
-                for item in value.split(','):
-                    unique_values.add(item.strip())
-        
-        return sorted(unique_values)
+    def get_unique_values(self, column_name):
+        """ Return all the unique values from the 
+            given column.
+        """
+        column = self.metadata_table.c[column_name]
+        with self.engine.connect() as connection:
+            stmt = select(distinct(column))
+            unique_value_results = connection.execute(stmt).fetchall()
+            unique_values = [value[0] for value in unique_value_results]
+            return sorted(unique_values)
+
+
+    def get_unique_comma_delimited_values(self, column_name):
+        """ Return all unique values from a column whose
+            values are comma delimited lists. 
+        """
+        column = self.metadata_table.c[column_name]
+        with self.engine.connect() as connection:
+            stmt = select(column)
+            result = connection.execute(stmt)
+            unique_values = set()
+            for value_tuple in result.fetchall():
+                value = value_tuple[0]
+                if value:
+                    for item in value.split(','):
+                        unique_values.add(item.strip())
+
+            return sorted(unique_values)

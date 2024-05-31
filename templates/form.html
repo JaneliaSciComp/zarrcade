@@ -1,0 +1,30 @@
+<form id="filter-form">
+    
+    <div class="search-box">
+        <input type="text" name="search_string" value="{{ search_string }}"/>
+        <button type="submit">Search</button>
+    </div>
+
+    <div class="filters">
+    {% for filter in filters %}
+        <div class="filter-item">
+            <label for="{{ filter.db_name }}">{{ filter.column_name }}</label>
+        {% if filter.filter_type == FilterType.dropdown %}
+            <select name="{{ filter.db_name }}" onchange="submitForm()">
+                <option value="">Select...</option>
+                {% for value in filter.values %}
+                    <option value="{{ value }}">{{ value }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+        </div>
+    {% endfor %}
+    </div>
+
+</form>
+
+<script>
+    function submitForm() {
+        document.getElementById('filter-form').submit();
+    }
+</script>

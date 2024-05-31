@@ -39,18 +39,56 @@ span.data {
     color: #ccc; /* Lighter grey on hover */
 }
 
+
 /* Search form */
 
 form {
-    margin-bottom: 2em;
+    margin: 2em;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
 }
 
-form input[type="text"], form button {
-    margin: 0 5px;
-    padding: 8px;
+form .search-box {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 1em;
 }
+
+form input[type="text"] {
+    width: 600px;
+    min-width: 200px;
+    padding: 8px;
+    margin-right: 5px;
+}
+
+form button {
+    padding: 8px;
+    margin-left: 5px;
+}
+
+form .filters {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 10px;
+}
+
+form .filters .filter-item {
+    display: flex;
+    align-items: center;
+}
+
+form .filters label {
+    margin-right: 5px;
+}
+
+form .filters select {
+    padding: 5px;
+}
+
 
 /* Pagination */
 

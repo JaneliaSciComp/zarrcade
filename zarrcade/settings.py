@@ -1,27 +1,44 @@
-from typing import Any, Callable, Set, Union
+from pathlib import Path
+from enum import Enum
+from typing import Union, List
 
-from pydantic import (
-    BaseModel,
-    Field,
-    AnyUrl,
-    HttpUrl
+from pydantic import AnyUrl, HttpUrl, BaseModel, field_validator
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    YamlConfigSettingsSource
 )
 
-from pathlib import Path
-from pydantic import BaseModel, ValidationError, field_validator
-from pydantic import BaseModel, ValidationError
-from pydantic_settings import BaseSettings, SettingsConfigDict
+class DataType(str, Enum):
+    string = 'string'
+    csv = 'csv'
 
-from pydantic import DirectoryPath, Field, FilePath, ValidationError, field_validator
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, YamlConfigSettingsSource
 
+class FilterType(str, Enum):
+    dropdown = 'dropdown'
+
+
+class Filter(BaseModel):
+    db_name: str = None
+    column_name: str
+    data_type: DataType = DataType.string
+    filter_type: FilterType = FilterType.dropdown
+    values: List[str] = []
 
 
 class Settings(BaseSettings):
+    """ Zarrcade settings can be read from a settings.yaml file, 
+        or from the environment, with environment variables prepended 
+        with "zarrcade_" (case insensitive). The environment variables can
+        be passed in the environment or in a .env file. 
+    """
 
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     data_url: Union[AnyUrl | Path] = None
     db_url: AnyUrl = 'sqlite:///:memory:'
+    filters: List[Filter]
+
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",
