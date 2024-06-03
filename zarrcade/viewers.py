@@ -15,8 +15,8 @@ Neuroglancer = Viewer(
     'neuroglancer.png', 
     'https://neuroglancer-demo.appspot.com/#!{URL}')
 
-AICS3DCellViewer = Viewer(
-    'AICS 3D Cell Viewer', 
+AICS3DVolumeViewer = Viewer(
+    'AICS 3D Volume Viewer', 
     'aics_website-3d-cell-viewer.png', 
     'https://allen-cell-animated.github.io/website-3d-cell-viewer/?url={URL}')
 
@@ -24,7 +24,7 @@ Avivator = Viewer(
     'Avivator',
     'vizarr_logo.png',
     'https://avivator.gehlenborglab.org/?image_url={URL}')
-    
+
 Validator = Viewer(
     'OME-NGFF Validator',
     'check.png',
@@ -32,7 +32,7 @@ Validator = Viewer(
 
 viewers = [
     Neuroglancer,
-    AICS3DCellViewer,
+    #AICS3DVolumeViewer,
     Avivator,
     Validator
 ]
