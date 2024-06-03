@@ -45,6 +45,7 @@ class Settings(BaseSettings):
 
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     data_url: Union[AnyUrl | Path] = None
+    title: str = "Zarrcade"
     db_url: AnyUrl = 'sqlite:///:memory:'
     filters: List[Filter] = []
     items: Items = Items()
