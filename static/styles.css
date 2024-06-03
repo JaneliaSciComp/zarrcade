@@ -6,7 +6,7 @@ body, html {
 }
 
 section {
-    margin: 5pt 10pt 10pt 10pt;
+    margin: 5pt 15pt 10pt 15pt;
 }
 
 span.data {
@@ -16,7 +16,7 @@ span.data {
 /* Top bar */
 
 .top-bar {
-    background-color: #1b2e41; /* Dark background color */
+    background-color: #353459; /* Dark background color */
     color: white;
     display: flex;
     justify-content: space-between;
@@ -113,7 +113,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     margin: 0 2px;
   }
   .pager__item.active .pager__link {
-    background-color: #6c4dff;
+    background-color: #524c84;
     color: #fff;
     text-decoration: none;
   }
@@ -151,7 +151,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     transition: 0.3s;
   }
   .pager__link:hover, .pager__link:focus, .pager__link:active {
-    background-color: #6c4dff;
+    background-color: #524c84;
     color: #fff;
     text-decoration: none;
   }
@@ -183,6 +183,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     display: grid;
     grid-template-columns: repeat(auto-fill, 300px);
     gap: 10pt;
+    justify-content: center;
 }
 
 .gallery .container {
@@ -223,13 +224,12 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     display: inline;
     opacity: 1;
 }
+
 .gallery .buttons a img {
     padding: 2px;
     background-color: white;
     border-radius: 4px;
 }
-
-
 
 .gallery .container .overlay .title {
     margin: 5px auto 0 auto;
@@ -359,10 +359,11 @@ a.icon img:active {
 }
 
 .tooltip .tooltiptext {
+    border: 1px solid black;
     visibility: hidden;
     width: 120px;
-    background-color: #555;
-    color: #fff;
+    background-color: white;
+    color: black;
     text-align: center;
     border-radius: 6px;
     padding: 5px 0;
@@ -381,9 +382,9 @@ a.icon img:active {
     top: 100%;
     left: 50%;
     margin-left: -5px;
-    border-width: 5px;
+    border-width: 8px;
     border-style: solid;
-    border-color: #555 transparent transparent transparent;
+    border-color: white transparent transparent transparent;
 }
 
 .tooltip:hover .tooltiptext {

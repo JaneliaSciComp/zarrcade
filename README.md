@@ -97,3 +97,4 @@ docker push ghcr.io/janeliascicomp/zarrcade:latest
 ## Attributions
 
 <https://www.iconsdb.com/black-icons/copy-link-icon.html>
+<https://www.veryicon.com/icons/education-technology/smart-campus-1/view-details-2.html>
