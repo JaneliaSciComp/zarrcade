@@ -28,6 +28,10 @@ span.data {
     height: 50px; /* Adjust size as needed */
 }
 
+.top-bar .title {
+    font-size: 1.6em;
+}
+
 .top-bar .icons a {
     color: white;
     text-decoration: none;
@@ -89,45 +93,93 @@ form .filters select {
     padding: 5px;
 }
 
+.result-details {
+    margin: 0 0 1.2rem;
+    text-align: center;
+  }
 
-/* Pagination */
+/* 
+Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
+*/
 
-.pagination a, .pagination span {
-    margin: 0 5px;
-    padding: 10px 12px;
-    text-decoration: none;
+.pager {
+    margin: 0 0 1.2rem;
+    text-align: center;
+  }
+  .pager__item {
+    display: inline-block;
+    vertical-align: top;
+    font-size: 1rem;
+    margin: 0 2px;
+  }
+  .pager__item.active .pager__link {
+    background-color: #6c4dff;
     
-}
-
-.pagination a {
-    color: #1a3959;
-    cursor: pointer;
-}
-
-.pagination a:hover {
-    background-color: #ddd;
-}
-
-.pagination .active {
-    background-color: #1a3959;
-    color: white;
-    cursor: default;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-
-.pagination .disabled {
-    color: #ccc;
-    cursor: not-allowed;
-}
-
-.pagination .ellipses {
-    margin: 0 5px;
-    padding: 8px 12px;
+    color: #fff;
     text-decoration: none;
-    border: none;
-    font-size: 1.3em;
-}
+  }
+  .pager__item--prev svg, .pager__item--next svg {
+    width: 8px;
+    height: 12px;
+  }
+  .pager__item--next .pager__link svg {
+    transform: rotate(180deg);
+    transform-origin: center center;
+  }
+  .pager__text {
+    position: relative;
+    border-radius: 4px;
+    display: block;
+    text-align: center;
+    width: 2.625rem;
+    height: 2.625rem;
+    line-height: 2.625rem;
+    margin-left: -1px;
+    color: #2f3640;
+    text-decoration: none;
+  }
+  .pager__link {
+    position: relative;
+    border-radius: 4px;
+    display: block;
+    text-align: center;
+    width: 2.625rem;
+    height: 2.625rem;
+    line-height: 2.625rem;
+    margin-left: -1px;
+    color: #2f3640;
+    text-decoration: none;
+    transition: 0.3s;
+  }
+  .pager__link:hover, .pager__link:focus, .pager__link:active {
+    background-color: #6c4dff;
+    color: #fff;
+    text-decoration: none;
+  }
+  .pager__link:hover svg path, .pager__link:focus svg path, .pager__link:active svg path {
+    fill: #fff;
+  }
+  .pager .pager__item.active + .pager__item .pager__link, .pager .pager__item:hover + .pager__item .pager__link {
+    
+  }
+  
+  @media screen and (max-width: 576px) {
+    .pager__item {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+    }
+    .pager__item.active, .pager__item:first-of-type, .pager__item:last-of-type, .pager__item:nth-of-type(2), .pager__item:nth-last-of-type(2) {
+      position: initial;
+      top: initial;
+      left: initial;
+    }
+    .pager__item.active + li {
+      position: initial;
+      top: initial;
+      left: initial;
+    }
+  }
 
 /* Gallery */
 

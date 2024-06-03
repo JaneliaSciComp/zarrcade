@@ -1,41 +1,55 @@
-<div class="pagination">
+<ul class="pager">
     {% if pagination.page > 1 %}
-        <a href="?search_string={{ search_string }}&page={{ pagination.page - 1 }}&page_size={{ pagination.page_size }}">Previous</a>
+    <li class="pager__item pager__item--prev"><a class="pager__link" href="?search_string={{ search_string }}&page={{ pagination.page - 1 }}&page_size={{ pagination.page_size }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewbox="0 0 8 12">
+          <g fill="none" fill-rule="evenodd">
+            <path fill="#33313C" d="M7.41 1.41L6 0 0 6l6 6 1.41-1.41L2.83 6z"></path>
+          </g>
+        </svg></a></li>
     {% else %}
-        <span class="disabled">Previous</span>
     {% endif %}
 
     {% if pagination.total_pages <= 10 %}
         {% for p in range(1, pagination.total_pages + 1) %}
             {% if p == pagination.page %}
-                <span class="active">{{ p }}</span>
+                <li class="pager__item active"><a class="pager__link" href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a></li>
             {% else %}
-                <a href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a>
+                <li class="pager__item"><a class="pager__link" href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a></li>
             {% endif %}
         {% endfor %}
     {% else %}
-        {% if pagination.page > 4 %}
-            <a href="?search_string={{ search_string }}&page=1&page_size={{ pagination.page_size }}">1</a>
-            <span class="ellipses">...</span>
+        {% if pagination.page > 3 %}
+            <li class="pager__item"><a class="pager__link" href="?search_string={{ search_string }}&page=1&page_size={{ pagination.page_size }}">1</a></li>
         {% endif %}
 
-        {% for p in range(max(1, pagination.page - 3), min(pagination.total_pages + 1, pagination.page + 4)) %}
+        {% if pagination.page > 4 %}
+            <li class="pager__item"><span class="pager__text">...</span></li>
+        {% endif %}
+
+        {% for p in range(max(1, pagination.page - 2), min(pagination.total_pages + 1, pagination.page + 3)) %}
             {% if p == pagination.page %}
-                <span class="active">{{ p }}</span>
+                <li class="pager__item active"><a class="pager__link" href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a></li>
             {% else %}
-                <a href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a>
+                <li class="pager__item"><a class="pager__link" href="?search_string={{ search_string }}&page={{ p }}&page_size={{ pagination.page_size }}">{{ p }}</a></li>
             {% endif %}
         {% endfor %}
 
         {% if pagination.page < pagination.total_pages - 3 %}
-            <span class="ellipses">...</span>
-            <a href="?search_string={{ search_string }}&page={{ pagination.total_pages }}&page_size={{ pagination.page_size }}">{{ pagination.total_pages }}</a>
+            <li class="pager__item"><span class="pager__text">...</span></li>
+        {% endif %}
+        
+        {% if pagination.page < pagination.total_pages - 2 %}
+            <li class="pager__item"><a class="pager__link" href="?search_string={{ search_string }}&page={{ pagination.total_pages }}&page_size={{ pagination.page_size }}">{{ pagination.total_pages }}</a></li>
         {% endif %}
     {% endif %}
 
     {% if pagination.page < pagination.total_pages %}
-        <a href="?search_string={{ search_string }}&page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">Next</a>
+    <li class="pager__item pager__item--next"><a class="pager__link" href="?search_string={{ search_string }}&page={{ pagination.page + 1 }}&page_size={{ pagination.page_size }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewbox="0 0 8 12">
+          <g fill="none" fill-rule="evenodd">
+            <path fill="#33313C" d="M7.41 1.41L6 0 0 6l6 6 1.41-1.41L2.83 6z"></path>
+          </g>
+        </svg></a></li>
     {% else %}
-        <span class="disabled">Next</span>
     {% endif %}
-</div>
+</ul>
