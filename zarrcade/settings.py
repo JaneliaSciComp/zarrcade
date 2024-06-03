@@ -1,6 +1,6 @@
 from pathlib import Path
 from enum import Enum
-from typing import Union, List
+from typing import Union, List, Set
 from functools import cache
 
 from pydantic import AnyUrl, HttpUrl, BaseModel, field_validator
@@ -32,6 +32,10 @@ class Filter(BaseModel):
     values: List[str] = []
 
 
+class Details(BaseModel):
+    hide_columns: Set[str] = set()
+
+
 class Settings(BaseSettings):
     """ Zarrcade settings can be read from a settings.yaml file, 
         or from the environment, with environment variables prepended 
@@ -44,6 +48,7 @@ class Settings(BaseSettings):
     db_url: AnyUrl = 'sqlite:///:memory:'
     filters: List[Filter] = []
     items: Items = Items()
+    details: Details = Details()
     debug_sql: bool = False
 
     model_config = SettingsConfigDict(

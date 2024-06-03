@@ -7,7 +7,7 @@
     </div>
 
     <div class="filters">
-    {% for filter in filters %}
+    {% for filter in settings.filters %}
         <div class="filter-item">
             <label for="{{ filter.db_name }}">{{ filter.column_name }}</label>
         {% if filter.filter_type == FilterType.dropdown %}
