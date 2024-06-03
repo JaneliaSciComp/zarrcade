@@ -15,7 +15,7 @@
                 <option value="">Select...</option>
                 {% for key, value in filter.values | dictsort %}
                 <option value="{{ key }}" {% if filter_params.get(filter.db_name) == key %}selected{% endif %}>
-                    {{ key }} ({{ value }})
+                    {{ key }} <!--({{ value }})-->
                 </option>
                 {% endfor %}
             </select>
