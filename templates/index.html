@@ -47,7 +47,7 @@
             <div class="title">{{ image.get_id() }}</div>
 
         </div>
-        <div class="label">{{ get_title(metaimage) }}</div>
+        <div class="label">{{ get_title(metaimage) | safe }}</div>
     </div>
     {% endfor %}
     </div>

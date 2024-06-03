@@ -8,7 +8,7 @@
 {% set image = metaimage.image %}
 
 <section>
-    <h2>{{ get_title(metaimage) }}</h2>
+    <h2>{{ get_title(metaimage) | safe }}</h2>
 </section>
 
 <section>
@@ -53,9 +53,10 @@ Open with:
         <tr><td>Dimensions:</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
         <tr><td>Voxel sizes:</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
         <tr><td>Compression:</td><td><span class="data">{{ image.compression }}</span></td></tr>
-        {% set attrs = metaimage.metadata %}
-        {% for attr in attrs.keys() %}
-        <tr><td>{{ attr }}:</td><td>{{ attrs[attr] }}</td></tr>
+        {% for attr in metaimage.metadata.keys() %}
+            {% if attr not in settings.details.hide_columns %}
+            <tr><td>{{ attr }}:</td><td>{{ metaimage.metadata[attr] | safe }}</td></tr>
+            {% endif %}
         {% endfor %}
     </table>
 </div>
