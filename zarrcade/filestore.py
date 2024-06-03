@@ -38,10 +38,6 @@ class Filestore:
     def __init__(self, data_url):
         self.fs, self.fsroot, self.url = get_fs(data_url)
         logger.info(f"Filesystem root is {self.fsroot}")
-        if self.url:
-            logger.info(f"Web-accessible url root is {self.url}")
-        else:
-            logger.info("Filesystem is not web-accessible and will be proxied")
 
         # Ensure dir ends in a path separator
         self.fsroot_dir = os.path.join(self.fsroot, '')

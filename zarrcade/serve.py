@@ -59,6 +59,11 @@ async def startup_event():
     logger.info(f"User-specified data URL is {app.data_url}")
     app.fs = Filestore(app.data_url)
 
+    if app.fs.url:
+        logger.info(f"Web-accessible url root is {app.fs.url}")
+    else:
+        logger.info("Filesystem is not web-accessible and will be proxied")
+
     app.db_url = str(settings.db_url)
     logger.info(f"User-specified database URL is {app.db_url}")
     app.db = Database(app.db_url)
