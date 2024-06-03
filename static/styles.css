@@ -61,7 +61,7 @@ form .search-box {
 }
 
 form input[type="text"] {
-    width: 600px;
+    width: 500px;
     min-width: 200px;
     padding: 8px;
     margin-right: 5px;
