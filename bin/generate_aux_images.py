@@ -17,51 +17,32 @@ import shutil
 import argparse
 import pandas as pd
 import ray
+import skimage as ski
+from skimage import exposure
+import numpy as np
 
 from PIL import Image
-from zarrcade import Filestore
+from zarrcade import Database, Filestore
+from zarrcade.settings import get_settings
 from zarrcade.images import yield_ome_zarrs
 
 JPEG_QUALITY = 90
 
-def apply_clahe_to_image(src_path, dst_path, clip_limit=2.0, tile_grid_size=(8, 8)):
-    """ Function to apply CLAHE to an image.
-    """
-    # pylint: disable-next=import-outside-toplevel
-    import cv2
-
-    # Read from source
-    img = cv2.imread(src_path)
-
-    # Convert the image to YUV color space
-    yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
-    y = yuv[:,:,0]  # Extract the Y channel (brightness)
-
-    # Apply CLAHE to the Y channel
-    clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
-    y_clahe = clahe.apply(y)
-
-    # Update the Y channel with the CLAHE output
-    yuv[:,:,0] = y_clahe
-
-    # Convert back to BGR color space
-    img_clahe = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR)
-
-    # Save to destination
-    cv2.imwrite(dst_path, img_clahe)
+def adjust_brightness(src_path, dst_path):
+    img = ski.io.imread(src_path)
+    p_lower, p_upper = np.percentile(img, (0, 99.90))
+    img_rescale = exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
+    ski.io.imsave(dst_path, img_rescale)
 
 
 @ray.remote
 def process_zarr(zarr_path, root_path, aux_path, aux_paths, \
-        aux_image_name, thumbnail_size, apply_clahe):
+        aux_image_name, thumbnail_size, apply_brightness_adj):
     """ Process auxiliary images for the given zarr.
     """
-
-    # NP31_R3_20240220/NP31_R3_2_4_SS59799_CCHa1_546_CCHa2_647_120x_Central.zarr
-    zarr_relpath = os.path.relpath(zarr_path, root_path)
-
+    print(zarr_path)
     # NP31_R3_20240220, NP31_R3_2_4_SS59799_CCHa1_546_CCHa2_647_120x_Central.zarr
-    relpath, zarr_name_with_ext = os.path.split(zarr_relpath)
+    relpath, zarr_name_with_ext = os.path.split(zarr_path)
 
     # NP31_R3_2_4_SS59799_CCHa1_546_CCHa2_647_120x_Central
     zarr_name, _ = os.path.splitext(zarr_name_with_ext)
@@ -74,14 +55,14 @@ def process_zarr(zarr_path, root_path, aux_path, aux_paths, \
         aux_path_src = aux_paths[zarr_path]
         os.makedirs(os.path.dirname(aux_path_dst), exist_ok=True)
 
-        if apply_clahe:
-            apply_clahe_to_image(aux_path_src, aux_path_dst)
-            print(f"Wrote CLAHE-corrected {aux_path_dst}")
+        if apply_brightness_adj:
+            adjust_brightness(aux_path_src, aux_path_dst)
+            print(f"Wrote brightness-corrected {aux_path_dst}")
         else:
             shutil.copy2(aux_path_src, aux_path_dst)
             print(f"Wrote {aux_path_dst}")
     else:
-        print(f"No aux path for {zarr_relpath}")
+        print(f"No aux path for {zarr_path}")
         #TODO: generate MIP
         return 0
 
@@ -110,16 +91,14 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--csv-path', type=str,
         help='Path to a CSV file containing a mapping of zarr paths to auxiliary images. ' + \
             'The file should have two columns: zarr_path,aux_path')
-    parser.add_argument('-r', '--root_url', type=str, required=True,
-        help='Path to the folder containing the images')
     parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
         help='Path to the folder containing auxiliary images, relative to the root_url.')
     parser.add_argument('--aux-image-name', type=str, default='zmax.png',
         help='Filename of the main auxiliary image.')
     parser.add_argument('--thumbnail-size', type=int, default=300,
         help='Max size of the thumbnail image.')
-    parser.add_argument('--apply-clahe', type=bool, default=True,
-        help='Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to the images. Requires OpenCV2.')
+    parser.add_argument('--apply-brightness-correction', type=bool, default=True,
+        help='Apply brightness correction to the images.')
     parser.add_argument('--cores', type=int, default=4, \
         help='Number of CPU cores to use.')
     parser.add_argument('--cluster', type=str, default=None, \
@@ -127,16 +106,22 @@ if __name__ == '__main__':
     parser.add_argument('--dashboard', type=bool, default=False, \
         help='Run the Ray dashboard for debugging.')
 
+    # Read settings from environment or YAML
+    settings = get_settings()
+    root_path = str(settings.data_url)
+
     # Parse arguments
     args = parser.parse_args()
     thumbnail_size = args.thumbnail_size
-    root_path = args.root_url
     aux_path = os.path.join(root_path, args.aux_path)
 
     aux_paths = {}
     if args.csv_path:
         df = pd.read_csv(args.csv_path)
-        aux_paths = dict(zip(df['zarr_path'], df['aux_path']))
+        aux_paths = {}
+        for zarr_path, aux_path in zip(df['zarr_path'], df['aux_path']):
+            relative_zarr_path = os.path.relpath(zarr_path, root_path)
+            aux_paths[relative_zarr_path] = aux_path
         print(f"Read {len(aux_paths)} auxiliary paths from provided CSV file")
 
     # Initialize Ray
@@ -172,7 +157,7 @@ if __name__ == '__main__':
         unfinished = []
         for zarr_path in yield_ome_zarrs(fs):
             unfinished.append(process_zarr.remote(zarr_path, root_path, aux_path, \
-                aux_paths, args.aux_image_name, thumbnail_size, args.apply_clahe))
+                aux_paths, args.aux_image_name, thumbnail_size, args.apply_brightness_correction))
         while unfinished:
             finished, unfinished = ray.wait(unfinished, num_returns=1)
             for result in ray.get(finished):
