@@ -2,6 +2,8 @@ import os
 import re
 import sys
 import signal
+from functools import partial
+from urllib.parse import urlencode
 
 from loguru import logger
 from fastapi import FastAPI, Request, Response
@@ -158,6 +160,14 @@ def get_title(metaimage: MetadataImage):
     return metaimage.image.relative_path
 
 
+def get_query_string(query_params, **new_params):
+    """ Takes the current query params, optionally overrides some parameters 
+        and return a formatted query string.
+    """
+    return urlencode(dict(query_params) | new_params)
+
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
 
@@ -167,6 +177,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
         param_value = request.query_params.get(s.db_name)
         if param_value:
             filter_params[s.db_name] = param_value
+
 
     result = app.db.find_metaimages(search_string, filter_params, page, page_size)
 
@@ -179,6 +190,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "get_relative_path_url": get_relative_path_url,
             "get_image_data_url": get_data_url,
             "get_title": get_title,
+            "get_query_string": partial(get_query_string, request.query_params),
             "search_string": search_string,
             "pagination": result['pagination'],
             "filter_params": filter_params,
