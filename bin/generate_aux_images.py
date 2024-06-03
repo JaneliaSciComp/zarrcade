@@ -26,7 +26,7 @@ from zarrcade import Database, Filestore
 from zarrcade.settings import get_settings
 from zarrcade.images import yield_ome_zarrs
 
-JPEG_QUALITY = 90
+JPEG_QUALITY = 95
 
 def adjust_brightness(src_path, dst_path):
     img = ski.io.imread(src_path)
@@ -52,16 +52,17 @@ def process_zarr(zarr_path:str, root_path:str, aux_root_path:str, aux_path_map:d
     # Auxiliary image name (without extension)
     aux_name, _ = os.path.splitext(aux_image_name)
 
-    # Copy aux image into the aux store
     if zarr_path in aux_path_map:
         aux_path_src = aux_path_map[zarr_path]
-        os.makedirs(os.path.dirname(aux_path_dst), exist_ok=True)
-        shutil.copy2(aux_path_src, aux_path_dst)
-        print(f"Wrote {aux_path_dst}")
+        if not os.path.exists(aux_path_dst):
+            # Copy aux image into the aux store
+            os.makedirs(os.path.dirname(aux_path_dst), exist_ok=True)
+            shutil.copy2(aux_path_src, aux_path_dst)
+            print(f"Wrote {aux_path_dst}")
 
     else:
-        print(f"No aux path for {zarr_path}")
         #TODO: generate MIP
+        print(f"No aux path for {zarr_path}")
         return 0
 
     if apply_brightness_adj:
@@ -79,7 +80,7 @@ def process_zarr(zarr_path:str, root_path:str, aux_root_path:str, aux_path_map:d
     # Avoid "cannot write mode P as JPEG" error (e.g. when there is transparency)
     image = image.convert("RGB")
 
-    image.save(sized_thumbnail_path, quality=JPEG_QUALITY, optimize=True)
+    image.save(sized_thumbnail_path, quality=JPEG_QUALITY)
     print(f"Wrote {sized_thumbnail_path}")
     return 1
 
