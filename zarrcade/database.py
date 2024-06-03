@@ -317,13 +317,20 @@ class Database:
                 logger.trace(f"matched {metaimage.id}")
                 images.append(metaimage)
 
+        start_num = ((page-1) * page_size) + 1
+        end_num = start_num + page_size - 1
+        if end_num > total_count: 
+            end_num = total_count
+
         return {
             'images': images,
             'pagination': {
                 'page': page,
                 'page_size': page_size,
                 'total_pages': total_pages,
-                'total_count': total_count
+                'total_count': total_count,
+                'start_num': start_num,
+                'end_num': end_num
             }
         }
 

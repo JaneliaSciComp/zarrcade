@@ -169,6 +169,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             filter_params[s.db_name] = param_value
 
     result = app.db.find_metaimages(search_string, filter_params, page, page_size)
+
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "settings": app.settings,

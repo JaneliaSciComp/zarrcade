@@ -10,6 +10,12 @@
 
 <section>
 {% if metaimages %}
+
+<div class="result-details">
+    Showing {{ pagination.start_num }} - {{ pagination.end_num }} 
+    of {{ pagination.total_count }} images matching selected criteria.
+</div>
+
 {% include "pagination.html" %}
 <div>
     <div class="gallery">
@@ -53,7 +59,7 @@
     </div>
 </div>
 {% else %}
-<div style="text-align: center">
+<div class="result-details">
     No images found for the specified criteria.
 </div>
 {% endif %}
