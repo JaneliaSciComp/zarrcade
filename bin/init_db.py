@@ -17,7 +17,8 @@ from functools import partial
 from loguru import logger
 from sqlalchemy import Column, String, Table
 
-from zarrcade import Database, Filestore, Settings
+from zarrcade import Database, Filestore
+from zarrcade.settings import get_settings
 
 SKIP_FILE_CHECKS = True
 
@@ -44,7 +45,7 @@ metadata_path = args.metadata_path
 overwrite = args.overwrite
 
 # Read settings from environment or YAML
-settings = Settings()
+settings = get_settings()
 data_url = str(settings.data_url)
 db_url = str(settings.db_url)
 
