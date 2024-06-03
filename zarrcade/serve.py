@@ -298,14 +298,16 @@ async def neuroglancer_state(image_id: str):
                 tab='rendering',
                 opacity=1,
                 blend='additive',
-                shader=f"#uicontrol vec3 hue color(default=\"{color}\")\n#uicontrol invlerp normalized(range=[{min_value},{max_value}])\nvoid main(){{emitRGBA(vec4(hue*normalized(),1));}}",
+                shader=(f"#uicontrol vec3 hue color(default=\"{color}\")\n"
+                        f"#uicontrol invlerp normalized(range=[{min_value},{max_value}])\n"
+                        f"void main(){{emitRGBA(vec4(hue*normalized(),1));}}")
             )
 
         start = channel['contrast_limit_start']
         end = channel['contrast_limit_end']
-        
+
         # TODO: temporary hack to make Fly-eFISH data brighter
-        end = min(end, 5000)
+        end = min(end, 4000)
 
         if start and end:
             layer.shaderControls={

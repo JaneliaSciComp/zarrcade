@@ -30,6 +30,12 @@
         <div class="overlay">
 
             <div class="buttons">
+                <a href="{{ url_for('details', image_id=image.get_id()) }}" class="icon">
+                    <div class="tooltip">
+                        <img src="{{ url_for('static', path='view-details-64.png') }}" alt="View details icon">
+                        <span class="tooltiptext">View details</span>
+                    </div>
+                </a>
                 <a href="#" onclick="copyTextToClipboard(this, '{{ get_image_data_url(image) }}')" class="icon" >
                     <div class="tooltip">
                         <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
@@ -46,11 +52,12 @@
                 {% endfor %}
             </div>
 
+            <!--
             <div class="detail_button">
                 <a href="{{ url_for('details', image_id=image.get_id()) }}">View details</a>
             </div>
-            
             <div class="title">{{ image.get_id() }}</div>
+            -->
 
         </div>
         <div class="label">{{ get_title(metaimage) | safe }}</div>

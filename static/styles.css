@@ -114,7 +114,6 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
   }
   .pager__item.active .pager__link {
     background-color: #6c4dff;
-    
     color: #fff;
     text-decoration: none;
   }
@@ -158,9 +157,6 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
   }
   .pager__link:hover svg path, .pager__link:focus svg path, .pager__link:active svg path {
     fill: #fff;
-  }
-  .pager .pager__item.active + .pager__item .pager__link, .pager .pager__item:hover + .pager__item .pager__link {
-    
   }
   
   @media screen and (max-width: 576px) {
@@ -219,7 +215,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 }
 
 .gallery .buttons {
-    margin: 20% auto 0 auto;
+    margin: 20px auto 0 auto;
     opacity: 1;
 }
 
@@ -227,6 +223,13 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     display: inline;
     opacity: 1;
 }
+.gallery .buttons a img {
+    padding: 2px;
+    background-color: white;
+    border-radius: 4px;
+}
+
+
 
 .gallery .container .overlay .title {
     margin: 5px auto 0 auto;
@@ -237,7 +240,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 }
 
 .gallery .container:hover img.thumbnail {
-    opacity: 0.3;
+    opacity: 0.8;
 }
 
 .gallery .container:hover .overlay {
@@ -252,6 +255,7 @@ div.detail_button {
 
 /* From https://getcssscan.com/css-buttons-examples */
 div.detail_button a {
+    background-color: aqua;
     font-family: "Open Sans", sans-serif;
     font-size: 16px;
     letter-spacing: 2px;
