@@ -31,7 +31,7 @@ parser.add_argument('-m', '--metadata-path', type=str, required=True,
     help='Path to the CSV file containing additional metadata')
 parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
     help='Path to the folder containing auxiliary images, relative to the root_url.')
-parser.add_argument('--aux-image-name', type=str, default='zmax.png',
+parser.add_argument('--aux-image-name', type=str, default='zmax_bc.png',
     help='Filename of the main auxiliary image.')
 parser.add_argument('--thumbnail-name', type=str, default='zmax_300.jpg',
     help='Filename of the thumbnail image.')
