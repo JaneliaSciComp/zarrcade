@@ -10,8 +10,7 @@ Zarrcade is a web application for easily browsing collections of [NGFF](https://
 * File proxy for non-public storage backends
 * Support for optional image thumbnails
 
-The [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) tool can be used to easily generate OME-Zarrs with thumbnails which are compatible with this web service.
-
+The [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) tool can be used to easily convert images to OME-Zarr format.
 
 ## Local Usage
 
@@ -96,5 +95,5 @@ docker push ghcr.io/janeliascicomp/zarrcade:latest
 
 ## Attributions
 
-<https://www.iconsdb.com/black-icons/copy-link-icon.html>
-<https://www.veryicon.com/icons/education-technology/smart-campus-1/view-details-2.html>
+* <https://www.iconsdb.com/black-icons/copy-link-icon.html>
+* <https://www.veryicon.com/icons/education-technology/smart-campus-1/view-details-2.html>
