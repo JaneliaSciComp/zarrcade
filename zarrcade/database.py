@@ -346,8 +346,10 @@ class Database:
         with self.engine.connect() as connection:
             result = connection.execute(query)
             value_counts = {row[0]: row[1] for row in result.fetchall()}
-
-        return value_counts
+            if None in value_counts:
+                logger.debug(f"Ignoring {value_counts[None]} items with no value for {column_name}")
+                del value_counts[None]
+            return value_counts
 
 
     def get_unique_comma_delimited_values(self, column_name):

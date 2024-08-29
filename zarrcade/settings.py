@@ -1,6 +1,6 @@
 from pathlib import Path
 from enum import Enum
-from typing import Union, List, Set
+from typing import Union, List, Set, Dict
 from functools import cache
 
 from pydantic import AnyUrl, HttpUrl, BaseModel, field_validator
@@ -29,7 +29,7 @@ class Filter(BaseModel):
     column_name: str
     data_type: DataType = DataType.string
     filter_type: FilterType = FilterType.dropdown
-    values: List[str] = []
+    values: Dict[str,str] = {}
 
 
 class Details(BaseModel):

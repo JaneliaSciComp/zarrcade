@@ -73,7 +73,11 @@ async def startup_event():
     for s in app.settings.filters:
         # Infer db name for the column if the user didn't provide it
         if s.db_name is None:
-            s.db_name = app.db.reverse_column_map[s.column_name]
+            try:
+                s.db_name = app.db.reverse_column_map[s.column_name]
+            except KeyError:
+                logger.warning(f"Metadata missing column: {s.column_name}")
+                continue
 
         # Get unique values from the database
         if s.data_type == DataType.string:
@@ -155,7 +159,10 @@ def get_title(metaimage: MetadataImage):
     settings = get_settings()
     col_name = settings.items.title_column_name
     if col_name:
-        return metaimage.metadata[col_name]
+        try:
+            return metaimage.metadata[col_name]
+        except KeyError:
+            logger.warning(f"Missing column: {col_name}")
 
     return metaimage.image.relative_path
 
