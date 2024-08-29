@@ -35,14 +35,12 @@ parser.add_argument('--aux-image-name', type=str, default='zmax_bc.png',
     help='Filename of the main auxiliary image.')
 parser.add_argument('--thumbnail-name', type=str, default='zmax_300.jpg',
     help='Filename of the thumbnail image.')
-parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False,
-    help="Overwrite tables if they exist?")
 parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
     help="Only load images with provided metadata?")
 
 args = parser.parse_args()
 metadata_path = args.metadata_path
-overwrite = args.overwrite
+overwrite = True
 
 # Read settings from environment or YAML
 settings = get_settings()
