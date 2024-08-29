@@ -15,13 +15,14 @@ sys.path.insert(0, '..')
 import os
 import shutil
 import argparse
+
 import pandas as pd
 import ray
 import skimage as ski
 from skimage import exposure
 import numpy as np
-
 from PIL import Image
+
 from zarrcade import Database, Filestore
 from zarrcade.settings import get_settings
 from zarrcade.images import yield_ome_zarrs
@@ -36,24 +37,24 @@ def adjust_brightness(src_path, dst_path):
 
 
 @ray.remote
-def process_zarr(zarr_path:str, root_path:str, aux_root_path:str, aux_path_map:dict, \
+def process_zarr(rel_zarr_path:str, data_path:str, aux_data_path:str, aux_path_map:dict, \
         aux_image_name:str, thumbnail_size:int, apply_brightness_adj:bool):
     """ Process auxiliary images for the given zarr.
     """
     # NP31_R3_20240220, NP31_R3_2_4_SS59799_CCHa1_546_CCHa2_647_120x_Central.zarr
-    relpath, zarr_name_with_ext = os.path.split(zarr_path)
+    relpath, zarr_name_with_ext = os.path.split(rel_zarr_path)
 
     # NP31_R3_2_4_SS59799_CCHa1_546_CCHa2_647_120x_Central
     zarr_name, _ = os.path.splitext(zarr_name_with_ext)
 
     # Auxiliary image path
-    aux_path_dst = os.path.join(aux_root_path, relpath, zarr_name, aux_image_name)
+    aux_path_dst = os.path.join(aux_data_path, relpath, zarr_name, aux_image_name)
 
     # Auxiliary image name (without extension)
     aux_name, _ = os.path.splitext(aux_image_name)
 
-    if zarr_path in aux_path_map:
-        aux_path_src = aux_path_map[zarr_path]
+    if rel_zarr_path in aux_path_map:
+        aux_path_src = aux_path_map[rel_zarr_path]
         if not os.path.exists(aux_path_dst):
             # Copy aux image into the aux store
             os.makedirs(os.path.dirname(aux_path_dst), exist_ok=True)
@@ -62,12 +63,12 @@ def process_zarr(zarr_path:str, root_path:str, aux_root_path:str, aux_path_map:d
 
     else:
         #TODO: generate MIP
-        print(f"No aux path for {zarr_path}")
+        print(f"No aux path for {rel_zarr_path}")
         return 0
 
     if apply_brightness_adj:
         bc_filename = f"{aux_name}_bc.png"
-        aux_path_dst = os.path.join(aux_root_path, relpath, zarr_name, bc_filename)
+        aux_path_dst = os.path.join(aux_data_path, relpath, zarr_name, bc_filename)
         adjust_brightness(aux_path_src, aux_path_dst)
         print(f"Wrote brightness-corrected {aux_path_dst}")
 
@@ -75,7 +76,7 @@ def process_zarr(zarr_path:str, root_path:str, aux_root_path:str, aux_path_map:d
     max_size = (thumbnail_size, thumbnail_size)
     image.thumbnail(max_size)
     sized_filename = f"{aux_name}_{thumbnail_size}.jpg"
-    sized_thumbnail_path = os.path.join(aux_root_path, relpath, zarr_name, sized_filename)
+    sized_thumbnail_path = os.path.join(aux_data_path, relpath, zarr_name, sized_filename)
 
     # Avoid "cannot write mode P as JPEG" error (e.g. when there is transparency)
     image = image.convert("RGB")
@@ -112,20 +113,24 @@ if __name__ == '__main__':
 
     # Read settings from environment or YAML
     settings = get_settings()
-    root_path = str(settings.data_url)
+    # TODO: this assumes that data resides on a local filesystem
+    data_path = str(settings.data_url)
 
     # Parse arguments
     args = parser.parse_args()
     thumbnail_size = args.thumbnail_size
-    aux_root_path = os.path.join(root_path, args.aux_path)
+    aux_data_path = os.path.join(data_path, args.aux_path)
 
     aux_path_map = {}
     if args.csv_path:
         df = pd.read_csv(args.csv_path)
         for zarr_path, aux_path in zip(df['zarr_path'], df['aux_path']):
-            relative_zarr_path = os.path.relpath(zarr_path, root_path)
-            aux_path_map[relative_zarr_path] = aux_path
-        print(f"Read {len(aux_path_map)} auxiliary paths from provided CSV file")
+            if not zarr_path.startswith(data_path):
+                print(f"Warning: Zarr path is outside of data_url: {zarr_path}")
+            else:
+                relative_zarr_path = os.path.relpath(zarr_path, data_path)
+                aux_path_map[relative_zarr_path] = aux_path
+        print(f"Mapped {len(aux_path_map)} auxiliary paths from provided CSV file")
 
     # Initialize Ray
     cpus = args.cores
@@ -153,18 +158,20 @@ if __name__ == '__main__':
             dashboard_port=dashboard_port,
             address=address)
 
-    fs = Filestore(root_path)
+    fs = Filestore(data_path)
 
-    total_count = 0
+    total = 0
+    generated = 0
     try:
         unfinished = []
-        for zarr_path in yield_ome_zarrs(fs):
-            unfinished.append(process_zarr.remote(zarr_path, root_path, aux_root_path, \
+        for rel_zarr_path in yield_ome_zarrs(fs):
+            unfinished.append(process_zarr.remote(rel_zarr_path, data_path, aux_data_path, \
                 aux_path_map, args.aux_image_name, thumbnail_size, args.apply_brightness_correction))
+            total += 1
         while unfinished:
             finished, unfinished = ray.wait(unfinished, num_returns=1)
             for result in ray.get(finished):
                 if result:
-                    total_count += result
+                    generated += result
     finally:
-        print(f"Generated auxiliary images for {total_count} zarrs")
+        print(f"Generated auxiliary images for {generated}/{total} zarrs")
