@@ -17,5 +17,5 @@ data
 # Zarrcade settings
 certs
 *.env
-settings.yaml
+settings*.yaml
 
