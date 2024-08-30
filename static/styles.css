@@ -78,6 +78,7 @@ form .filters {
     flex-wrap: wrap;
     width: 100%;
     gap: 10px;
+    margin-bottom: 1em;
 }
 
 form .filters .filter-item {

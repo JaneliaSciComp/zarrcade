@@ -252,8 +252,8 @@ class Database:
     def find_metaimages(self,
             search_string: str = '',
             filter_params: Dict[str,str] = None,
-            page: int = 1,
-            page_size: int = 10
+            page: int = 0,
+            page_size: int = 0
         ):
         """
         Find meta images with optional search and pagination.
@@ -261,7 +261,7 @@ class Database:
         Args:
             search_string (str): The string to search for within image metadata.
             page (int): The one-indexed page number.
-            page_size (int): The number of results per page.
+            page_size (int): The number of results per page. 0 means infinite.
 
         Returns:
             tuple: A tuple containing:
@@ -288,14 +288,19 @@ class Database:
             where_clause += f" AND (m.{db_name} LIKE :{db_name}_value)"
             params[f"{db_name}_value"] = f'%{filter_params[db_name]}%'
 
-        paginated_query = text(f"{base_query} WHERE 1=1{where_clause} LIMIT :limit OFFSET :offset")
-        count_query = text(f"SELECT COUNT(*) FROM ({base_query} WHERE 1=1{where_clause})")
+        paginated_query = f"{base_query} WHERE 1=1{where_clause}"
+        count_query = f"SELECT COUNT(*) FROM ({base_query} WHERE 1=1{where_clause})"
 
-        result_df = pd.read_sql_query(paginated_query, con=self.engine, params=params | {
-            'limit': page_size,
-            'offset': offset
-        })
-        total_count = pd.read_sql_query(count_query, con=self.engine, params=params).iloc[0, 0]
+        paged_params = params
+        if page_size>0:
+            paged_params = params | {
+                'limit': page_size,
+                'offset': offset
+            }
+            paginated_query += " LIMIT :limit OFFSET :offset"
+
+        result_df = pd.read_sql_query(text(paginated_query), con=self.engine, params=paged_params)
+        total_count = pd.read_sql_query(text(count_query), con=self.engine, params=params).iloc[0, 0]
 
         # Calculate the total number of pages
         total_pages = (total_count + page_size - 1) // page_size

@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import signal
+from io import StringIO
 from functools import partial
 from urllib.parse import urlencode
 
@@ -11,6 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 
 from zarrcade.filestore import Filestore
 from zarrcade.database import Database
@@ -174,10 +176,8 @@ def get_query_string(query_params, **new_params):
     return urlencode(dict(query_params) | new_params)
 
 
-
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
-
+async def download_csv(request: Request, search_string: str = ''):
+    
     # Did the user select any filters?
     filter_params = {}
     for s in app.settings.filters:
@@ -185,6 +185,46 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
         if param_value:
             filter_params[s.db_name] = param_value
 
+    result = app.db.find_metaimages(search_string, filter_params)
+    column_map = app.db.column_map
+    hide_columns = app.settings.details.hide_columns
+
+    headers = ['Image Id'] + [k for k in column_map.values() if k not in hide_columns]
+    data = []
+
+    for metaimage in result['images']:
+        row = {'Image Id': metaimage.id}
+        row.update({column_map.get(k, k): v for k, v in metaimage.metadata.items() if k not in hide_columns})
+        data.append(row)
+
+    df = pd.DataFrame(data, columns=headers)
+
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)  # Go to the start of the buffer
+    content = csv_buffer.getvalue()
+    logger.info(type(content))
+    logger.info(content)
+    response = Response(
+        content=content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=data.csv"}
+    )
+    return response
+
+
+@app.get("/")
+async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
+
+    if request.query_params.get('download'):
+        return await download_csv(request, search_string)
+
+    # Did the user select any filters?
+    filter_params = {}
+    for s in app.settings.filters:
+        param_value = request.query_params.get(s.db_name)
+        if param_value:
+            filter_params[s.db_name] = param_value
 
     result = app.db.find_metaimages(search_string, filter_params, page, page_size)
 

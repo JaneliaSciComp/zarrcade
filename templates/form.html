@@ -1,8 +1,8 @@
-<form id="filter-form">
+<form id="filter-form" method="get">
     
     <div class="search-box">
         <input type="text" name="search_string" value="{{ search_string }}"/>
-        <button type="submit">Search</button>
+        <button type="submit" name="search">Search</button>
         <button type="button" onclick="resetForm()">Reset</button>
     </div>
 
@@ -23,7 +23,6 @@
         </div>
     {% endfor %}
     </div>
-
 </form>
 
 <script>

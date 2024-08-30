@@ -14,6 +14,9 @@
 <div class="result-details">
     Showing {{ pagination.start_num }} - {{ pagination.end_num }} 
     of {{ pagination.total_count }} images matching selected criteria.
+
+    <a class="" href="?{{ get_query_string(download='true') }}">Download</a> metadata as CSV.
+
 </div>
 
 {% include "pagination.html" %}
