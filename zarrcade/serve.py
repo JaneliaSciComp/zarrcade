@@ -59,18 +59,18 @@ async def startup_event():
     logger.info(f"User-specified base URL is {app.base_url}")
 
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    app.data_url = str(app.settings.data_url)
-    logger.info(f"User-specified data URL is {app.data_url}")
-    app.fs = Filestore(app.data_url)
+    data_url = str(app.settings.data_url)
+    logger.info(f"User-specified data URL is {data_url}")
+    app.fs = Filestore(data_url)
 
     if app.fs.url:
         logger.info(f"Web-accessible url root is {app.fs.url}")
     else:
         logger.info("Filesystem is not web-accessible and will be proxied")
 
-    app.db_url = str(app.settings.db_url)
-    logger.info(f"User-specified database URL is {app.db_url}")
-    app.db = Database(app.db_url)
+    db_url = str(app.settings.db_url)
+    logger.info(f"User-specified database URL is {db_url}")
+    app.db = Database(db_url)
 
     for s in app.settings.filters:
         # Infer db name for the column if the user didn't provide it
@@ -162,7 +162,8 @@ def get_title(metaimage: MetadataImage):
     col_name = settings.items.title_column_name
     if col_name:
         try:
-            return metaimage.metadata[col_name]
+            title = metaimage.metadata[col_name]
+            if title: return title
         except KeyError:
             logger.warning(f"Missing column: {col_name}")
 
@@ -258,7 +259,6 @@ async def details(request: Request, image_id: str):
     return templates.TemplateResponse(
         request=request, name="details.html", context={
             "settings": app.settings,
-            "data_url": app.data_url,
             "metaimage": metaimage,
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
