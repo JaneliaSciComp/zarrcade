@@ -163,7 +163,8 @@ def get_title(metaimage: MetadataImage):
     if col_name:
         try:
             title = metaimage.metadata[col_name]
-            if title: return title
+            if title: 
+                return title
         except KeyError:
             logger.warning(f"Missing column: {col_name}")
 
