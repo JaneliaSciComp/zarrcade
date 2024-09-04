@@ -20,10 +20,6 @@ class FilterType(str, Enum):
     dropdown = 'dropdown'
 
 
-class Items(BaseModel):
-    title_column_name: str = None
-
-
 class Filter(BaseModel):
     db_name: str = None
     column_name: str
@@ -44,11 +40,10 @@ class Settings(BaseSettings):
     """
 
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
-    data_url: Union[AnyUrl | Path] = None
     title: str = "Zarrcade"
+    title_column_name: str = None
     db_url: AnyUrl = 'sqlite:///:memory:'
     filters: List[Filter] = []
-    items: Items = Items()
     details: Details = Details()
     debug_sql: bool = False
 
@@ -77,13 +72,13 @@ class Settings(BaseSettings):
             file_secret_settings,
         )
 
-    @field_validator('data_url')
-    def must_define(cls, v): # pylint: disable=no-self-argument
-        if not v:
-            raise ValueError('You must define a the data_url setting '+
-                '(or ZARRCADE_DATA_URL environment variable) '+
-                'pointing to a location where OME-Zarr images are found.')
-        return v
+    # @field_validator('data_url')
+    # def must_define(cls, v): # pylint: disable=no-self-argument
+    #     if not v:
+    #         raise ValueError('You must define a the data_url setting '+
+    #             '(or ZARRCADE_DATA_URL environment variable) '+
+    #             'pointing to a location where OME-Zarr images are found.')
+    #     return v
 
 
 @cache

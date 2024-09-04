@@ -27,6 +27,7 @@ def get_fs(url:str):
             web_url = f"https://{pu.netloc}.s3.amazonaws.com{pu.path}"
         else:
             web_url = None
+
     return fs, fsroot, web_url
 
 
@@ -36,12 +37,18 @@ class Filestore:
     """
 
     def __init__(self, data_url):
+        self.data_url = data_url
         self.fs, self.fsroot, self.url = get_fs(data_url)
         logger.info(f"Filesystem root is {self.fsroot}")
 
         # Ensure dir ends in a path separator
         self.fsroot_dir = os.path.join(self.fsroot, '')
         logger.trace(f"Filesystem dir is {self.fsroot_dir}")
+
+        if self.url:
+            logger.info(f"Web-accessible url root is {self.url}")
+        else:
+            logger.info("Filesystem is not web-accessible and will be proxied")
 
 
     def yield_images(self) -> Iterator[Image]:

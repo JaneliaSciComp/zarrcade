@@ -28,7 +28,7 @@
         {% if not metaimage.thumbnail_path %}
             <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
         {% else %}
-            <img src="{{ get_relative_path_url(metaimage.thumbnail_path) }}" alt="Image thumbnail" class="thumbnail" />
+            <img src="{{ get_relative_path_url(metaimage, metaimage.thumbnail_path) }}" alt="Image thumbnail" class="thumbnail" />
         {% endif %}
             <div class="overlay">
 
@@ -39,14 +39,14 @@
                             <span class="tooltiptext">View details</span>
                         </div>
                     </a>
-                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_image_data_url(image) }}')" class="icon" >
+                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(metaimage) }}')" class="icon" >
                         <div class="tooltip">
                             <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
                             <span class="tooltiptext">Copy image data URL</span>
                         </div>
                     </a>
                     {% for viewer in image.get_compatible_viewers() %}
-                    <a href="{{ get_viewer_url(image, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
+                    <a href="{{ get_viewer_url(metaimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
                         <div class="tooltip">
                             <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
                             <span class="tooltiptext">View in {{ viewer.name }}</span>

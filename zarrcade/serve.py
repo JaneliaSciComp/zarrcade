@@ -58,16 +58,6 @@ async def startup_event():
     app.base_url = str(app.settings.base_url)
     logger.info(f"User-specified base URL is {app.base_url}")
 
-    # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    data_url = str(app.settings.data_url)
-    logger.info(f"User-specified data URL is {data_url}")
-    app.fs = Filestore(data_url)
-
-    if app.fs.url:
-        logger.info(f"Web-accessible url root is {app.fs.url}")
-    else:
-        logger.info("Filesystem is not web-accessible and will be proxied")
-
     db_url = str(app.settings.db_url)
     logger.info(f"User-specified database URL is {db_url}")
     app.db = Database(db_url)
@@ -90,10 +80,7 @@ async def startup_event():
         logger.info(f"Configured {s.filter_type} filter for '{s.column_name}' ({len(s.values)} values)")
 
     count = app.db.get_images_count()
-    if count:
-        logger.info(f"Found {count} images in the database")
-    else:
-        app.db.persist_images(app.fs.fsroot, app.fs.yield_images)
+    logger.info(f"Found {count} images in the database")
 
     # Restore default SIGINT handler
     signal.signal(signal.SIGINT, orig_handler)
@@ -114,37 +101,43 @@ def get_proxy_url(relative_path):
     return os.path.join(app.base_url, "data", relative_path)
 
 
-def get_data_url(image: Image):
+def get_data_url(metaimage: MetadataImage):
     """ Return a web-accessible URL to the given image.
     """
-    if app.fs.url:
+    # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
+    fs = Filestore(metaimage.collection)
+    image = metaimage.image
+
+    if fs.url:
         # This filestore is already web-accessible
-        return os.path.join(app.fs.url, image.relative_path)
+        return os.path.join(fs.url, image.relative_path)
 
     # Proxy the data using the REST API
     return get_proxy_url(image.relative_path)
 
 
-def get_relative_path_url(relative_path: str):
+def get_relative_path_url(metaimage: MetadataImage, relative_path: str):
     """ Return a web-accessible URL to the given relative path.
     """
     if not relative_path:
         return None
 
-    if app.fs.url:
+    fs = Filestore(metaimage.collection)
+    if fs.url:
         # This filestore is already web-accessible
-        return os.path.join(app.fs.url, relative_path)
+        return os.path.join(fs.url, relative_path)
 
     # Proxy the data using the REST API
     return get_proxy_url(relative_path)
 
 
-def get_viewer_url(image: Image, viewer: Viewer):
+def get_viewer_url(metaimage: MetadataImage, viewer: Viewer):
     """ Returns a web-accessible URL that opens the given image 
         in the specified viewer.
     """
-    url = get_data_url(image)
+    url = get_data_url(metaimage)
     if viewer==Neuroglancer:
+        image = metaimage.image
         if image.axes_order == 'tczyx':
             # Generate a multichannel config on-the-fly
             url = os.path.join(app.base_url, "neuroglancer", image.relative_path)
@@ -159,11 +152,11 @@ def get_title(metaimage: MetadataImage):
     """ Returns the title to display underneath the given image.
     """
     settings = get_settings()
-    col_name = settings.items.title_column_name
+    col_name = settings.title_column_name
     if col_name:
         try:
             title = metaimage.metadata[col_name]
-            if title: 
+            if title:
                 return title
         except KeyError:
             logger.warning(f"Missing column: {col_name}")
@@ -179,7 +172,7 @@ def get_query_string(query_params, **new_params):
 
 
 async def download_csv(request: Request, search_string: str = ''):
-    
+
     # Did the user select any filters?
     filter_params = {}
     for s in app.settings.filters:
@@ -237,7 +230,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
             "metaimages": result['images'],
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
-            "get_image_data_url": get_data_url,
+            "get_data_url": get_data_url,
             "get_title": get_title,
             "get_query_string": partial(get_query_string, request.query_params),
             "search_string": search_string,
@@ -264,7 +257,7 @@ async def details(request: Request, image_id: str):
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_title": get_title,
-            "get_image_data_url": get_data_url
+            "get_data_url": get_data_url
         }
     )
 
@@ -303,7 +296,7 @@ async def neuroglancer_state(image_id: str):
         return Response(status_code=404)
 
     image = metaimage.image
-    url = get_data_url(image)
+    url = get_data_url(metaimage)
 
     if image.axes_order != 'tczyx':
         logger.error("Neuroglancer states can currently only be generated for TCZYX images")

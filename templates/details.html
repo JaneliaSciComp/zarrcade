@@ -5,15 +5,13 @@
 
 {% include "topbar.html" %}
 
-{% set image = metaimage.image %}
-
 <section>
     <h2>{{ get_title(metaimage) | safe }}</h2>
 </section>
 
 <section>
 Copy data link: 
-<a href="#" onclick="copyTextToClipboard(this, '{{ get_image_data_url(image) }}')" class="icon">
+<a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(metaimage) }}')" class="icon">
     <div class="tooltip">
         <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
         <span class="tooltiptext">Copy image data URL</span>
@@ -23,8 +21,8 @@ Copy data link:
 
 <section>
 Open with: 
-{% for viewer in image.get_compatible_viewers() %}
-    <a href="{{ get_viewer_url(image, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
+{% for viewer in metaimage.image.get_compatible_viewers() %}
+    <a href="{{ get_viewer_url(metaimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
         <div class="tooltip">
             <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
             <span class="tooltiptext">View in {{ viewer.name }}</span>
@@ -39,7 +37,7 @@ Open with:
     {% if not metaimage.aux_image_path %}
     <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="image" />
     {% else %}
-    <img src="{{ get_relative_path_url(metaimage.aux_image_path) }}" alt="Image thumbnail" class="image" />
+    <img src="{{ get_relative_path_url(metaimage, metaimage.aux_image_path) }}" alt="Image thumbnail" class="image" />
     {% endif %}
 
     <table class="attrs">

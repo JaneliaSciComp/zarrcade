@@ -1,15 +1,18 @@
 import json
 from dataclasses import asdict
 from typing import Iterator, Dict
-from collections import defaultdict 
+from collections import defaultdict
 
 import pandas as pd
 from loguru import logger
-from sqlalchemy import create_engine, text, MetaData, Table, Column, \
-    String, Integer, Index, ForeignKey, func, select, distinct
+from sqlalchemy import create_engine, text, func, select
+from sqlalchemy import String, Integer, Index, ForeignKey, MetaData, Table, Column, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
+from sqlalchemy.exc import OperationalError, IntegrityError
 
 from zarrcade.model import Image, MetadataImage
 from zarrcade.settings import get_settings
+
 
 if get_settings().debug_sql:
     import logging
@@ -41,6 +44,52 @@ def serialize_image_info(image: Image) -> str:
     return json.dumps(asdict(image))
 
 
+class Base(DeclarativeBase):
+    pass
+
+class DBCollection(Base):
+    __tablename__ = 'collections'
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    data_url = Column(String, nullable=False)
+
+
+class DBMetadataColumn(Base):
+    __tablename__ = 'metadata_columns'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    db_name = Column(String, nullable=False, unique=True)
+    original_name = Column(String, nullable=False)
+    
+
+class DBImageMetadata(Base):
+    __tablename__ = 'image_metadata'
+    id = Column(Integer, primary_key=True)
+    collection = Column(String, nullable=False)
+    path = Column(String, nullable=False)
+    aux_image_path = Column(String, nullable=True)
+    thumbnail_path = Column(String, nullable=True)
+    # images = relationship('DBImage', back_populates='image_metadata', uselist=True)
+
+    __table_args__ = (
+        UniqueConstraint('collection', 'path', name='uq_collection_path'),
+        Index('ix_collection_path', 'collection', 'path')
+    )
+
+class DBImage(Base):
+    __tablename__ = 'images'
+    id = Column(Integer, primary_key=True)
+    collection = Column(String, nullable=False)
+    path = Column(String, nullable=False)
+    group_path = Column(String, nullable=False)
+    image_path = Column(String, nullable=False, index=True)
+    image_info = Column(String, nullable=False)
+    image_metadata_id = Column(Integer, ForeignKey('image_metadata.id'), nullable=True, index=True)
+    # image_metadata = relationship('DBImageMetadata', back_populates='images')
+    
+    __table_args__ = (
+        Index('collection_path_idx', 'collection', 'path'),
+    )
+
 class Database:
     """ Database which contains cached information about discovered images,
         as well as optional metadata for supporting searchability.
@@ -50,70 +99,107 @@ class Database:
 
         # Initialize database
         self.engine = create_engine(db_url)
-        self.meta = MetaData()
-        self.meta.reflect(bind=self.engine)
-        self.metadata_table, self.images_table = self.create_tables()
 
-        # Read the attribute naming map from the database, if they exist
-        self.column_map = {}
-        self.reverse_column_map = {}
-        if 'metadata_columns' in self.meta.tables:
-            query = "SELECT * FROM metadata_columns"
-            result_df = pd.read_sql_query(query, con=self.engine)
-            for row in result_df.itertuples():
-                db_name = row.db_name
-                original_name = row.original_name
-                logger.trace(f"Registering column '{db_name}' for {original_name}")
-                self.column_map[db_name] = original_name
-                self.reverse_column_map[original_name] = db_name
+        # Create tables if necessary
+        Base.metadata.create_all(self.engine)
+
+        # Create a session maker
+        self.sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
+
+        self.load()
 
 
-    def create_tables(self):
-        """ Create tables if necessary and return the metadata and images tables 
-            as a tuple.
-        """
-        if 'metadata' in self.meta.tables:
-            metadata_table = self.meta.tables['metadata']
-        else:
-            logger.info("Creating empty metadata table")
-            metadata_table = Table('metadata', self.meta,
-                *self.get_metadata_columns(),
-                extend_existing=True
-            )
-            metadata_table.create(self.engine)
+    def load(self):
 
-        if 'images' in self.meta.tables:
-            images_table = self.meta.tables['images']
-        else:
-            logger.info("Creating empty images table")
-            images_table = Table('images', self.meta,
-                Column('id', Integer, primary_key=True),
-                Column('collection', String, nullable=False),
-                Column('zarr_path', String, nullable=False),
-                Column('group_path', String, nullable=False),
-                Column('image_path', String, nullable=False, index=True),
-                Column('image_info', String, nullable=False),
-                Column('metadata_id', Integer,
-                    ForeignKey('metadata.id', ondelete='SET NULL'),
-                    nullable=True, index=True),
-                Index('collection_zarr_path_idx', 'collection', 'zarr_path'),
-                extend_existing=True)
-            images_table.create(self.engine)
+        # Reflect current schema
+        self.metadata = MetaData()
+        self.metadata.reflect(bind=self.engine)
 
-        return metadata_table, images_table
+        # Read the collections from the database
+        with self.sessionmaker() as session:
+            result = session.query(DBCollection).all()
+            self.collection_map = {item.name: item.data_url for item in result}
+            self.reverse_collection_map = {item.data_url: item.name for item in result}
+
+        # Read the attribute naming map from the database
+        with self.sessionmaker() as session:
+            result = session.query(DBMetadataColumn).all()
+            self.column_map = {item.db_name: item.original_name for item in result}
+            self.reverse_column_map = {item.original_name: item.db_name for item in result}
 
 
-    def get_metadata_columns(self):
-        """ Returns the static columns which are always present 
-            in the metadata table.
-        """
-        return [
-            Column('id', Integer, primary_key=True),  # Autoincrements by default in many DBMS
-            Column('collection', String, nullable=False),
-            Column('zarr_path', String, nullable=False),
-            Column('aux_image_path', String, nullable=True),
-            Column('thumbnail_path', String, nullable=True),
-        ]
+    def add_collection(self, name, data_url):
+
+        if data_url in self.collection_map:
+            # Column already exists
+            return
+
+        with self.engine.connect() as connection:
+            # Insert into collections
+            collections = Table('collections', self.metadata, autoload_with=self.engine)
+            insert_stmt = collections.insert().values(name=name, data_url=data_url)
+            connection.execute(insert_stmt)
+            connection.commit()
+
+            # Update internal state
+            self.collection_map[name] = data_url
+            self.reverse_collection_map[data_url] = name
+            print(f"Added new collection: {name} (url={data_url})")
+
+
+    def add_metadata_column(self, db_name, original_name):
+
+        if db_name in self.column_map:
+            # Column already exists
+            return
+
+        with self.engine.connect() as connection:
+            try:
+                # Add column to the image_metadata table
+                alter_stmt = text(f'ALTER TABLE image_metadata ADD COLUMN {db_name} VARCHAR')
+                connection.execute(alter_stmt)
+
+                # Reload the table definitions and cached data
+                self.load()
+
+            except OperationalError as e:
+                # This can happen if the image_metadata table gets out of sync
+                # with the metadata_columns
+                logger.warning(f'Cannot alter table: {e}')
+
+            # Insert into metadata_columns
+            metadata_columns = Table('metadata_columns', self.metadata, autoload_with=self.engine)
+            insert_stmt = metadata_columns.insert().values(db_name=db_name, original_name=original_name)
+            connection.execute(insert_stmt)
+            connection.commit()
+
+            # Update internal state
+            self.column_map[db_name] = original_name
+            self.reverse_column_map[original_name] = db_name
+            print(f"Added new metadata column: {db_name} (original={original_name})")
+
+
+    def add_image_metadata(self, image_metadata_rows):
+
+        metadata_table = Table('image_metadata', self.metadata, autoload_with=self.engine)
+        with self.sessionmaker() as session:
+            try:
+                inserted = 0
+                for row in image_metadata_rows:
+                    new_metadata = metadata_table.insert().values(row)
+                    try:
+                        session.execute(new_metadata)
+                        inserted += 1
+                    except IntegrityError:
+                        pass
+
+                session.commit()
+                return inserted
+
+            except OperationalError as e:
+                print(f"Error inserting data: {e}")
+                session.rollback()
+
 
     def get_tuple_metadata(self, row):
         """ Get the image metadata out of a row and return it as a dictionary.
@@ -236,6 +322,7 @@ class Database:
                 metadata = self.get_tuple_metadata(row)
                 metaimage = MetadataImage(
                     id=zarr_path,
+                    collection=row.collection,
                     image=image,
                     aux_image_path=row.aux_image_path,
                     thumbnail_path=row.thumbnail_path,
@@ -314,6 +401,7 @@ class Database:
                 image = deserialize_image_info(image_info_json)
                 metaimage = MetadataImage(
                     id=image_path,
+                    collection=row.collection,
                     image=image,
                     aux_image_path=row.aux_image_path,
                     thumbnail_path=row.thumbnail_path,
@@ -324,7 +412,7 @@ class Database:
 
         start_num = ((page-1) * page_size) + 1
         end_num = start_num + page_size - 1
-        if end_num > total_count: 
+        if end_num > total_count:
             end_num = total_count
 
         return {

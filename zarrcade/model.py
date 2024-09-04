@@ -58,6 +58,7 @@ class MetadataImage:
         provided outside of the zarr container.
     """
     id: str
+    collection: str
     image: Image
     aux_image_path: str
     thumbnail_path: str
