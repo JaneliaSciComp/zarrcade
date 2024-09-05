@@ -42,19 +42,6 @@ def slugify(value, allow_unicode=False):
     value = re.sub(r"[^\w\s-]", "", value.lower())
     return re.sub(r"[-\s]+", "_", value).strip("-_")
 
-    
-def get_aux_path(filename, zarr_path):
-    zarr_name, _ = os.path.splitext(zarr_path)
-    aux_path = os.path.join(args.aux_path, zarr_name, filename)
-    if SKIP_FILE_CHECKS:
-        return aux_path
-    elif fs.exists(aux_path):
-        logger.trace(f"Found auxiliary file: {fs.fsroot}/{aux_path}")
-        return aux_path
-    else:
-        logger.trace(f"Missing auxiliary file: {fs.fsroot}/{aux_path}")
-        return None
-
         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -104,8 +91,8 @@ if __name__ == '__main__':
     # Set up the collection
     db.add_collection(collection, data_url)
 
-    # Read the metadata and set up the columns
     if metadata_path:
+        # Read the metadata and set up the columns
         logger.info(f"Reading {metadata_path}")
         df = pd.read_csv(metadata_path)
         path_column_name = df.columns[0]
@@ -123,7 +110,19 @@ if __name__ == '__main__':
 
         # Insert the metadata
         logger.info("Inserting metadata...")
-        
+                
+        def get_aux_path(filename, zarr_path):
+            zarr_name, _ = os.path.splitext(zarr_path)
+            aux_path = os.path.join(args.aux_path, zarr_name, filename)
+            if SKIP_FILE_CHECKS:
+                return aux_path
+            elif fs.exists(aux_path):
+                logger.trace(f"Found auxiliary file: {fs.fsroot}/{aux_path}")
+                return aux_path
+            else:
+                logger.trace(f"Missing auxiliary file: {fs.fsroot}/{aux_path}")
+                return None
+                
         new_objs = []
         for _, row in df.iterrows():
             path = row[path_column_name]
@@ -142,19 +141,8 @@ if __name__ == '__main__':
         inserted = db.add_image_metadata(new_objs)
         logger.info(f"Inserted {inserted} rows into the image_metadata table")
 
-
-    sys.exit(1)
-
-    # Now load the images
-    if 'images' not in meta.tables:
-
-        if 'images' in meta.tables:
-            logger.info("Dropping existing images table")
-            meta.tables.get('images').drop(engine)
-            meta.remove(Table('images', meta))
-
-        db.create_tables()
-        db.persist_images(fs.data_url, fs.yield_images,
-            only_with_metadata=args.only_with_metadata)
+    # Load the images
+    db.persist_images(collection, fs.yield_images,
+        only_with_metadata=args.only_with_metadata)
 
     logger.info("Database initialization complete.")

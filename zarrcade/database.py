@@ -5,10 +5,10 @@ from collections import defaultdict
 
 import pandas as pd
 from loguru import logger
-from sqlalchemy import create_engine, text, func, select
+from sqlalchemy import create_engine, text, func
 from sqlalchemy import String, Integer, Index, ForeignKey, MetaData, Table, Column, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
-from sqlalchemy.exc import OperationalError, IntegrityError
+from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 
 from zarrcade.model import Image, MetadataImage
 from zarrcade.settings import get_settings
@@ -68,7 +68,7 @@ class DBImageMetadata(Base):
     path = Column(String, nullable=False)
     aux_image_path = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
-    # images = relationship('DBImage', back_populates='image_metadata', uselist=True)
+    images = relationship('DBImage', back_populates='image_metadata', uselist=True)
 
     __table_args__ = (
         UniqueConstraint('collection', 'path', name='uq_collection_path'),
@@ -79,12 +79,12 @@ class DBImage(Base):
     __tablename__ = 'images'
     id = Column(Integer, primary_key=True)
     collection = Column(String, nullable=False)
+    image_path = Column(String, nullable=False, index=True)
     path = Column(String, nullable=False)
     group_path = Column(String, nullable=False)
-    image_path = Column(String, nullable=False, index=True)
     image_info = Column(String, nullable=False)
     image_metadata_id = Column(Integer, ForeignKey('image_metadata.id'), nullable=True, index=True)
-    # image_metadata = relationship('DBImageMetadata', back_populates='images')
+    image_metadata = relationship('DBImageMetadata', back_populates='images')
     
     __table_args__ = (
         Index('collection_path_idx', 'collection', 'path'),
@@ -128,15 +128,19 @@ class Database:
             self.reverse_column_map = {item.original_name: item.db_name for item in result}
 
 
+    def get_table(self, table_name):
+        return Table(table_name, self.metadata, autoload_with=self.engine)
+
+
     def add_collection(self, name, data_url):
 
-        if data_url in self.collection_map:
-            # Column already exists
+        if name in self.collection_map:
+            # Collection already exists
             return
 
         with self.engine.connect() as connection:
             # Insert into collections
-            collections = Table('collections', self.metadata, autoload_with=self.engine)
+            collections = self.get_table('collections')
             insert_stmt = collections.insert().values(name=name, data_url=data_url)
             connection.execute(insert_stmt)
             connection.commit()
@@ -168,7 +172,7 @@ class Database:
                 logger.warning(f'Cannot alter table: {e}')
 
             # Insert into metadata_columns
-            metadata_columns = Table('metadata_columns', self.metadata, autoload_with=self.engine)
+            metadata_columns = self.get_table('metadata_columns')
             insert_stmt = metadata_columns.insert().values(db_name=db_name, original_name=original_name)
             connection.execute(insert_stmt)
             connection.commit()
@@ -181,7 +185,7 @@ class Database:
 
     def add_image_metadata(self, image_metadata_rows):
 
-        metadata_table = Table('image_metadata', self.metadata, autoload_with=self.engine)
+        metadata_table = self.get_table('image_metadata')
         with self.sessionmaker() as session:
             try:
                 inserted = 0
@@ -214,25 +218,22 @@ class Database:
     def get_images_count(self):
         """ Get the total number of images in the database.
         """
-        with self.engine.begin() as conn:
-            # pylint: disable-next=not-callable
-            query = select(func.count()) \
-                .select_from(self.images_table) \
-                .where(self.images_table.c.image_info.isnot(None))
-            result = conn.execute(query)
-            return result.scalar()
+        with self.sessionmaker() as session:
+            # pylint: disable=not-callable
+            count = session.query(func.count(DBImage.id)) \
+                           .filter(DBImage.image_info.isnot(None)).scalar()
+            return count
 
 
-    def get_zarr_path_to_metadata_id_map(self, collection: str):
+    def get_path_to_metadata_id_map(self, collection: str):
         """ Build and return a dictionary which maps relative paths to 
             metadata ids. 
         """
-        metadata_ids = {}
-        query = "SELECT id,zarr_path FROM metadata WHERE collection = :collection"
-        result_df = pd.read_sql_query(query, con=self.engine, params={'collection': collection})
-        for row in result_df.itertuples():
-            metadata_ids[row.zarr_path] = row.id
-        return metadata_ids
+        with self.sessionmaker() as session:
+            query = session.query(DBImageMetadata.path, DBImageMetadata.id) \
+                        .filter(DBImageMetadata.collection == collection)
+            path_to_id = {path: _id for path, _id in query}
+            return path_to_id
 
 
     def persist_images(
@@ -244,9 +245,10 @@ class Database:
         """ Discover images in the filestore 
             and persist them in the given database.
         """
-        # Temporarily cache zarr_path -> metadata id lookup table
-        metadata_ids = self.get_zarr_path_to_metadata_id_map(collection)
-        logger.info(f"Loaded {len(metadata_ids)} metadata ids")
+        # Metadata id lookup table
+        metadata_ids = self.get_path_to_metadata_id_map(collection)
+        logger.info(f"Loaded {len(metadata_ids)} metadata ids for collection '{collection}'")
+
         # Walk the storage root and populate the database
         count = 0
 
@@ -275,36 +277,34 @@ class Database:
         """ Persist (update or insert) the given image.
         """
         image_path = image.relative_path
-        zarr_path = image.zarr_path
+        path = image.zarr_path
         group_path = image.group_path
         image_info = serialize_image_info(image)
 
-        with self.engine.begin() as conn:
-            stmt = select(self.images_table).\
-                where((self.images_table.c.collection == collection) & 
-                    (self.images_table.c.image_path == image_path))
-            existing_row = conn.execute(stmt).fetchone()
+        new_values = dict(
+            path=path,
+            group_path=group_path,
+            image_info=image_info,
+            image_metadata_id=metadata_id
+        )
 
-            if existing_row:
-                update_stmt = self.images_table.update(). \
-                    where((self.images_table.c.collection == collection) &
-                            (self.images_table.c.image_path == image_path)). \
-                    values(zarr_path=zarr_path,
-                            group_path=group_path,
-                            image_info=image_info,
-                            metadata_id=metadata_id)
-                conn.execute(update_stmt)
-                logger.info(f"Updated {image_path}")
-            else:
-                insert_stmt = self.images_table.insert() \
-                        .values(collection=collection,
-                                zarr_path=zarr_path,
-                                group_path=group_path,
-                                image_path=image_path,
-                                image_info=image_info,
-                                metadata_id=metadata_id)
-                conn.execute(insert_stmt)
-                logger.info(f"Inserted {image_path}")
+        with self.sessionmaker() as session:
+            try:
+                image = session.query(DBImage).filter_by(collection=collection, image_path=image_path).first()
+                if image:
+                    # Update existing record with new values
+                    for key, value in new_values.items():
+                        setattr(image, key, value)
+                    session.commit()
+                else:
+                    # Insert new record
+                    new_image = DBImage(collection=collection, image_path=image_path, **new_values)
+                    session.add(new_image)
+                    session.commit()
+
+            except SQLAlchemyError as e:
+                session.rollback()
+                print(f"An error occurred: {e}")
 
 
     def get_metaimage(self, image_path: str):
