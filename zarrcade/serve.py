@@ -15,8 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
 from zarrcade.filestore import Filestore
-from zarrcade.database import Database
-from zarrcade.model import Image, MetadataImage
+from zarrcade.database import Database, DBImage
+#from zarrcade.model import Image
 from zarrcade.viewers import Viewer, Neuroglancer
 from zarrcade.settings import get_settings, DataType, FilterType
 
@@ -82,6 +82,23 @@ async def startup_event():
     count = app.db.get_images_count()
     logger.info(f"Found {count} images in the database")
 
+    # metaimage = app.db.get_metaimage('easifish','NP33_R2_20240201/NP33_R2_2_5_SS86098_FMRFa_546_Proc_647_090x_Central_b.zarr/0')
+    # logger.info(metaimage.id)
+    # logger.info(metaimage.image_metadata.id)
+    # logger.info(getattr(metaimage.image_metadata, 'c_sample'))
+
+    # for metaimage in app.db.find_metaimages()['images']:
+    #     logger.info(metaimage.id)
+    #     if metaimage.image_metadata:
+    #         logger.info(f"-> {metaimage.image_metadata.id}")
+
+    # for k,v in app.db.get_unique_values('c_region').items():
+    #     logger.info(f"{k}: {v}")
+
+    # for k,v in app.db.get_unique_comma_delimited_values('c_probes').items():
+    #     logger.info(f"{k}: {v}")
+
+
     # Restore default SIGINT handler
     signal.signal(signal.SIGINT, orig_handler)
 
@@ -101,12 +118,12 @@ def get_proxy_url(relative_path):
     return os.path.join(app.base_url, "data", relative_path)
 
 
-def get_data_url(metaimage: MetadataImage):
+def get_data_url(dbimage: DBImage):
     """ Return a web-accessible URL to the given image.
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    fs = Filestore(metaimage.collection)
-    image = metaimage.image
+    fs = Filestore(dbimage.collection)
+    image = dbimage.get_image()
 
     if fs.url:
         # This filestore is already web-accessible
@@ -116,13 +133,13 @@ def get_data_url(metaimage: MetadataImage):
     return get_proxy_url(image.relative_path)
 
 
-def get_relative_path_url(metaimage: MetadataImage, relative_path: str):
+def get_relative_path_url(dbimage: DBImage, relative_path: str):
     """ Return a web-accessible URL to the given relative path.
     """
     if not relative_path:
         return None
 
-    fs = Filestore(metaimage.collection)
+    fs = Filestore(dbimage.collection)
     if fs.url:
         # This filestore is already web-accessible
         return os.path.join(fs.url, relative_path)
@@ -131,13 +148,13 @@ def get_relative_path_url(metaimage: MetadataImage, relative_path: str):
     return get_proxy_url(relative_path)
 
 
-def get_viewer_url(metaimage: MetadataImage, viewer: Viewer):
+def get_viewer_url(dbimage: DBImage, viewer: Viewer):
     """ Returns a web-accessible URL that opens the given image 
         in the specified viewer.
     """
-    url = get_data_url(metaimage)
+    url = get_data_url(dbimage)
     if viewer==Neuroglancer:
-        image = metaimage.image
+        image = dbimage.get_image()
         if image.axes_order == 'tczyx':
             # Generate a multichannel config on-the-fly
             url = os.path.join(app.base_url, "neuroglancer", image.relative_path)
@@ -148,14 +165,14 @@ def get_viewer_url(metaimage: MetadataImage, viewer: Viewer):
     return viewer.get_viewer_url(url)
 
 
-def get_title(metaimage: MetadataImage):
+def get_title(dbimage: DBImage):
     """ Returns the title to display underneath the given image.
     """
     settings = get_settings()
     col_name = settings.title_column_name
     if col_name:
         try:
-            title = metaimage.metadata[col_name]
+            title = dbimage.image_metadata.getattr[col_name]
             if title:
                 return title
         except KeyError:
@@ -227,7 +244,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
         request=request, name="index.html", context={
             "settings": app.settings,
             "base_url": app.base_url,
-            "metaimages": result['images'],
+            "dbimage": result['images'],
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_data_url": get_data_url,

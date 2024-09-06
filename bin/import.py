@@ -139,7 +139,6 @@ if __name__ == '__main__':
             new_objs.append(new_obj)
 
         inserted = db.add_image_metadata(new_objs)
-        logger.info(f"Inserted {inserted} rows into the image_metadata table")
 
     # Load the images
     db.persist_images(collection, fs.yield_images,

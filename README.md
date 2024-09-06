@@ -84,6 +84,12 @@ BASE_URL=https://myserver.mydomain.org:8000 DATA_URL=/path/to/data uvicorn zarrc
     --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
 ```
 
+## Testing
+
+```bash
+python -m pytest --cov=zarrcade --cov-report html -W ignore::DeprecationWarning
+```
+
 ## Docker build
 
 To rebuild the Docker container:

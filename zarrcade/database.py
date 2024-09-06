@@ -1,16 +1,17 @@
+""" Data model and API for accessing the data
+"""
 import json
 from dataclasses import asdict
-from typing import Iterator, Dict
+from typing import Iterator, Dict, List
 from collections import defaultdict
 
-import pandas as pd
 from loguru import logger
-from sqlalchemy import create_engine, text, func
+from sqlalchemy import create_engine, text, func, and_, or_
 from sqlalchemy import String, Integer, Index, ForeignKey, MetaData, Table, Column, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, joinedload
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 
-from zarrcade.model import Image, MetadataImage
+from zarrcade.model import Image
 from zarrcade.settings import get_settings
 
 
@@ -18,31 +19,6 @@ if get_settings().debug_sql:
     import logging
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
-
-IMAGES_AND_METADATA_SQL = text("""
-    SELECT m.*, i.image_path, i.image_info
-    FROM 
-        images i
-    LEFT JOIN 
-        metadata m
-    ON 
-        m.id = i.metadata_id
-""")
-
-LIMIT_AND_OFFSET = text("""
-    LIMIT :limit OFFSET :offset
-""")
-
-def deserialize_image_info(image_info: str) -> Image:
-    """ Deserialize the Image from a JSON string.
-    """
-    return Image(**json.loads(image_info))
-
-def serialize_image_info(image: Image) -> str:
-    """ Serialize the Image into a JSON string.
-    """
-    return json.dumps(asdict(image))
-
 
 class Base(DeclarativeBase):
     pass
@@ -59,7 +35,7 @@ class DBMetadataColumn(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     db_name = Column(String, nullable=False, unique=True)
     original_name = Column(String, nullable=False)
-    
+
 
 class DBImageMetadata(Base):
     __tablename__ = 'image_metadata'
@@ -90,12 +66,29 @@ class DBImage(Base):
         Index('collection_path_idx', 'collection', 'path'),
     )
 
+    def get_image(self) -> Image:
+        """ Deserialize the Image from a JSON string.
+        """
+        return Image(**json.loads(self.image_info))
+
+    def set_image(self, image: Image) -> str:
+        """ Serialize the Image into a JSON string.
+        """
+        self.image_info = json.dumps(asdict(image))
+
+
 class Database:
     """ Database which contains cached information about discovered images,
         as well as optional metadata for supporting searchability.
     """
 
-    def __init__(self, db_url: str):
+    def __init__(self, db_url: str):    
+        """ Initialize the database.
+
+            Args:
+                db_url (str): The URL of the database.
+        """
+        logger.trace(f"Initializing database at {db_url}")
 
         # Initialize database
         self.engine = create_engine(db_url)
@@ -106,10 +99,13 @@ class Database:
         # Create a session maker
         self.sessionmaker = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
 
+        # Load the current state of the database
         self.load()
 
 
     def load(self):
+        """ Load the current state of the database.
+        """
 
         # Reflect current schema
         self.metadata = MetaData()
@@ -127,13 +123,31 @@ class Database:
             self.column_map = {item.db_name: item.original_name for item in result}
             self.reverse_column_map = {item.original_name: item.db_name for item in result}
 
+        # Add dynamic metadata columns
+        for column in self.column_map:
+            if not hasattr(DBImageMetadata, column):
+                setattr(DBImageMetadata, column, Column(column, String))
 
-    def get_table(self, table_name):
+
+    def get_table(self, table_name: str) -> Table:
+        """ Get a SQLAlchemy table from the database.
+
+            Args:
+                table_name (str): The name of the table.
+
+            Returns:
+                Table: The table loaded from the database.
+        """
         return Table(table_name, self.metadata, autoload_with=self.engine)
 
 
     def add_collection(self, name, data_url):
+        """ Add a new collection to the database.
 
+            Args:
+                name (str): The name of the collection.
+                data_url (str): The URL of the collection.
+        """
         if name in self.collection_map:
             # Collection already exists
             return
@@ -148,13 +162,19 @@ class Database:
             # Update internal state
             self.collection_map[name] = data_url
             self.reverse_collection_map[data_url] = name
-            print(f"Added new collection: {name} (url={data_url})")
+            logger.info(f"Added new collection: {name} (url={data_url})")
 
 
     def add_metadata_column(self, db_name, original_name):
+        """ Add a new dynamic metadata column to the database.
 
+            Args:
+                db_name (str): The name of the new column in the database.
+                original_name (str): The original name (i.e. label) of the column.
+        """
         if db_name in self.column_map:
             # Column already exists
+            logger.info(f"Column {db_name} already exists")
             return
 
         with self.engine.connect() as connection:
@@ -163,9 +183,6 @@ class Database:
                 alter_stmt = text(f'ALTER TABLE image_metadata ADD COLUMN {db_name} VARCHAR')
                 connection.execute(alter_stmt)
 
-                # Reload the table definitions and cached data
-                self.load()
-
             except OperationalError as e:
                 # This can happen if the image_metadata table gets out of sync
                 # with the metadata_columns
@@ -173,18 +190,28 @@ class Database:
 
             # Insert into metadata_columns
             metadata_columns = self.get_table('metadata_columns')
-            insert_stmt = metadata_columns.insert().values(db_name=db_name, original_name=original_name)
+            insert_stmt = metadata_columns.insert().values(
+                db_name=db_name, 
+                original_name=original_name
+            )
             connection.execute(insert_stmt)
             connection.commit()
 
             # Update internal state
             self.column_map[db_name] = original_name
             self.reverse_column_map[original_name] = db_name
-            print(f"Added new metadata column: {db_name} (original={original_name})")
+            self.load()
+            logger.info(f"Added new metadata column: {db_name} (original={original_name})")
+            
 
+    def add_image_metadata(self, image_metadata_rows: List[Dict[str,str]]) -> int:
+        """ Add metadata for a set of images.
 
-    def add_image_metadata(self, image_metadata_rows):
-
+            Args:
+                image_metadata_rows (list): A list of dictionaries, 
+                    where each dictionary represents a row of metadata 
+                    for an image.
+        """
         metadata_table = self.get_table('image_metadata')
         with self.sessionmaker() as session:
             try:
@@ -205,18 +232,11 @@ class Database:
                 session.rollback()
 
 
-    def get_tuple_metadata(self, row):
-        """ Get the image metadata out of a row and return it as a dictionary.
-        """
-        metadata = {}
-        for k, v in self.column_map.items():
-            if k in row._fields:
-                metadata[v] = getattr(row, k)
-        return metadata
-
-
-    def get_images_count(self):
+    def get_images_count(self) -> int:
         """ Get the total number of images in the database.
+
+            Returns:
+                int: The number of images in the database.
         """
         with self.sessionmaker() as session:
             # pylint: disable=not-callable
@@ -225,15 +245,71 @@ class Database:
             return count
 
 
-    def get_path_to_metadata_id_map(self, collection: str):
+    def get_path_to_metadata_id_map(self, collection: str) -> Dict[str,int]:
         """ Build and return a dictionary which maps relative paths to 
             metadata ids. 
+
+            Args:
+                collection (str): The name of the collection.
+
+            Returns:
+                dict: A dictionary which maps relative paths to metadata ids.
         """
         with self.sessionmaker() as session:
             query = session.query(DBImageMetadata.path, DBImageMetadata.id) \
                         .filter(DBImageMetadata.collection == collection)
             path_to_id = {path: _id for path, _id in query}
+            logger.info(path_to_id)
             return path_to_id
+
+
+    def persist_image(self, collection: str, image: Image, metadata_id: int) -> bool:
+        """ Save (update or insert) the given image to the database.
+
+            Args:
+                collection (str): The name of the collection.
+                image (Image): The image to persist.
+                metadata_id (int): The metadata id for the image.
+
+            Returns:
+                bool: True if the image was inserted, False if it was updated.
+        """
+        image_path = image.relative_path
+        path = image.zarr_path
+        group_path = image.group_path
+
+        with self.sessionmaker() as session:
+            try:
+                db_image = session.query(DBImage) \
+                                  .filter_by(collection=collection, image_path=image_path) \
+                                  .first()
+                if db_image:
+                    # Update existing record with new values
+                    db_image.path = path
+                    db_image.group_path = group_path
+                    db_image.image_metadata_id = metadata_id
+                    db_image.set_image(image)
+                    session.commit()
+                    logger.debug(f"Updated image {image_path}")
+                    return False
+                else:
+                    # Insert new record
+                    new_image = DBImage(
+                        collection = collection,
+                        image_path = image_path,
+                        path = path,
+                        group_path = group_path,
+                        image_metadata_id = metadata_id
+                    )
+                    new_image.set_image(image)
+                    session.add(new_image)
+                    session.commit()
+                    logger.debug(f"Inserted image {image_path}")
+                    return True
+
+            except SQLAlchemyError as e:
+                session.rollback()
+                print(f"An error occurred: {e}")
 
 
     def persist_images(
@@ -241,13 +317,20 @@ class Database:
             collection: str,
             image_generator: Iterator[Image],
             only_with_metadata: bool = False
-        ):
-        """ Discover images in the filestore 
-            and persist them in the given database.
+        ) -> int:
+        """ Save images from the provided generator to the given collection.
+
+            Args:
+                collection (str): The name of the collection.
+                image_generator (Iterator[Image]): An iterator which returns images.
+                only_with_metadata (bool): If True, only images with metadata will be persisted.
+            
+            Returns:
+                int: The number of images persisted.
         """
         # Metadata id lookup table
         metadata_ids = self.get_path_to_metadata_id_map(collection)
-        logger.info(f"Loaded {len(metadata_ids)} metadata ids for collection '{collection}'")
+        logger.debug(f"Loaded {len(metadata_ids)} metadata ids for collection '{collection}'")
 
         # Walk the storage root and populate the database
         count = 0
@@ -270,70 +353,29 @@ class Database:
             else:
                 logger.debug(f"Skipping image missing metadata: {image.zarr_path}")
 
-        logger.info(f"Persisted {count} images to the database")
+        logger.debug(f"Persisted {count} images to the database")
+        return count
 
 
-    def persist_image(self, collection: str, image: Image, metadata_id: int):
-        """ Persist (update or insert) the given image.
+    def get_metaimage(self, collection: str, image_path: str):
+        """ Returns the image and metadata for the given image path 
+            within a collection.
+
+            Args:
+                collection (str): The name of the collection.
+                image_path (str): The relative path to the image.
+
+            Returns:
+                DBImage: The metadata image, or None if it doesn't exist.
         """
-        image_path = image.relative_path
-        path = image.zarr_path
-        group_path = image.group_path
-        image_info = serialize_image_info(image)
-
-        new_values = dict(
-            path=path,
-            group_path=group_path,
-            image_info=image_info,
-            image_metadata_id=metadata_id
-        )
-
         with self.sessionmaker() as session:
-            try:
-                image = session.query(DBImage).filter_by(collection=collection, image_path=image_path).first()
-                if image:
-                    # Update existing record with new values
-                    for key, value in new_values.items():
-                        setattr(image, key, value)
-                    session.commit()
-                else:
-                    # Insert new record
-                    new_image = DBImage(collection=collection, image_path=image_path, **new_values)
-                    session.add(new_image)
-                    session.commit()
-
-            except SQLAlchemyError as e:
-                session.rollback()
-                print(f"An error occurred: {e}")
-
-
-    def get_metaimage(self, image_path: str):
-        """ Returns the MetadataImage for the given image path, or 
-            None if it doesn't exist.
-        """
-        full_query = text(f"{IMAGES_AND_METADATA_SQL} WHERE i.image_path = :image_path")
-        result_df = pd.read_sql_query(full_query, con=self.engine, params={'image_path': image_path})
-        for row in result_df.itertuples():
-            zarr_path = row.zarr_path
-            image_info_json = row.image_info
-            logger.info(f"Found {row.image_path} in image collection")
-            if image_info_json:
-                image = deserialize_image_info(image_info_json)
-                metadata = self.get_tuple_metadata(row)
-                metaimage = MetadataImage(
-                    id=zarr_path,
-                    collection=row.collection,
-                    image=image,
-                    aux_image_path=row.aux_image_path,
-                    thumbnail_path=row.thumbnail_path,
-                    metadata=metadata)
-                return metaimage
-            else:
-                logger.info(f"Image has no image_info: {image_path}")
-                return None
-     
-        logger.info(f"Image not found: {image_path}")
-        return None
+            result = (
+                session.query(DBImage)
+                .filter(and_(DBImage.collection == collection, DBImage.image_path == image_path))
+                .options(joinedload(DBImage.image_metadata))
+                .one_or_none()
+            )
+            return result
 
 
     def find_metaimages(self,
@@ -343,123 +385,129 @@ class Database:
             page_size: int = 0
         ):
         """
-        Find meta images with optional search and pagination.
+        Find images and metadata with optional search parameters and pagination.
 
         Args:
             search_string (str): The string to search for within image metadata.
+            filter_params (Dict[str,str]): Additional filters to apply to the query.
             page (int): The one-indexed page number.
             page_size (int): The number of results per page. 0 means infinite.
 
         Returns:
-            tuple: A tuple containing:
-                - List of `MetadataImage` objects.
-                - Total number of pages.
+            dict: A dictionary containing the images and pagination information.
         """
         if page < 0:
             raise ValueError("Page index must be a non-negative integer.")
 
-        offset = (page - 1) * page_size
+        with self.sessionmaker() as session:
+            query = session.query(DBImage).outerjoin(DBImage.image_metadata)
 
-        # Base queries for fetching data and counting total records
-        base_query = IMAGES_AND_METADATA_SQL
-        where_clause = ''
-        params = {}
+            # Apply search filters using LIKE
+            search_filters = []
 
-        if search_string:
-            search_columns = [f"m.{k}" for k in self.column_map] + ['i.zarr_path']
-            or_clauses = " OR ".join([f"{col} LIKE :search_string" for col in search_columns])
-            where_clause += f" AND ({or_clauses})"
-            params['search_string'] = f'%{search_string}%'
+            if search_string:
+                search_filters.append(DBImage.path.ilike(f'%{search_string}%'))
+                for column in self.column_map:
+                    search_filters.append(getattr(DBImageMetadata, column).ilike(f'%{search_string}%'))
 
-        for db_name in filter_params:
-            where_clause += f" AND (m.{db_name} LIKE :{db_name}_value)"
-            params[f"{db_name}_value"] = f'%{filter_params[db_name]}%'
+            if search_filters:
+                query = query.filter(or_(*search_filters))
 
-        paginated_query = f"{base_query} WHERE 1=1{where_clause}"
-        count_query = f"SELECT COUNT(*) FROM ({base_query} WHERE 1=1{where_clause})"
+            # Apply additional filters
+            if filter_params:
+                for column, value in filter_params.items():
+                    if value:
+                        query = query.filter(getattr(DBImageMetadata, column).ilike(f'%{value}%'))
 
-        paged_params = params
-        if page_size>0:
-            paged_params = params | {
-                'limit': page_size,
-                'offset': offset
+            # Count total results
+            total_count = query.count()
+            
+            # Apply pagination
+            offset = (page - 1) * page_size
+            if page_size>0:
+                query = query.limit(page_size).offset(offset)
+
+            images = (
+                query
+                .options(joinedload(DBImage.image_metadata))
+                .all()
+            )
+
+            # Calculate pagination attrs
+            start_num = offset + 1
+            
+            end_num = start_num + page_size - 1
+            if end_num > total_count:
+                end_num = total_count
+            
+            total_pages = 1
+            if page_size>0:
+                total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+
+            return {
+                'images': images,
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': total_pages,
+                    'total_count': total_count,
+                    'start_num': start_num,
+                    'end_num': end_num
+                }
             }
-            paginated_query += " LIMIT :limit OFFSET :offset"
-
-        result_df = pd.read_sql_query(text(paginated_query), con=self.engine, params=paged_params)
-        total_count = pd.read_sql_query(text(count_query), con=self.engine, params=params).iloc[0, 0]
-
-        # Calculate the total number of pages
-        total_pages = (total_count + page_size - 1) // page_size
-
-        images = []
-        for row in result_df.itertuples():
-            metadata = self.get_tuple_metadata(row)
-            image_info_json = row.image_info
-            image_path = row.image_path
-            if image_info_json:
-                image = deserialize_image_info(image_info_json)
-                metaimage = MetadataImage(
-                    id=image_path,
-                    collection=row.collection,
-                    image=image,
-                    aux_image_path=row.aux_image_path,
-                    thumbnail_path=row.thumbnail_path,
-                    metadata=metadata
-                )
-                logger.trace(f"matched {metaimage.id}")
-                images.append(metaimage)
-
-        start_num = ((page-1) * page_size) + 1
-        end_num = start_num + page_size - 1
-        if end_num > total_count:
-            end_num = total_count
-
-        return {
-            'images': images,
-            'pagination': {
-                'page': page,
-                'page_size': page_size,
-                'total_pages': total_pages,
-                'total_count': total_count,
-                'start_num': start_num,
-                'end_num': end_num
-            }
-        }
 
 
-    def get_unique_values(self, column_name):
-        """ Return a map of unique values to their counts 
-            from the given column.
+    def get_unique_values(self, column_name) -> Dict[str,int]:
+        """ Return a map of unique values to their counts from a column.
+
+            Args:
+                column_name (str): The name of the column to get unique values from.
+
+            Returns:
+                dict: A dictionary of unique values to their counts.
         """
-        query = text((f"SELECT m.{column_name}, COUNT(*) "
-                      f"FROM ({IMAGES_AND_METADATA_SQL}) m "
-                      f"GROUP BY m.{column_name}"))
+        with self.sessionmaker() as session:
+            column = getattr(DBImageMetadata, column_name)
+            results = (
+                # pylint: disable=not-callable
+                session.query(column, func.count().label('count'))
+                .group_by(column)
+                .all()
+            )
+            # Build the result dictionary
+            value_counts = {str(row[0]): int(row[1]) for row in results}
 
-        with self.engine.connect() as connection:
-            result = connection.execute(query)
-            value_counts = {row[0]: row[1] for row in result.fetchall()}
+            # Handle None values
             if None in value_counts:
                 logger.debug(f"Ignoring {value_counts[None]} items with no value for {column_name}")
                 del value_counts[None]
+
             return value_counts
 
 
-    def get_unique_comma_delimited_values(self, column_name):
-        """ Return a map of unique values to their counts
-            from a column whose values are comma delimited lists. 
-        """
-        query = text((f"SELECT m.{column_name} "
-                      f"FROM ({IMAGES_AND_METADATA_SQL}) m"))
+    def get_unique_comma_delimited_values(self, column_name) -> Dict[str,int]:
+        """ Return a map of unique values to their counts from a column whose values 
+            are comma delimited lists.
 
-        with self.engine.connect() as connection:
-            result = connection.execute(query)
+            Args:
+                column_name (str): The name of the column to get unique values from.
+
+            Returns:
+                dict: A dictionary of unique values to their counts.
+        """
+        with self.sessionmaker() as session:
+            column = getattr(DBImageMetadata, column_name)
+
+            # Retrieve all comma-delimited values from the column
+            values = session.query(column).all()
+
+            # Count unique items from comma-delimited lists
             value_counts = defaultdict(int)
-            for row in result.fetchall():
-                value = row[0]
+            for value_tuple in values:
+                value = value_tuple[0]
                 if value:
                     for item in value.split(','):
                         item = item.strip()
                         value_counts[item] += 1
 
-        return dict(value_counts)
+            return dict(value_counts)

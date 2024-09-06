@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 from .viewers import viewers
@@ -29,19 +29,19 @@ class Axis:
 class Image:
     """ Information about an OME-Zarr image.
     """
-    relative_path: str
-    zarr_path: str
-    group_path: str
-    num_channels: int
-    num_timepoints: int
-    dimensions: str
-    dimensions_voxels: str
-    chunk_size: str
-    voxel_sizes: str
-    compression: str
-    channels: list[Channel]
-    axes: dict[str, Axis]
-    axes_order: str
+    relative_path: str = None
+    zarr_path: str = None
+    group_path: str = None
+    num_channels: int = None
+    num_timepoints: int = None
+    dimensions: str = None
+    dimensions_voxels: str = None
+    chunk_size: str = None
+    voxel_sizes: str = None
+    compression: str = None
+    channels: list[Channel] = field(default_factory=lambda: [])
+    axes: dict[str, Axis] = field(default_factory=lambda: [])
+    axes_order: str = None
 
     def get_compatible_viewers(self):
         for viewer in viewers:

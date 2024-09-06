@@ -1,8 +1,10 @@
+import sys
 from pathlib import Path
 from enum import Enum
 from typing import Union, List, Set, Dict
 from functools import cache
 
+from loguru import logger
 from pydantic import AnyUrl, HttpUrl, BaseModel, field_validator
 from pydantic_settings import (
     BaseSettings,
@@ -45,6 +47,7 @@ class Settings(BaseSettings):
     db_url: AnyUrl = 'sqlite:///:memory:'
     filters: List[Filter] = []
     details: Details = Details()
+    log_level: str = 'INFO'
     debug_sql: bool = False
 
     model_config = SettingsConfigDict(
@@ -83,4 +86,12 @@ class Settings(BaseSettings):
 
 @cache
 def get_settings():
-    return Settings()
+
+    # Read settings
+    settings = Settings()
+    
+    # Configure logging
+    logger.remove()
+    logger.add(sys.stdout, level=settings.log_level)
+    
+    return settings
