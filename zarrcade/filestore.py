@@ -1,4 +1,5 @@
 import os
+from functools import cache
 from typing import Iterator
 from urllib.parse import urlparse
 
@@ -29,6 +30,7 @@ def get_fs(url:str):
             web_url = None
 
     return fs, fsroot, web_url
+
 
 
 class Filestore:
@@ -118,3 +120,8 @@ class Filestore:
                 'type': child['type']
             })
         return children
+    
+
+@cache
+def get_filestore(data_url):
+    return Filestore(data_url)

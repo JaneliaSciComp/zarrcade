@@ -14,9 +14,8 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 
-from zarrcade.filestore import Filestore
+from zarrcade.filestore import get_filestore
 from zarrcade.database import Database, DBImage
-#from zarrcade.model import Image
 from zarrcade.viewers import Viewer, Neuroglancer
 from zarrcade.settings import get_settings, DataType, FilterType
 
@@ -105,7 +104,7 @@ def get_data_url(dbimage: DBImage):
     """ Return a web-accessible URL to the given image.
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    fs = Filestore(dbimage.collection)
+    fs = get_filestore(dbimage.collection)
     image = dbimage.get_image()
 
     if fs.url:
@@ -122,7 +121,7 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
     if not relative_path:
         return None
 
-    fs = Filestore(dbimage.collection)
+    fs = get_filestore(dbimage.collection)
     if fs.url:
         # This filestore is already web-accessible
         return os.path.join(fs.url, relative_path)
@@ -217,7 +216,7 @@ async def download_csv(request: Request, search_string: str = ''):
 
 
 @app.get("/")
-async def index(request: Request, search_string: str = '', page: int = 1, page_size: int=50):
+async def index(request: Request, collection: str = '', search_string: str = '', page: int = 1, page_size: int=50):
 
     if request.query_params.get('download'):
         return await download_csv(request, search_string)
@@ -251,17 +250,18 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
     )
 
 
-@app.get("/details/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
-async def details(request: Request, image_id: str):
+@app.get("/details/{collection}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
+async def details(request: Request, collection: str, image_id: str):
 
-    metaimage = app.db.get_metaimage(image_id)
-    if not metaimage:
+    dbimage = app.db.get_metaimage(collection, image_id)
+    if not dbimage:
         return Response(status_code=404)
 
     return templates.TemplateResponse(
         request=request, name="details.html", context={
             "settings": app.settings,
-            "metaimage": metaimage,
+            "dbimage": dbimage,
+            "column_map": app.db.column_map,
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_title": get_title,

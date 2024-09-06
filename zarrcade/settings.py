@@ -5,7 +5,7 @@ from typing import Union, List, Set, Dict
 from functools import cache
 
 from loguru import logger
-from pydantic import AnyUrl, HttpUrl, BaseModel, field_validator
+from pydantic import AnyUrl, HttpUrl, BaseModel
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -74,14 +74,6 @@ class Settings(BaseSettings):
             YamlConfigSettingsSource(settings_cls),
             file_secret_settings,
         )
-
-    # @field_validator('data_url')
-    # def must_define(cls, v): # pylint: disable=no-self-argument
-    #     if not v:
-    #         raise ValueError('You must define a the data_url setting '+
-    #             '(or ZARRCADE_DATA_URL environment variable) '+
-    #             'pointing to a location where OME-Zarr images are found.')
-    #     return v
 
 
 @cache

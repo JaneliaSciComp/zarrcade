@@ -17,7 +17,7 @@ from functools import partial
 from loguru import logger
 from sqlalchemy import Column, String, Table
 
-from zarrcade import Database, Filestore
+from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
 
 SKIP_FILE_CHECKS = True
@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
     # Connect to the filestore
     logger.info(f"Data URL is {data_url}")
-    fs = Filestore(data_url)
+    fs = get_filestore(data_url)
 
     # Connect to the database
     settings = get_settings()

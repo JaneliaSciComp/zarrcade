@@ -23,7 +23,7 @@ from skimage import exposure
 import numpy as np
 from PIL import Image
 
-from zarrcade import Database, Filestore
+from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
 from zarrcade.images import yield_ome_zarrs
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
             dashboard_port=dashboard_port,
             address=address)
 
-    fs = Filestore(data_path)
+    fs = get_filestore(data_path)
 
     total = 0
     generated = 0
