@@ -259,7 +259,6 @@ class Database:
             query = session.query(DBImageMetadata.path, DBImageMetadata.id) \
                         .filter(DBImageMetadata.collection == collection)
             path_to_id = {path: _id for path, _id in query}
-            logger.info(path_to_id)
             return path_to_id
 
 
@@ -400,7 +399,7 @@ class Database:
             raise ValueError("Page index must be a non-negative integer.")
 
         with self.sessionmaker() as session:
-            query = session.query(DBImage).outerjoin(DBImage.image_metadata)
+            query = session.query(DBImage)
 
             # Apply search filters using LIKE
             search_filters = []
@@ -444,6 +443,7 @@ class Database:
             if page_size>0:
                 total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
 
+            logger.debug(f"Found {total_count} images, returning {len(images)}")
             return {
                 'images': images,
                 'pagination': {

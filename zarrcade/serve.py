@@ -82,23 +82,6 @@ async def startup_event():
     count = app.db.get_images_count()
     logger.info(f"Found {count} images in the database")
 
-    # metaimage = app.db.get_metaimage('easifish','NP33_R2_20240201/NP33_R2_2_5_SS86098_FMRFa_546_Proc_647_090x_Central_b.zarr/0')
-    # logger.info(metaimage.id)
-    # logger.info(metaimage.image_metadata.id)
-    # logger.info(getattr(metaimage.image_metadata, 'c_sample'))
-
-    # for metaimage in app.db.find_metaimages()['images']:
-    #     logger.info(metaimage.id)
-    #     if metaimage.image_metadata:
-    #         logger.info(f"-> {metaimage.image_metadata.id}")
-
-    # for k,v in app.db.get_unique_values('c_region').items():
-    #     logger.info(f"{k}: {v}")
-
-    # for k,v in app.db.get_unique_comma_delimited_values('c_probes').items():
-    #     logger.info(f"{k}: {v}")
-
-
     # Restore default SIGINT handler
     signal.signal(signal.SIGINT, orig_handler)
 
@@ -169,16 +152,18 @@ def get_title(dbimage: DBImage):
     """ Returns the title to display underneath the given image.
     """
     settings = get_settings()
-    col_name = settings.title_column_name
+    col_name = app.db.reverse_column_map[settings.title_column_name]
     if col_name:
         try:
-            title = dbimage.image_metadata.getattr[col_name]
-            if title:
-                return title
+            metadata = dbimage.image_metadata
+            if metadata:
+                title = getattr(metadata, col_name)
+                if title:
+                    return title
         except KeyError:
             logger.warning(f"Missing column: {col_name}")
 
-    return metaimage.image.relative_path
+    return dbimage.get_image().relative_path
 
 
 def get_query_string(query_params, **new_params):
@@ -201,12 +186,20 @@ async def download_csv(request: Request, search_string: str = ''):
     column_map = app.db.column_map
     hide_columns = app.settings.details.hide_columns
 
-    headers = ['Image Id'] + [k for k in column_map.values() if k not in hide_columns]
+    headers = ['Id','Collection','Name'] + [k for k in column_map.values() if k not in hide_columns]
     data = []
 
-    for metaimage in result['images']:
-        row = {'Image Id': metaimage.id}
-        row.update({column_map.get(k, k): v for k, v in metaimage.metadata.items() if k not in hide_columns})
+    for dbimage in result['images']:
+        row = {
+            'Id': dbimage.id,
+            'Collection': dbimage.collection,
+            'Name': dbimage.path
+        }
+        metadata = dbimage.image_metadata
+        if metadata:
+            for column in metadata.__table__.columns:
+                if column.name not in hide_columns and column.name in app.db.column_map:
+                    row[app.db.column_map[column.name]] = getattr(metadata, column.name)
         data.append(row)
 
     df = pd.DataFrame(data, columns=headers)
@@ -215,8 +208,6 @@ async def download_csv(request: Request, search_string: str = ''):
     df.to_csv(csv_buffer, index=False)
     csv_buffer.seek(0)  # Go to the start of the buffer
     content = csv_buffer.getvalue()
-    logger.info(type(content))
-    logger.info(content)
     response = Response(
         content=content,
         media_type="text/csv",
@@ -244,7 +235,7 @@ async def index(request: Request, search_string: str = '', page: int = 1, page_s
         request=request, name="index.html", context={
             "settings": app.settings,
             "base_url": app.base_url,
-            "dbimage": result['images'],
+            "dbimages": result['images'],
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_data_url": get_data_url,
