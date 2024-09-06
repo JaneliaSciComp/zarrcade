@@ -5,68 +5,16 @@
 {% include "topbar.html" %}
 
 <section>
-{% include "form.html" %}
-</section>
+{% if collection_map %}
 
-<section>
-{% if dbimages %}
-
-<div class="result-details">
-    Showing {{ pagination.start_num }} - {{ pagination.end_num }} 
-    of {{ pagination.total_count }} images matching selected criteria.
-
-    <a class="" href="?{{ get_query_string(download='true') }}">Download</a> metadata as CSV.
-
-</div>
-
-{% include "pagination.html" %}
-<div>
-    <div class="gallery">
-    {% for dbimage in dbimages %}
-        <div class="container">
-        {% if not dbimage.metadata.thumbnail_path %}
-            <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
-        {% else %}
-            <img src="{{ get_relative_path_url(dbimage, dbimage.metadata.thumbnail_path) }}" alt="Image thumbnail" class="thumbnail" />
-        {% endif %}
-            <div class="overlay">
-
-                <div class="buttons">
-                    <a href="{{ url_for('details', collection=dbimage.collection, image_id=dbimage.image_path) }}" class="icon">
-                        <div class="tooltip">
-                            <img src="{{ url_for('static', path='view-details-64.png') }}" alt="View details icon">
-                            <span class="tooltiptext">View details</span>
-                        </div>
-                    </a>
-                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon" >
-                        <div class="tooltip">
-                            <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
-                            <span class="tooltiptext">Copy image data URL</span>
-                        </div>
-                    </a>
-                    {% for viewer in dbimage.get_image().get_compatible_viewers() %}
-                    <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
-                        <div class="tooltip">
-                            <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
-                            <span class="tooltiptext">View in {{ viewer.name }}</span>
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
-
-            </div>
-            <div class="label">{{ get_title(dbimage) | safe }}</div>
-        </div>
+<ul>
+    {% for collection in collection_map.keys() %}
+    <li>
+        <a href="{{ url_for('collection', collection=collection) }}">{{ collection }}</a>
+    </li>
     {% endfor %}
-    </div>
-</div>
-{% else %}
-<div class="result-details">
-    No images found for the specified criteria. 
-    <a href="#" onclick="resetForm()">Click here</a> to show all images.
-</div>
+</ul>
 {% endif %}
-</section>
 
 </body>
 </html>

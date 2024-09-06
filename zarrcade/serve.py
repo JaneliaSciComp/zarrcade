@@ -93,11 +93,11 @@ async def shutdown_event():
     app.db.engine.dispose()
 
 
-def get_proxy_url(relative_path):
+def get_proxy_url(collection: str, relative_path: str):
     """ Returns a web-accessible URL to the file store 
         which is proxied by this server.
     """
-    return os.path.join(app.base_url, "data", relative_path)
+    return os.path.join(app.base_url, "data", collection,relative_path)
 
 
 def get_data_url(dbimage: DBImage):
@@ -112,7 +112,7 @@ def get_data_url(dbimage: DBImage):
         return os.path.join(fs.url, image.relative_path)
 
     # Proxy the data using the REST API
-    return get_proxy_url(image.relative_path)
+    return get_proxy_url(dbimage.collection, image.relative_path)
 
 
 def get_relative_path_url(dbimage: DBImage, relative_path: str):
@@ -127,7 +127,7 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
         return os.path.join(fs.url, relative_path)
 
     # Proxy the data using the REST API
-    return get_proxy_url(relative_path)
+    return get_proxy_url(dbimage.collection, relative_path)
 
 
 def get_viewer_url(dbimage: DBImage, viewer: Viewer):
@@ -216,7 +216,17 @@ async def download_csv(request: Request, search_string: str = ''):
 
 
 @app.get("/")
-async def index(request: Request, collection: str = '', search_string: str = '', page: int = 1, page_size: int=50):
+async def index(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="index.html", context={
+            "settings": app.settings,
+            "collection_map": app.db.collection_map
+        }
+    )
+
+
+@app.get("/{collection}")
+async def collection(request: Request, collection: str = '', search_string: str = '', page: int = 1, page_size: int=50):
 
     if request.query_params.get('download'):
         return await download_csv(request, search_string)
@@ -231,9 +241,8 @@ async def index(request: Request, collection: str = '', search_string: str = '',
     result = app.db.find_metaimages(search_string, filter_params, page, page_size)
 
     return templates.TemplateResponse(
-        request=request, name="index.html", context={
+        request=request, name="collection.html", context={
             "settings": app.settings,
-            "base_url": app.base_url,
             "dbimages": result['images'],
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
@@ -265,15 +274,18 @@ async def details(request: Request, collection: str, image_id: str):
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_title": get_title,
-            "get_data_url": get_data_url
+            "get_data_url": get_data_url,
+            "getattr": getattr
         }
     )
 
 
-@app.head("/data/{relative_path:path}")
-async def data_proxy_head(relative_path: str):
+@app.head("/data/{collection}/{relative_path:path}")
+async def data_proxy_head(relative_path: str, collection: str):
     try:
-        size = app.fs.get_size(relative_path)
+        data_url = app.db.collection_map[collection]
+        fs = get_filestore(data_url)
+        size = fs.get_size(relative_path)
         headers = {}
         headers["Content-Type"] = "binary/octet-stream"
         headers["Content-Length"] = str(size)
@@ -282,10 +294,12 @@ async def data_proxy_head(relative_path: str):
         return Response(status_code=404)
 
 
-@app.get("/data/{relative_path:path}")
-async def data_proxy_get(relative_path: str):
+@app.get("/data/{collection}/{relative_path:path}")
+async def data_proxy_get(relative_path: str, collection: str):
     try:
-        with app.fs.open(relative_path) as f:
+        data_url = app.db.collection_map[collection]
+        fs = get_filestore(data_url)
+        with fs.open(relative_path) as f:
             data = f.read()
             headers = {}
             headers["Content-Type"] = "binary/octet-stream"
@@ -294,17 +308,16 @@ async def data_proxy_get(relative_path: str):
         return Response(status_code=404)
 
 
-@app.get("/neuroglancer/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
+@app.get("/neuroglancer/{collection}/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
 async def neuroglancer_state(image_id: str):
 
     from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
-
-    metaimage = app.db.get_metaimage(image_id)
-    if not metaimage:
+    dbimage = app.db.get_metaimage(collection, image_id)
+    if not dbimage:
         return Response(status_code=404)
 
-    image = metaimage.image
-    url = get_data_url(metaimage)
+    image = dbimage.get_image()
+    url = get_data_url(dbimage)
 
     if image.axes_order != 'tczyx':
         logger.error("Neuroglancer states can currently only be generated for TCZYX images")
