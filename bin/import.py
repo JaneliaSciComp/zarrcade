@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     data_url = args.data_url
-    collection = slugify(args.collection_name)
+    collection_name = slugify(args.collection_name)
     metadata_path = args.metadata_path
 
     # Connect to the filestore
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         logger.info(f"  {key}: {value}")
 
     # Set up the collection
-    db.add_collection(collection, data_url)
+    db.add_collection(collection_name, args.collection_label, data_url)
 
     if metadata_path:
         # Read the metadata and set up the columns
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         for _, row in df.iterrows():
             path = row[path_column_name]
             new_obj = {db.reverse_column_map[c]: row[c] for c in columns}
-            new_obj['collection'] = collection
+            new_obj['collection'] = collection_name
             new_obj['path'] = path
 
             if args.aux_image_name:
@@ -143,7 +143,7 @@ if __name__ == '__main__':
         inserted = db.add_image_metadata(new_objs)
 
     # Load the images
-    db.persist_images(collection, fs.yield_images,
+    db.persist_images(collection_name, fs.yield_images,
         only_with_metadata=args.only_with_metadata)
 
     logger.info("Database initialization complete.")

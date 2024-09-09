@@ -236,8 +236,8 @@ class Database:
                 return inserted
 
             except OperationalError as e:
-                print(f"Error inserting data: {e}")
                 session.rollback()
+                logger.exception(f"Error inserting data: {e}")
 
 
     def get_images_count(self) -> int:
@@ -316,7 +316,7 @@ class Database:
 
             except SQLAlchemyError as e:
                 session.rollback()
-                print(f"An error occurred: {e}")
+                logger.exception(f"An error occurred: {e}")
 
 
     def persist_images(
