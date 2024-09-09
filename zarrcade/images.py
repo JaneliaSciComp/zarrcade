@@ -1,8 +1,9 @@
 import os
 import re
 import itertools
-import zarr
 
+import zarr
+import pathspec 
 from loguru import logger
 
 from zarrcade.model import Image, Channel, Axis
@@ -175,8 +176,17 @@ def yield_images(absolute_path, relative_path):
 
 def _yield_ome_zarrs(fs, path, depth=0, maxdepth=10):
     if depth>maxdepth: return
-    logger.trace("ls "+path)
+
+    for exclude_path in fs.exclude_paths:
+        spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, exclude_path.splitlines())
+        if spec.match_file(path):
+            logger.trace(f"excluding {path}")
+            return
+
+    logger.trace(f"listing {path}")
     children = fs.get_children(path)
+    
+    logger.debug(f"Searching for zarrs in {path}")    
     child_names = [c['name'] for c in children]
     if '.zattrs' in child_names:
         yield path
@@ -186,14 +196,6 @@ def _yield_ome_zarrs(fs, path, depth=0, maxdepth=10):
     else:
         # drill down until we find a zarr
         for d in [c['path'] for c in children if c['type']=='directory']:
-
-            # TODO: temporary hack for dealing with CellMap data
-            dname = os.path.basename(d)
-            if dname.endswith('.n5') or dname.endswith('align') or dname.startswith('mag') \
-                    or dname in ['raw', 'align', 'dat', 'tiles_destreak', 'mag1']:
-                continue
-
-            logger.trace(f"Searching for zarrs in {d}")
             for zarr_path in _yield_ome_zarrs(fs, d, depth+1):
                 yield zarr_path
 

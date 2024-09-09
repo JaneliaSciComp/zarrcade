@@ -104,7 +104,7 @@ def get_data_url(dbimage: DBImage):
     """ Return a web-accessible URL to the given image.
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    fs = get_filestore(dbimage.collection)
+    fs = get_filestore(dbimage.collection, app.settings.exclude_paths)
     image = dbimage.get_image()
 
     if fs.url:
@@ -121,7 +121,7 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
     if not relative_path:
         return None
 
-    fs = get_filestore(dbimage.collection)
+    fs = get_filestore(dbimage.collection, app.settings.exclude_paths)
     if fs.url:
         # This filestore is already web-accessible
         return os.path.join(fs.url, relative_path)
@@ -172,7 +172,7 @@ def get_query_string(query_params, **new_params):
     return urlencode(dict(query_params) | new_params)
 
 
-async def download_csv(request: Request, search_string: str = ''):
+async def download_csv(request: Request, collection: str, search_string: str = ''):
 
     # Did the user select any filters?
     filter_params = {}
@@ -181,7 +181,7 @@ async def download_csv(request: Request, search_string: str = ''):
         if param_value:
             filter_params[s.db_name] = param_value
 
-    result = app.db.find_metaimages(search_string, filter_params)
+    result = app.db.find_metaimages(collection, search_string, filter_params)
     column_map = app.db.column_map
     hide_columns = app.settings.details.hide_columns
 
@@ -229,7 +229,7 @@ async def index(request: Request):
 async def collection(request: Request, collection: str = '', search_string: str = '', page: int = 1, page_size: int=50):
 
     if request.query_params.get('download'):
-        return await download_csv(request, search_string)
+        return await download_csv(request, collection, search_string)
 
     # Did the user select any filters?
     filter_params = {}
@@ -238,7 +238,7 @@ async def collection(request: Request, collection: str = '', search_string: str 
         if param_value:
             filter_params[s.db_name] = param_value
 
-    result = app.db.find_metaimages(search_string, filter_params, page, page_size)
+    result = app.db.find_metaimages(collection, search_string, filter_params, page, page_size)
 
     return templates.TemplateResponse(
         request=request, name="collection.html", context={
@@ -284,7 +284,7 @@ async def details(request: Request, collection: str, image_id: str):
 async def data_proxy_head(relative_path: str, collection: str):
     try:
         data_url = app.db.collection_map[collection].data_url
-        fs = get_filestore(data_url)
+        fs = get_filestore(data_url, app.settings.exclude_paths)
         size = fs.get_size(relative_path)
         headers = {}
         headers["Content-Type"] = "binary/octet-stream"
@@ -298,7 +298,7 @@ async def data_proxy_head(relative_path: str, collection: str):
 async def data_proxy_get(relative_path: str, collection: str):
     try:
         data_url = app.db.collection_map[collection].data_url
-        fs = get_filestore(data_url)
+        fs = get_filestore(data_url, app.settings.exclude_paths)
         with fs.open(relative_path) as f:
             data = f.read()
             headers = {}

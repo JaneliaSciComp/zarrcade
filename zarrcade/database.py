@@ -350,7 +350,7 @@ class Database:
                 metadata_id = None
 
             if metadata_id or not only_with_metadata:
-                logger.debug(f"Persisting {image}")
+                logger.trace(f"Persisting {image}")
                 self.persist_image(
                             collection=collection,
                             image=image,

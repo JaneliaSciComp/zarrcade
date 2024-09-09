@@ -20,6 +20,7 @@ from sqlalchemy import Column, String, Table
 from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
 
+EXCLUDE_PATHS = ['.zarrcade']
 SKIP_FILE_CHECKS = True
 
 # Adapted from https://github.com/django/django/blob/main/django/utils/text.py
@@ -64,23 +65,31 @@ if __name__ == '__main__':
         help='Filename of the thumbnail image for the gallery view.')
     parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
         help="Only load images for which metadata is provided?")
+    parser.add_argument('--exclude', type=str, nargs='+', default=[],  # This allows multiple --exclude arguments
+        help='Paths to exclude (can be used multiple times). This supports git-style wildcards like **/*.zarrcade'
+    )
 
     args = parser.parse_args()
     data_url = args.data_url
     collection_name = slugify(args.collection_name)
     metadata_path = args.metadata_path
 
-    # Connect to the filestore
-    logger.info(f"Data URL is {data_url}")
-    fs = get_filestore(data_url)
-
     # Connect to the database
     settings = get_settings()
+
+    # Connect to the filestore
+    logger.info(f"Data URL is {data_url}")
+    exclude_paths = EXCLUDE_PATHS + settings.exclude_paths + args.exclude
+    fs = get_filestore(data_url, exclude_paths=tuple(exclude_paths))
+
+    # Connect to the database
     db_url = str(settings.db_url)
     logger.info(f"Database URL is {db_url}")
     db = Database(db_url)
     engine = db.engine
     meta = db.metadata
+
+
 
     logger.info("Current collections:")
     for key, value in db.collection_map.items():

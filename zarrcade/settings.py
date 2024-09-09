@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     details: Details = Details()
     log_level: str = 'INFO'
     debug_sql: bool = False
+    exclude_paths: List[str] = []
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

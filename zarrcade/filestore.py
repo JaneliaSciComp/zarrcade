@@ -1,6 +1,6 @@
 import os
 from functools import cache
-from typing import Iterator
+from typing import Iterator, Tuple, Sequence
 from urllib.parse import urlparse
 
 import fsspec
@@ -32,14 +32,18 @@ def get_fs(url:str):
     return fs, fsroot, web_url
 
 
-
 class Filestore:
     """ Filestore containing images. May be on a local filesystem, 
         or any remote filesystem supported by FSSPEC.
     """
 
-    def __init__(self, data_url):
+    def __init__(self, data_url: str, exclude_paths: Tuple[str]):
+        
         self.data_url = data_url
+
+        self.exclude_paths = exclude_paths
+        logger.debug(f"Excluding paths: {self.exclude_paths}")
+
         self.fs, self.fsroot, self.url = get_fs(data_url)
         logger.info(f"Filesystem root is {self.fsroot}")
 
@@ -47,10 +51,10 @@ class Filestore:
         self.fsroot_dir = os.path.join(self.fsroot, '')
         logger.trace(f"Filesystem dir is {self.fsroot_dir}")
 
-        if self.url:
-            logger.info(f"Web-accessible url root is {self.url}")
-        else:
-            logger.info("Filesystem is not web-accessible and will be proxied")
+        # if self.url:
+        #     logger.info(f"Web-accessible url root is {self.url}")
+        # else:
+        #     logger.info("Filesystem is not web-accessible and will be proxied")
 
 
     def yield_images(self) -> Iterator[Image]:
@@ -120,8 +124,10 @@ class Filestore:
                 'type': child['type']
             })
         return children
-    
 
 @cache
-def get_filestore(data_url):
-    return Filestore(data_url)
+def _get_filestore(data_url, exclude_paths: Tuple[str]):
+    return Filestore(data_url, exclude_paths)
+
+def get_filestore(data_url, exclude_paths: Sequence[str]):
+    return _get_filestore(data_url, tuple(exclude_paths))
