@@ -364,7 +364,7 @@ class Database:
         return count
 
 
-    def get_metaimage(self, collection: str, image_path: str):
+    def get_dbimage(self, collection: str, image_path: str):
         """ Returns the image and metadata for the given image path 
             within a collection.
 
@@ -385,7 +385,7 @@ class Database:
             return query.one_or_none()
 
 
-    def find_metaimages(self,
+    def get_dbimages(self,
             collection: str = None,
             search_string: str = '',
             filter_params: Dict[str,str] = None,

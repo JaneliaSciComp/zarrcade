@@ -181,7 +181,7 @@ async def download_csv(request: Request, collection: str, search_string: str = '
         if param_value:
             filter_params[s.db_name] = param_value
 
-    result = app.db.find_metaimages(collection, search_string, filter_params)
+    result = app.db.get_dbimages(collection, search_string, filter_params)
     column_map = app.db.column_map
     hide_columns = app.settings.details.hide_columns
 
@@ -238,7 +238,7 @@ async def collection(request: Request, collection: str = '', search_string: str 
         if param_value:
             filter_params[s.db_name] = param_value
 
-    result = app.db.find_metaimages(collection, search_string, filter_params, page, page_size)
+    result = app.db.get_dbimages(collection, search_string, filter_params, page, page_size)
 
     return templates.TemplateResponse(
         request=request, name="collection.html", context={
@@ -262,7 +262,7 @@ async def collection(request: Request, collection: str = '', search_string: str 
 @app.get("/details/{collection}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
 async def details(request: Request, collection: str, image_id: str):
 
-    dbimage = app.db.get_metaimage(collection, image_id)
+    dbimage = app.db.get_dbimage(collection, image_id)
     if not dbimage:
         return Response(status_code=404)
 
@@ -312,7 +312,7 @@ async def data_proxy_get(relative_path: str, collection: str):
 async def neuroglancer_state(collection: str, image_id: str):
 
     from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
-    dbimage = app.db.get_metaimage(collection, image_id)
+    dbimage = app.db.get_dbimage(collection, image_id)
     if not dbimage:
         return Response(status_code=404)
 

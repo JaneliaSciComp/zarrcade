@@ -113,12 +113,12 @@ def test_persist_images(db):
         assert set(image.image_path for image in all_images) == {"test_path1", "test_path2", "test_path3", "test_path4"}
 
 
-def test_get_metaimage(db):
+def test_get_dbimage(db):
     db.add_collection("test_collection", "Test Collection", "test_url")
     image = Image(relative_path="test_image.png", zarr_path="/test/path", group_path="/test")
     db.persist_image("test_collection", image, None)
 
-    metaimage = db.get_metaimage("test_collection", "test_image.png")
+    metaimage = db.get_dbimage("test_collection", "test_image.png")
     assert metaimage is not None
     assert metaimage.image_path == "test_image.png"
 
@@ -142,11 +142,11 @@ def test_metadata_search(db):
             image = Image(relative_path=im.path, zarr_path=im.path+"/0", group_path="/0")
             db.persist_image("test_collection", image, im.id)
     
-    result = db.find_metaimages("test_collection", filter_params={"color": "red"})
+    result = db.get_dbimages("test_collection", filter_params={"color": "red"})
     assert len(result['images']) == 2
     assert set(image.path for image in result['images']) == {"test_path1/0", "test_path3/0"}
 
-    result = db.find_metaimages("test_collection", search_string="blue")
+    result = db.get_dbimages("test_collection", search_string="blue")
     assert len(result['images']) == 1
     assert result['images'][0].path == "test_path2/0"
 
@@ -161,12 +161,12 @@ def test_pagination(db):
     count = db.get_images_count()
     assert count == num_images
 
-    result = db.find_metaimages("test_collection", page=1, page_size=10)
+    result = db.get_dbimages("test_collection", page=1, page_size=10)
     print(result)
     assert len(result['images']) == 10
     assert result['pagination']['total_count'] == num_images
 
-    result = db.find_metaimages("test_collection", page=1, page_size=3)
+    result = db.get_dbimages("test_collection", page=1, page_size=3)
     assert len(result['images']) == 3
     assert result['pagination']['page'] == 1
     assert result['pagination']['page_size'] == 3
@@ -175,7 +175,7 @@ def test_pagination(db):
     assert result['pagination']['start_num'] == 1
     assert result['pagination']['end_num'] == 3
 
-    result = db.find_metaimages("test_collection", page=4, page_size=3)
+    result = db.get_dbimages("test_collection", page=4, page_size=3)
     assert len(result['images']) == 1
     assert result['pagination']['page'] == 4
     assert result['pagination']['page_size'] == 3
