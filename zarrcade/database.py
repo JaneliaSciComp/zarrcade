@@ -8,7 +8,7 @@ from collections import defaultdict
 from loguru import logger
 from sqlalchemy import create_engine, text, func, and_, or_
 from sqlalchemy import String, Integer, Index, ForeignKey, MetaData, Table, Column, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, joinedload
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, joinedload, contains_eager
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 
 from zarrcade.model import Image
@@ -27,6 +27,7 @@ class DBCollection(Base):
     __tablename__ = 'collections'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
+    label = Column(String)
     data_url = Column(String, nullable=False)
 
 
@@ -114,8 +115,8 @@ class Database:
         # Read the collections from the database
         with self.sessionmaker() as session:
             result = session.query(DBCollection).all()
-            self.collection_map = {item.name: item.data_url for item in result}
-            self.reverse_collection_map = {item.data_url: item.name for item in result}
+            self.collection_map = {item.name: item for item in result}
+            self.reverse_collection_map = {item.data_url: item for item in result}
 
         # Read the attribute naming map from the database
         with self.sessionmaker() as session:
@@ -141,28 +142,35 @@ class Database:
         return Table(table_name, self.metadata, autoload_with=self.engine)
 
 
-    def add_collection(self, name, data_url):
+    def add_collection(self, name, label, data_url):
         """ Add a new collection to the database.
 
             Args:
                 name (str): The name of the collection.
+                label (str): The human-readable label for the collection.
                 data_url (str): The URL of the collection.
         """
         if name in self.collection_map:
             # Collection already exists
             return
 
+        if label is None:
+            label = name
         with self.engine.connect() as connection:
             # Insert into collections
             collections = self.get_table('collections')
-            insert_stmt = collections.insert().values(name=name, data_url=data_url)
+            insert_stmt = collections.insert().values(name=name, label=label, data_url=data_url)
             connection.execute(insert_stmt)
             connection.commit()
 
+            # Fetch the inserted collection
+            select_stmt = collections.select().where(collections.c.name == name)
+            result = connection.execute(select_stmt).fetchone()
+
             # Update internal state
-            self.collection_map[name] = data_url
-            self.reverse_collection_map[data_url] = name
-            logger.info(f"Added new collection: {name} (url={data_url})")
+            self.collection_map[name] = result
+            self.reverse_collection_map[data_url] = result
+            logger.info(f"Added new collection: {name} (label={label}, url={data_url})")
 
 
     def add_metadata_column(self, db_name, original_name):
@@ -368,16 +376,17 @@ class Database:
                 DBImage: The metadata image, or None if it doesn't exist.
         """
         with self.sessionmaker() as session:
-            result = (
+            query = (
                 session.query(DBImage)
+                .outerjoin(DBImageMetadata)
+                .options(contains_eager(DBImage.image_metadata))
                 .filter(and_(DBImage.collection == collection, DBImage.image_path == image_path))
-                .options(joinedload(DBImage.image_metadata))
-                .one_or_none()
             )
-            return result
+            return query.one_or_none()
 
 
     def find_metaimages(self,
+            collection: str = None,
             search_string: str = '',
             filter_params: Dict[str,str] = None,
             page: int = 0,
@@ -387,6 +396,7 @@ class Database:
         Find images and metadata with optional search parameters and pagination.
 
         Args:
+            collection (str): The name of the collection to filter by.
             search_string (str): The string to search for within image metadata.
             filter_params (Dict[str,str]): Additional filters to apply to the query.
             page (int): The one-indexed page number.
@@ -397,9 +407,16 @@ class Database:
         """
         if page < 0:
             raise ValueError("Page index must be a non-negative integer.")
-
         with self.sessionmaker() as session:
-            query = session.query(DBImage)
+            query = (session
+                     .query(DBImage)
+                     .outerjoin(DBImageMetadata)
+                     .options(contains_eager(DBImage.image_metadata))
+                     )
+
+            # Apply collection filter
+            if collection:
+                query = query.filter(DBImage.collection == collection)
 
             # Apply search filters using LIKE
             search_filters = []
@@ -423,14 +440,10 @@ class Database:
             
             # Apply pagination
             offset = (page - 1) * page_size
-            if page_size>0:
+            if page_size > 0:
                 query = query.limit(page_size).offset(offset)
 
-            images = (
-                query
-                .options(joinedload(DBImage.image_metadata))
-                .all()
-            )
+            images = query.all()
 
             # Calculate pagination attrs
             start_num = offset + 1
@@ -440,7 +453,7 @@ class Database:
                 end_num = total_count
             
             total_pages = 1
-            if page_size>0:
+            if page_size > 0:
                 total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
 
             logger.debug(f"Found {total_count} images, returning {len(images)}")

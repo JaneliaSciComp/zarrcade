@@ -1,7 +1,5 @@
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from zarrcade.database import Database, DBCollection, DBMetadataColumn, DBImageMetadata, DBImage
+from zarrcade.database import Database, DBImageMetadata, DBImage
 from zarrcade.model import Image
 
 
@@ -24,9 +22,10 @@ def test_database_initialization(db):
 
 
 def test_add_collection(db):
-    db.add_collection("test_collection", "/path/to/data")
+    db.add_collection("test_collection", "Test Collection", "/path/to/data")
     assert "test_collection" in db.collection_map
-    assert db.collection_map["test_collection"] == "/path/to/data"
+    assert db.collection_map["test_collection"].data_url == "/path/to/data"
+    assert db.collection_map["test_collection"].label == "Test Collection"
 
 
 def test_add_metadata_column(db):
@@ -37,7 +36,7 @@ def test_add_metadata_column(db):
 
 def test_add_image_metadata(db):
     db.add_metadata_column("color", "Color")
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     metadata_rows = [
         {"collection": "test_collection", "path": "test_path", "color": "red"}
     ]
@@ -64,7 +63,7 @@ def test_add_image_metadata(db):
 
 
 def test_persist_image(db):
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     image = Image(relative_path="test_image.png", zarr_path="/test/path", group_path="/test")
     db.persist_image("test_collection", image, None)
 
@@ -76,7 +75,7 @@ def test_persist_image(db):
         assert db_image.get_image() == image
 
 def test_persist_images(db):
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     db.add_metadata_column("color", "Color")
     
     metadata_rows = [
@@ -115,7 +114,7 @@ def test_persist_images(db):
 
 
 def test_get_metaimage(db):
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     image = Image(relative_path="test_image.png", zarr_path="/test/path", group_path="/test")
     db.persist_image("test_collection", image, None)
 
@@ -125,7 +124,7 @@ def test_get_metaimage(db):
 
 
 def test_metadata_search(db):
-    db.add_collection("test_collection2", "test_url2")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     db.add_metadata_column("color", "Color")
     
     metadata_rows = [
@@ -143,17 +142,17 @@ def test_metadata_search(db):
             image = Image(relative_path=im.path, zarr_path=im.path+"/0", group_path="/0")
             db.persist_image("test_collection", image, im.id)
     
-    result = db.find_metaimages(filter_params={"color": "red"})
+    result = db.find_metaimages("test_collection", filter_params={"color": "red"})
     assert len(result['images']) == 2
     assert set(image.path for image in result['images']) == {"test_path1/0", "test_path3/0"}
 
-    result = db.find_metaimages(search_string="blue")
+    result = db.find_metaimages("test_collection", search_string="blue")
     assert len(result['images']) == 1
     assert result['images'][0].path == "test_path2/0"
 
 
 def test_pagination(db):
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     num_images = 10
     for i in range(1, num_images+1):
         image = Image(relative_path=f"test_image{i}.png", zarr_path=f"/test/path{i}", group_path="/test")
@@ -162,11 +161,12 @@ def test_pagination(db):
     count = db.get_images_count()
     assert count == num_images
 
-    result = db.find_metaimages(page=1, page_size=10)
+    result = db.find_metaimages("test_collection", page=1, page_size=10)
+    print(result)
     assert len(result['images']) == 10
     assert result['pagination']['total_count'] == num_images
 
-    result = db.find_metaimages(page=1, page_size=3)
+    result = db.find_metaimages("test_collection", page=1, page_size=3)
     assert len(result['images']) == 3
     assert result['pagination']['page'] == 1
     assert result['pagination']['page_size'] == 3
@@ -175,7 +175,7 @@ def test_pagination(db):
     assert result['pagination']['start_num'] == 1
     assert result['pagination']['end_num'] == 3
 
-    result = db.find_metaimages(page=4, page_size=3)
+    result = db.find_metaimages("test_collection", page=4, page_size=3)
     assert len(result['images']) == 1
     assert result['pagination']['page'] == 4
     assert result['pagination']['page_size'] == 3
@@ -183,10 +183,10 @@ def test_pagination(db):
     assert result['pagination']['total_count'] == num_images
     assert result['pagination']['start_num'] == 10
     assert result['pagination']['end_num'] == 10
-
+    
 
 def test_get_unique_values(db):
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     db.add_metadata_column("test_column", "Test Column")
     
     metadata_rows = [
@@ -201,7 +201,7 @@ def test_get_unique_values(db):
 
 
 def test_get_unique_comma_delimited_values(db):
-    db.add_collection("test_collection", "test_url")
+    db.add_collection("test_collection", "Test Collection", "test_url")
     db.add_metadata_column("test_column", "Test Column")
     
     metadata_rows = [

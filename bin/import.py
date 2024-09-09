@@ -52,6 +52,8 @@ if __name__ == '__main__':
         help='URL to the root of the data.', required=True)
     parser.add_argument('-c', '--collection-name', type=str,
         help='Short name for collection. Only lowercase letters and underscores allowed.', required=True)
+    parser.add_argument('-n', '--collection-label', type=str,
+        help='Label for collection.', required=False)
     parser.add_argument('-m', '--metadata-path', type=str,
         help='Path to the CSV file containing additional metadata')
     parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
@@ -82,7 +84,7 @@ if __name__ == '__main__':
 
     logger.info("Current collections:")
     for key, value in db.collection_map.items():
-        logger.info(f"  {key}: {value}")
+        logger.info(f"  {key}: {value.data_url}")
 
     logger.info("Current metadata columns:")
     for key, value in db.column_map.items():

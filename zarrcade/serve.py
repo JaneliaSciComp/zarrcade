@@ -139,7 +139,7 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
         image = dbimage.get_image()
         if image.axes_order == 'tczyx':
             # Generate a multichannel config on-the-fly
-            url = os.path.join(app.base_url, "neuroglancer", image.relative_path)
+            url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, image.relative_path)
         else:
             # Prepend format for Neuroglancer to understand
             url = 'zarr://' + url
@@ -283,7 +283,7 @@ async def details(request: Request, collection: str, image_id: str):
 @app.head("/data/{collection}/{relative_path:path}")
 async def data_proxy_head(relative_path: str, collection: str):
     try:
-        data_url = app.db.collection_map[collection]
+        data_url = app.db.collection_map[collection].data_url
         fs = get_filestore(data_url)
         size = fs.get_size(relative_path)
         headers = {}
@@ -297,7 +297,7 @@ async def data_proxy_head(relative_path: str, collection: str):
 @app.get("/data/{collection}/{relative_path:path}")
 async def data_proxy_get(relative_path: str, collection: str):
     try:
-        data_url = app.db.collection_map[collection]
+        data_url = app.db.collection_map[collection].data_url
         fs = get_filestore(data_url)
         with fs.open(relative_path) as f:
             data = f.read()
@@ -309,7 +309,7 @@ async def data_proxy_get(relative_path: str, collection: str):
 
 
 @app.get("/neuroglancer/{collection}/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
-async def neuroglancer_state(image_id: str):
+async def neuroglancer_state(collection: str, image_id: str):
 
     from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
     dbimage = app.db.get_metaimage(collection, image_id)
