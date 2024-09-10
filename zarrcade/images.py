@@ -1,20 +1,23 @@
 import os
 import re
 import itertools
+from typing import Iterator, Any
 
 import zarr
 import pathspec 
+import s3fs
 from loguru import logger
 
+from zarrcade.filestore import Filestore
 from zarrcade.model import Image, Channel, Axis
 
-def get(mydict, key, default=None):
+def get(mydict: dict, key: str, default: Any=None):
     if not mydict:
         return default
     return mydict[key] if key in mydict else default
 
 
-def encode_image(zarr_path, image_group):
+def encode_image(zarr_path: str, image_group: zarr.Group):
     multiscales = image_group.attrs['multiscales']
     # TODO: what to do if there are multiple multiscales?
     multiscale = multiscales[0]
@@ -117,7 +120,7 @@ def encode_image(zarr_path, image_group):
     )
 
 
-def yield_nested_image_groups(z):
+def yield_nested_image_groups(z: zarr.Group):
     for _,group in z.groups():
         if 'multiscales' in group.attrs:
             yield group
@@ -125,10 +128,11 @@ def yield_nested_image_groups(z):
             yield nested_group
 
 
-def yield_image_groups(url):
+def yield_image_groups(fs: Filestore, relative_path: str):
     ''' Interrogates the OME-Zarr at the given URL and yields all of the 2-5D images within.
     '''
-    z = zarr.open(url, mode='r')
+    store = fs.get_store(relative_path)
+    z = zarr.open(store, mode='r')
     # Based on https://ngff.openmicroscopy.org/latest/#bf2raw
     if 'bioformats2raw.layout' in z.attrs and z.attrs['bioformats2raw.layout']==3:
         if 'OME' in z:
@@ -157,24 +161,7 @@ def yield_image_groups(url):
             yield group
 
 
-# TODO: should work on a Filesystem and relative path
-def yield_images(absolute_path, relative_path):
-    logger.trace(f"absolute_path: {absolute_path}")
-    logger.trace(f"relative_path: {relative_path}")
-    with logger.catch(message=f"Failed to process {absolute_path}"):
-        for image_group in yield_image_groups(absolute_path):
-            group_abspath = absolute_path
-            group_relpath = relative_path
-            image_id = relative_path
-            if image_group.path:
-                gp = '/'+image_group.path
-                image_id += gp
-                group_abspath += gp
-                group_relpath += gp
-            yield encode_image(relative_path, image_group)
-
-
-def _yield_ome_zarrs(fs, path, depth=0, maxdepth=10):
+def yield_containers(fs: Filestore, path: str = '', depth: int = 0, maxdepth: int = 10):
     if depth>maxdepth: return
 
     for exclude_path in fs.exclude_paths:
@@ -186,7 +173,7 @@ def _yield_ome_zarrs(fs, path, depth=0, maxdepth=10):
     logger.trace(f"listing {path}")
     children = fs.get_children(path)
     
-    logger.debug(f"Searching for zarrs in {path}")    
+    logger.debug(f"Searching for yield_containers in {path}")    
     child_names = [c['name'] for c in children]
     if '.zattrs' in child_names:
         yield path
@@ -196,10 +183,26 @@ def _yield_ome_zarrs(fs, path, depth=0, maxdepth=10):
     else:
         # drill down until we find a zarr
         for d in [c['path'] for c in children if c['type']=='directory']:
-            for zarr_path in _yield_ome_zarrs(fs, d, depth+1):
+            for zarr_path in yield_containers(fs, d, depth+1):
                 yield zarr_path
 
 
-def yield_ome_zarrs(fs):
-    for zarr_path in _yield_ome_zarrs(fs, ''):
-        yield zarr_path
+def yield_images(fs: Filestore) -> Iterator[Image]:
+    """ Discover images in the given filestore and 
+        yield them one by one.
+    """
+    logger.info(f"Discovering images in {fs.fsroot}")
+
+    for relative_path in yield_containers(fs):
+        absolute_path = os.path.join(fs.fsroot_dir, relative_path)
+        logger.trace(f"Reading images in {absolute_path}")
+
+        with logger.catch(message=f"Failed to process {absolute_path}"):
+            for image_group in yield_image_groups(fs, relative_path):
+                group_relpath = relative_path
+                image_id = relative_path
+                if image_group.path:
+                    gp = '/'+image_group.path
+                    image_id += gp
+                    group_relpath += gp
+                yield encode_image(relative_path, image_group)

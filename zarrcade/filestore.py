@@ -1,6 +1,6 @@
 import os
 from functools import cache
-from typing import Iterator, Tuple, Sequence
+from typing import Tuple, Sequence
 from urllib.parse import urlparse
 
 import fsspec
@@ -12,14 +12,14 @@ from zarrcade.images import yield_ome_zarrs, yield_images
 
 
 def get_fs(url:str):
-    """ Parsers the given URL and returns an fsspec filesystem along with
+    """ Parses the given URL and returns an fsspec filesystem along with
         a root path and web-accessible URL.
     """
     pu = urlparse(url)
     if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
         # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API
         fs = fsspec.filesystem('s3')
-        fsroot = pu.netloc.split('.')[0] + pu.path
+        fsroot = 's3://' + pu.netloc.split('.')[0] + pu.path
         web_url = url
     else:
         fs = fsspec.filesystem(pu.scheme)
@@ -57,21 +57,11 @@ class Filestore:
         #     logger.info("Filesystem is not web-accessible and will be proxied")
 
 
-    def yield_images(self) -> Iterator[Image]:
-        """ Discover images in the filestore 
-            and persist them in the given database.
+    def get_store(self, relative_path):
+        """ Returns a fsspec store for the given relative path.
         """
-        logger.info(f"Discovering images in {self.fsroot}")
-        for relative_path in yield_ome_zarrs(self):
-            logger.trace(f"Found images in {relative_path}")
-            absolute_path = os.path.join(self.fsroot_dir, relative_path)
-            # TODO: move this logic somewhere else
-            if isinstance(self.fs, s3fs.core.S3FileSystem):
-                absolute_path = 's3://' + absolute_path
-
-            logger.trace(f"Reading images in {absolute_path}")
-            for image in yield_images(absolute_path, relative_path):
-                yield image
+        root = os.path.join(self.fsroot, relative_path)
+        return self.fs.get_mapper(root)
 
 
     def is_local(self):

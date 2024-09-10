@@ -15,11 +15,10 @@ import argparse
 import pandas as pd
 from functools import partial
 from loguru import logger
-from sqlalchemy import Column, String, Table
 
 from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
-
+from zarrcade.images import yield_images
 EXCLUDE_PATHS = ['.zarrcade']
 SKIP_FILE_CHECKS = True
 
@@ -86,10 +85,6 @@ if __name__ == '__main__':
     db_url = str(settings.db_url)
     logger.info(f"Database URL is {db_url}")
     db = Database(db_url)
-    engine = db.engine
-    meta = db.metadata
-
-
 
     logger.info("Current collections:")
     for key, value in db.collection_map.items():
@@ -152,7 +147,7 @@ if __name__ == '__main__':
         inserted = db.add_image_metadata(new_objs)
 
     # Load the images
-    db.persist_images(collection_name, fs.yield_images,
+    db.persist_images(collection_name, partial(yield_images, fs),
         only_with_metadata=args.only_with_metadata)
 
     logger.info("Database initialization complete.")
