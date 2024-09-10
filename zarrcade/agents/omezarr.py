@@ -1,15 +1,13 @@
-import os
 import re
 import itertools
 from typing import Iterator, Any
 
 import zarr
-import pathspec 
-import s3fs
 from loguru import logger
 
 from zarrcade.filestore import Filestore
 from zarrcade.model import Image, Channel, Axis
+from zarrcade.agents import WalkResult
 
 def get(mydict: dict, key: str, default: Any=None):
     if not mydict:
@@ -17,7 +15,7 @@ def get(mydict: dict, key: str, default: Any=None):
     return mydict[key] if key in mydict else default
 
 
-def encode_image(zarr_path: str, image_group: zarr.Group):
+def _encode_image(zarr_path: str, image_group: zarr.Group):
     multiscales = image_group.attrs['multiscales']
     # TODO: what to do if there are multiple multiscales?
     multiscale = multiscales[0]
@@ -34,7 +32,7 @@ def encode_image(zarr_path: str, image_group: zarr.Group):
     if array_path not in image_group:
         paths = ', '.join(image_group.keys())
         raise Exception(f"Dataset with path {array_path} does not exist. " +
-                         f"Available paths: {paths}")
+                        f"Available paths: {paths}")
 
     array = image_group[array_path]
 
@@ -120,15 +118,15 @@ def encode_image(zarr_path: str, image_group: zarr.Group):
     )
 
 
-def yield_nested_image_groups(z: zarr.Group):
+def _yield_nested_image_groups(z: zarr.Group):
     for _,group in z.groups():
         if 'multiscales' in group.attrs:
             yield group
-        for nested_group in yield_nested_image_groups(group):
+        for nested_group in _yield_nested_image_groups(group):
             yield nested_group
 
 
-def yield_image_groups(fs: Filestore, relative_path: str):
+def _yield_image_groups(fs: Filestore, relative_path: str):
     ''' Interrogates the OME-Zarr at the given URL and yields all of the 2-5D images within.
     '''
     store = fs.get_store(relative_path)
@@ -157,52 +155,38 @@ def yield_image_groups(fs: Filestore, relative_path: str):
     elif 'multiscales' in z.attrs:
         yield z
     else:
-        for group in yield_nested_image_groups(z):
+        for group in _yield_nested_image_groups(z):
             yield group
 
 
-def yield_containers(fs: Filestore, path: str = '', depth: int = 0, maxdepth: int = 10):
-    if depth>maxdepth: return
 
-    for exclude_path in fs.exclude_paths:
-        spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, exclude_path.splitlines())
-        if spec.match_file(path):
-            logger.trace(f"excluding {path}")
-            return
-
-    logger.trace(f"listing {path}")
-    children = fs.get_children(path)
-    
-    logger.debug(f"Searching for yield_containers in {path}")    
-    child_names = [c['name'] for c in children]
-    if '.zattrs' in child_names:
-        yield path
-    elif '.zarray' in child_names:
-        # This is a sign that we have gone too far
-        pass
-    else:
-        # drill down until we find a zarr
-        for d in [c['path'] for c in children if c['type']=='directory']:
-            for zarr_path in yield_containers(fs, d, depth+1):
-                yield zarr_path
-
-
-def yield_images(fs: Filestore) -> Iterator[Image]:
-    """ Discover images in the given filestore and 
-        yield them one by one.
+class OmeZarrAgent():
+    """ An agent which finds OME-Zarr containers.
+        Implements the Agent protocol.
     """
-    logger.info(f"Discovering images in {fs.fsroot}")
 
-    for relative_path in yield_containers(fs):
-        absolute_path = os.path.join(fs.fsroot_dir, relative_path)
+    def walk(self, fs: Filestore, path: str, children: list) -> WalkResult: 
+        child_names = [c['name'] for c in children]
+        if '.zattrs' in child_names:
+            return WalkResult.CONTAINER
+        elif '.zarray' in child_names:
+            # This is a sign that we have gone too far
+            return WalkResult.END
+        else:
+            return WalkResult.CONTINUE
+
+    
+    def yield_images(self, fs: Filestore, path: str, children: list) -> Iterator[Image]:
+        absolute_path = fs.get_absolute_path(path)
         logger.trace(f"Reading images in {absolute_path}")
 
         with logger.catch(message=f"Failed to process {absolute_path}"):
-            for image_group in yield_image_groups(fs, relative_path):
-                group_relpath = relative_path
-                image_id = relative_path
+            for image_group in _yield_image_groups(fs, path):
+                group_relpath = path
+                image_id = path
                 if image_group.path:
                     gp = '/'+image_group.path
                     image_id += gp
                     group_relpath += gp
-                yield encode_image(relative_path, image_group)
+                yield _encode_image(path, image_group)
+

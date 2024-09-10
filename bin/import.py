@@ -18,7 +18,9 @@ from loguru import logger
 
 from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
-from zarrcade.images import yield_images
+from zarrcade.agents import yield_images
+from zarrcade.agents.omezarr import OmeZarrAgent
+
 EXCLUDE_PATHS = ['.zarrcade']
 SKIP_FILE_CHECKS = True
 
@@ -146,8 +148,10 @@ if __name__ == '__main__':
 
         inserted = db.add_image_metadata(new_objs)
 
+    generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
+
     # Load the images
-    db.persist_images(collection_name, partial(yield_images, fs),
+    db.persist_images(collection_name, generator,
         only_with_metadata=args.only_with_metadata)
 
     logger.info("Database initialization complete.")

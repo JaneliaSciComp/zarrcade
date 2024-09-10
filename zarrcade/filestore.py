@@ -1,14 +1,10 @@
 import os
 from functools import cache
-from typing import Tuple, Sequence
+from typing import Tuple, Sequence, Iterator
 from urllib.parse import urlparse
 
 import fsspec
-import s3fs
 from loguru import logger
-
-from zarrcade.model import Image
-from zarrcade.images import yield_ome_zarrs, yield_images
 
 
 def get_fs(url:str):
@@ -114,6 +110,7 @@ class Filestore:
                 'type': child['type']
             })
         return children
+
 
 @cache
 def _get_filestore(data_url, exclude_paths: Tuple[str]):
