@@ -34,6 +34,11 @@ class Details(BaseModel):
     hide_columns: Set[str] = set()
 
 
+class Proxy(BaseModel):
+    collection: str
+    url: HttpUrl
+
+
 class Settings(BaseSettings):
     """ Zarrcade settings can be read from a settings.yaml file, 
         or from the environment, with environment variables prepended 
@@ -50,6 +55,7 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     debug_sql: bool = False
     exclude_paths: List[str] = []
+    proxies: List[Proxy] = []
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

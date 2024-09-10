@@ -107,6 +107,11 @@ def get_data_url(dbimage: DBImage):
     fs = get_filestore(dbimage.collection, app.settings.exclude_paths)
     image = dbimage.get_image()
 
+    # Check if the collection is proxied
+    proxy = next((p for p in app.settings.proxies if p.collection == dbimage.collection), None)
+    if proxy:
+        return os.path.join(str(proxy.url), image.relative_path)
+
     if fs.url:
         # This filestore is already web-accessible
         return os.path.join(fs.url, image.relative_path)

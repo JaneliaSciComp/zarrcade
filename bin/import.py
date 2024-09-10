@@ -148,9 +148,8 @@ if __name__ == '__main__':
 
         inserted = db.add_image_metadata(new_objs)
 
-    generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
-
     # Load the images
+    generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
     db.persist_images(collection_name, generator,
         only_with_metadata=args.only_with_metadata)
 
