@@ -96,5 +96,4 @@ def yield_images(fs: Filestore,
     if not container_found:
         # recursively search for images
         for d in [c['path'] for c in children if c['type']=='directory']:
-            for image in yield_images(fs, agents,d, depth+1):
-                yield image
+            yield from yield_images(fs, agents,d, depth+1)
