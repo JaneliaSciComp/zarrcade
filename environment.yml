@@ -9,9 +9,10 @@ dependencies:
   - python=3.10
   - s3fs
   - uvicorn
-  - zarr
+  - zarr<3
   - tornado
   - pillow
+  - pathspec
   - pandas
   - sqlalchemy
   - sqlite
