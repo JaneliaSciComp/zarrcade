@@ -36,21 +36,17 @@ class Filestore:
     def __init__(self, data_url: str, exclude_paths: Tuple[str]):
         
         self.data_url = data_url
+        logger.debug(f"Data URL: {self.data_url}")
 
         self.exclude_paths = exclude_paths
         logger.debug(f"Excluding paths: {self.exclude_paths}")
 
         self.fs, self.fsroot, self.url = get_fs(data_url)
-        logger.info(f"Filesystem root is {self.fsroot}")
+        logger.debug(f"Filesystem root: {self.fsroot}")
 
         # Ensure dir ends in a path separator
         self.fsroot_dir = os.path.join(self.fsroot, '')
-        logger.trace(f"Filesystem dir is {self.fsroot_dir}")
-
-        # if self.url:
-        #     logger.info(f"Web-accessible url root is {self.url}")
-        # else:
-        #     logger.info("Filesystem is not web-accessible and will be proxied")
+        logger.debug(f"Filesystem dir: {self.fsroot_dir}")
 
 
     def get_store(self, relative_path):

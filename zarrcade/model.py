@@ -30,7 +30,6 @@ class Image:
     """ Information about an OME-Zarr image.
     """
     relative_path: str = None
-    zarr_path: str = None
     group_path: str = None
     num_channels: int = None
     num_timepoints: int = None
@@ -49,18 +48,4 @@ class Image:
 
     def get_id(self):
         return self.relative_path
-    
-
-
-@dataclass
-class MetadataImage:
-    """ Additional metadata about an OME-Zarr image that is 
-        provided outside of the zarr container.
-    """
-    id: str
-    collection: str
-    image: Image
-    aux_image_path: str
-    thumbnail_path: str
-    metadata: dict[str, str]
     

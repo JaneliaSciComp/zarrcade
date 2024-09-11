@@ -1,5 +1,6 @@
 """ Data model and API for accessing the data
 """
+import os
 import json
 from dataclasses import asdict
 from typing import Iterator, Dict, List
@@ -151,6 +152,21 @@ class Database:
                 data_url (str): The URL of the collection.
         """
         if name in self.collection_map:
+
+            if self.collection_map[name].data_url != data_url:
+                # Collection already exists, but with a different URL
+                raise ValueError(f"Collection {name} already exists with a different URL: {self.collection_map[name].data_url}")
+                
+            # Update the label if it has changed
+            if self.collection_map[name].label != label:
+                with self.engine.connect() as connection:
+                    collections = self.get_table('collections')
+                    update_stmt = collections.update().where(collections.c.name == name).values(label=label)
+                    connection.execute(update_stmt)
+                    connection.commit()
+                    self.collection_map[name].label = label
+                    logger.info(f"Updated label for collection {name} to {label}")
+
             # Collection already exists
             return
 
@@ -281,9 +297,10 @@ class Database:
             Returns:
                 bool: True if the image was inserted, False if it was updated.
         """
-        image_path = image.relative_path
-        path = image.zarr_path
+        logger.trace(f"Persisting image {image}")
+        path = image.relative_path
         group_path = image.group_path
+        image_path = f"{path}{group_path}"
 
         with self.sessionmaker() as session:
             try:
@@ -343,7 +360,7 @@ class Database:
         count = 0
 
         for image in image_generator():
-            relative_path = image.zarr_path
+            relative_path = image.relative_path
             if relative_path in metadata_ids:
                 metadata_id = metadata_ids[relative_path]
             else:
@@ -358,7 +375,7 @@ class Database:
                 )
                 count += 1
             else:
-                logger.debug(f"Skipping image missing metadata: {image.zarr_path}")
+                logger.debug(f"Skipping image missing metadata: {relative_path}")
 
         logger.debug(f"Persisted {count} images to the database")
         return count

@@ -93,6 +93,13 @@ async def shutdown_event():
     app.db.engine.dispose()
 
 
+def get_collection_filestore(collection: str):
+    """ Return the filestore for the given collection.
+    """
+    data_url = app.db.collection_map[collection].data_url
+    return get_filestore(data_url, app.settings.exclude_paths)
+
+
 def get_proxy_url(collection: str, relative_path: str):
     """ Returns a web-accessible URL to the file store 
         which is proxied by this server.
@@ -104,20 +111,20 @@ def get_data_url(dbimage: DBImage):
     """ Return a web-accessible URL to the given image.
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    fs = get_filestore(dbimage.collection, app.settings.exclude_paths)
+    fs = get_collection_filestore(dbimage.collection)
     image = dbimage.get_image()
 
     # Check if the collection is proxied
     proxy = next((p for p in app.settings.proxies if p.collection == dbimage.collection), None)
     if proxy:
-        return os.path.join(str(proxy.url), image.relative_path)
+        return os.path.join(str(proxy.url), dbimage.image_path)
 
     if fs.url:
         # This filestore is already web-accessible
-        return os.path.join(fs.url, image.relative_path)
+        return os.path.join(fs.url, dbimage.image_path)
 
     # Proxy the data using the REST API
-    return get_proxy_url(dbimage.collection, image.relative_path)
+    return get_proxy_url(dbimage.collection, dbimage.image_path)
 
 
 def get_relative_path_url(dbimage: DBImage, relative_path: str):
@@ -126,7 +133,7 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
     if not relative_path:
         return None
 
-    fs = get_filestore(dbimage.collection, app.settings.exclude_paths)
+    fs = get_collection_filestore(dbimage.collection)
     if fs.url:
         # This filestore is already web-accessible
         return os.path.join(fs.url, relative_path)
@@ -144,7 +151,7 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
         image = dbimage.get_image()
         if image.axes_order == 'tczyx':
             # Generate a multichannel config on-the-fly
-            url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, image.relative_path)
+            url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, dbimage.image_path)
         else:
             # Prepend format for Neuroglancer to understand
             url = 'zarr://' + url
@@ -156,18 +163,19 @@ def get_title(dbimage: DBImage):
     """ Returns the title to display underneath the given image.
     """
     settings = get_settings()
-    col_name = app.db.reverse_column_map[settings.title_column_name]
-    if col_name:
-        try:
-            metadata = dbimage.image_metadata
-            if metadata:
-                title = getattr(metadata, col_name)
-                if title:
-                    return title
-        except KeyError:
-            logger.warning(f"Missing column: {col_name}")
+    if settings.title_column_name in app.db.reverse_column_map:
+        col_name = app.db.reverse_column_map[settings.title_column_name]
+        if col_name:
+            try:
+                metadata = dbimage.image_metadata
+                if metadata:
+                    title = getattr(metadata, col_name)
+                    if title:
+                        return title
+            except KeyError:
+                logger.warning(f"Missing column: {col_name}")
 
-    return dbimage.get_image().relative_path
+    return dbimage.image_path
 
 
 def get_query_string(query_params, **new_params):
@@ -233,6 +241,9 @@ async def index(request: Request):
 @app.get("/{collection}")
 async def collection(request: Request, collection: str = '', search_string: str = '', page: int = 1, page_size: int=50):
 
+    if collection not in app.db.collection_map:
+        return Response(status_code=404)
+
     if request.query_params.get('download'):
         return await download_csv(request, collection, search_string)
 
@@ -288,8 +299,7 @@ async def details(request: Request, collection: str, image_id: str):
 @app.head("/data/{collection}/{relative_path:path}")
 async def data_proxy_head(relative_path: str, collection: str):
     try:
-        data_url = app.db.collection_map[collection].data_url
-        fs = get_filestore(data_url, app.settings.exclude_paths)
+        fs = get_collection_filestore(collection)
         size = fs.get_size(relative_path)
         headers = {}
         headers["Content-Type"] = "binary/octet-stream"
@@ -302,8 +312,7 @@ async def data_proxy_head(relative_path: str, collection: str):
 @app.get("/data/{collection}/{relative_path:path}")
 async def data_proxy_get(relative_path: str, collection: str):
     try:
-        data_url = app.db.collection_map[collection].data_url
-        fs = get_filestore(data_url, app.settings.exclude_paths)
+        fs = get_collection_filestore(collection)
         with fs.open(relative_path) as f:
             data = f.read()
             headers = {}
