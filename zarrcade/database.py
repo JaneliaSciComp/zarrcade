@@ -354,7 +354,7 @@ class Database:
         """
         # Metadata id lookup table
         metadata_ids = self.get_path_to_metadata_id_map(collection)
-        logger.debug(f"Loaded {len(metadata_ids)} metadata ids for collection '{collection}'")
+        logger.info(f"Loaded {len(metadata_ids)} metadata ids for collection '{collection}'")
 
         # Walk the storage root and populate the database
         count = 0
@@ -373,6 +373,7 @@ class Database:
                             image=image,
                             metadata_id=metadata_id
                 )
+                logger.info(f"Persisted {relative_path}")
                 count += 1
             else:
                 logger.debug(f"Skipping image missing metadata: {relative_path}")
