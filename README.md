@@ -1,6 +1,6 @@
-<p align="center">
-    <img src="https://github.com/JaneliaSciComp/zarrcade/assets/607324/43ba87c6-0002-4f0e-a941-00261c4ac61d">
-</p>
+# Zarrcade 
+
+![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
 
 Zarrcade is a web application for easily browsing collections of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
 
