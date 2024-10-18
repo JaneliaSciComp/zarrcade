@@ -256,6 +256,31 @@ class Database:
                 logger.exception(f"Error inserting data: {e}")
 
 
+    def update_image_metadata(self, metadata_id: int, updated_metadata: Dict[str, str]) -> bool:
+        """ Update the metadata for an image.
+
+            Args:
+                metadata_id (int): The ID of the metadata to update.
+                updated_metadata (dict): A dictionary containing the updated metadata.
+
+            Returns:
+                bool: True if the metadata was updated, False otherwise.
+        """
+        metadata_table = self.get_table('image_metadata')
+        with self.sessionmaker() as session:
+            try:
+                update_stmt = metadata_table.update().where(
+                    metadata_table.c.id == metadata_id
+                ).values(updated_metadata)
+                result = session.execute(update_stmt)
+                session.commit()
+                return result.rowcount > 0
+            except OperationalError as e:
+                session.rollback()
+                logger.exception(f"Error updating metadata: {e}")
+                return False
+
+
     def get_images_count(self) -> int:
         """ Get the total number of images in the database.
 
@@ -380,6 +405,17 @@ class Database:
 
         logger.debug(f"Persisted {count} images to the database")
         return count
+
+
+    def update_image(self, image: DBImage):
+        """ Update the given image in the database.
+
+            Args:
+                image (DBImage): The image to update.
+        """
+        with self.sessionmaker() as session:
+            session.merge(image)
+            session.commit()
 
 
     def get_dbimage(self, collection: str, image_path: str):

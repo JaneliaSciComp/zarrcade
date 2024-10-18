@@ -15,6 +15,7 @@ sys.path.insert(0, '..')
 import os
 import shutil
 import argparse
+import zarr
 
 import pandas as pd
 import ray
@@ -26,10 +27,11 @@ from PIL import Image
 from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
 from zarrcade.images import yield_ome_zarrs
+from zarrcade.thumbnails import make_mip, adjust_brightness
 
 JPEG_QUALITY = 95
 
-def adjust_brightness(src_path, dst_path):
+def adjust_file_brightness(src_path, dst_path):
     img = ski.io.imread(src_path)
     p_lower, p_upper = np.percentile(img, (0, 99.90))
     img_rescale = exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
@@ -62,14 +64,20 @@ def process_zarr(rel_zarr_path:str, data_path:str, aux_data_path:str, aux_path_m
             print(f"Wrote {aux_path_dst}")
 
     else:
-        #TODO: generate MIP
-        print(f"No aux path for {rel_zarr_path}")
-        return 0
+        print(f"No aux path for {rel_zarr_path}, attempting to generate...")
+        zarr_path = os.path.join(data_path, rel_zarr_path)
+        store = zarr.DirectoryStore(zarr_path)
+        root = zarr.open(store, mode='r')
+        mip = make_mip(root)
+        adjusted = adjust_brightness(mip)
+        ski.io.imsave(aux_path_dst, adjusted)
+        print(f"Wrote {aux_path_dst}")
+        return 1
 
     if apply_brightness_adj:
         bc_filename = f"{aux_name}_bc.png"
         aux_path_dst = os.path.join(aux_data_path, relpath, zarr_name, bc_filename)
-        adjust_brightness(aux_path_src, aux_path_dst)
+        adjust_file_brightness(aux_path_src, aux_path_dst)
         print(f"Wrote brightness-corrected {aux_path_dst}")
 
     image = Image.open(aux_path_dst)

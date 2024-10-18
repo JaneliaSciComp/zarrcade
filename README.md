@@ -2,28 +2,32 @@
 
 ![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
 
-Zarrcade is a web application for easily browsing collections of [NGFF](https://github.com/ome/ngff) (e.g. OME-Zarr) images. Implements the following useful features:
+Zarrcade is a web application for easily browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
 
-* Automatic discovery of images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
-* Web gallery with convenient viewing links to compliant viewers
+* Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
+* Web gallery with convenient viewing links to NGFF-compliant viewers
 * Neuroglancer state generation for multichannel images
-* File proxy for non-public storage backends
-* Support for optional image thumbnails
+* Build-in file proxy for non-public storage backends
+* Searchable/filterable metadata
+* Support for image thumbnails
 
 
-# Getting Started
+## Getting Started
 
-1. [Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
+### 1. Install miniforge
 
-2. Install the necessary dependencies: 
+[Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
+
+### 2. Initialize the conda environment
 
 ```bash
 conda env create -f environment.yml
 conda activate zarrcade
-pip install neuroglancer  --no-dependencies
 ```
 
-3. Convert your image(s) to OME-Zarr format:
+### 3. Create OME-Zarr images
+
+Convert your image(s) to OME-Zarr format, e.g. using bioformats2raw:
 
 ```bash
 bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input.image /path/to/output.zarr
@@ -31,21 +35,23 @@ bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input.image /path
 
 If you have many images to convert, we recommend using the [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) Nextflow pipeline to efficiently run bioformats2raw on a collection of images. This pipelinecan also let you scale the conversion to your compute resources (cluster, cloud, etc).
 
-4. Import images and metadata into Zarrcade:
+### 4. Import images and metadata into Zarrcade
 
 You can import images into Zarrcade using the provided command line script:
 
 ```bash
-bin/import.py -r /root/data/dir
+bin/import.py -d /root/data/dir -c collection_name
 ```
 
-To add extra metadata about the images, you can pass a CSV file with the `-i` flag:
+By default, this will create MIPs and thumbnails for each image in a folder named `.zarrcade`, within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
+
+To add extra metadata about the images, you can provide a CSV file with the `-i` flag:
 
 ```bash
-bin/import.py -r /root/data/dir -i input.csv
+bin/import.py -d /root/data/dir -c collection_name -i input.csv
 ```
 
-The CSV file's first column must be a relative path pointing to OME-Zarr images within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery, e.g.:
+The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery, e.g.:
 
 ```csv
 Path,Line,Marker
@@ -53,35 +59,34 @@ relative/path/to/ome1.zarr,JKF6363,Blu
 relative/path/to/ome2.zarr,JDH3562,Blu
 ```
 
-5. Run the Zarrcade web application:
+### 5. Run the Zarrcade web application
 
 Start the development server, pointing it to your OME-Zarr data:
 
 ```bash
-DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
+uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
-If you are running the service remote, you'll need to use HTTPS. Just point Uvicorn to your certificate and set your BASE_URL:
+Your data will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000).
+
+If you are running the service on a remote server, you'll need to use HTTPS. Just point Uvicorn to your certificate and set your BASE_URL:
 
 ```bash
 BASE_URL=https://myserver.mydomain.org:8000 DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 \
     --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
 ```
 
+## Running with Docker
 
-
-To run the service locally using Docker, just point it at your OME-Zarr data:
+To run the service locally using Docker, start the container and mount your OME-Zarr data:
 
 ```bash
-docker run -it -v /path/to/data:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
+docker run -it -v /root/data/dir:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
 ```
-
-This will index your data and make it browseable at [http://127.0.0.1:8000](http://127.0.0.1:8000).
-
 
 ## Production Deployment
 
-If your server is running remotely it will need to use HTTPS in order to be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server. This is possible with Uvicorn, but using an Nginx reverse proxy server is usually preferred. Furthermore, by default Zarrcade uses an in-memory Sqlite database. If you want to use something else, set the `DB_URL` variable to point to a SQL database.
+If your server is running remotely it will need to use HTTPS in order for the data proxy be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server. This is possible with Uvicorn, but using an Nginx reverse proxy server is usually preferred. Furthermore, by default Zarrcade uses an in-memory Sqlite database. If you want to use something else, set the `DB_URL` variable to point to a SQL database.
 
 You can do this using [Docker Compose](https://docs.docker.com/compose/). Make sure you have this installed on your system before proceeding.
 
@@ -98,11 +103,6 @@ Customize the `.env` file and then start the services:
 docker compose up -d
 ```
 
-
-
-## Development
-
-
 ## Testing
 
 ```bash
@@ -111,7 +111,7 @@ python -m pytest --cov=zarrcade --cov-report html -W ignore::DeprecationWarning
 
 ## Docker build
 
-To rebuild the Docker container:
+To rebuild and republish the Docker container:
 
 ```bash
 docker build --no-cache docker -t ghcr.io/janeliascicomp/zarrcade:latest

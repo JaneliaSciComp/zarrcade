@@ -20,9 +20,10 @@ from zarrcade import Database, get_filestore
 from zarrcade.settings import get_settings
 from zarrcade.agents import yield_images
 from zarrcade.agents.omezarr import OmeZarrAgent
+from zarrcade.thumbnails import make_mip_from_zarr, make_thumbnail
 
 EXCLUDE_PATHS = ['.zarrcade']
-SKIP_FILE_CHECKS = True
+
 
 # Adapted from https://github.com/django/django/blob/main/django/utils/text.py
 def slugify(value, allow_unicode=False):
@@ -58,12 +59,18 @@ if __name__ == '__main__':
         help='Label for collection.', required=False)
     parser.add_argument('-m', '--metadata-path', type=str,
         help='Path to the CSV file containing additional metadata')
+    parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
+        help="Don't create auxiliary images or thumbnails.")
     parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
-        help='Path to the folder containing auxiliary images, relative to the root_url.')
-    parser.add_argument('--aux-image-name', type=str, default='zmax_bc.png',
+        help='Path to the folder containing auxiliary images (non-absolute paths are relative to data_url).')
+    parser.add_argument('--aux-image-name', type=str, default='zmax.png',
         help='Filename of the main auxiliary image.')
-    parser.add_argument('--thumbnail-name', type=str, default='zmax_300.jpg',
+    parser.add_argument('--thumbnail-name', type=str, default='zmax_sm.jpg',
         help='Filename of the thumbnail image for the gallery view.')
+    parser.add_argument('--p-lower', type=int, default=0,
+        help='Lower percentile for brightness adjustment.')
+    parser.add_argument('--p-upper', type=int, default=90,
+        help='Upper percentile for brightness adjustment.')
     parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
         help="Only load images for which metadata is provided?")
     parser.add_argument('--exclude', type=str, nargs='+', default=[],  # This allows multiple --exclude arguments
@@ -97,7 +104,8 @@ if __name__ == '__main__':
         logger.info(f"  {key}: {value}")
 
     # Set up the collection
-    db.add_collection(collection_name, args.collection_label, data_url)
+    db.add_collection(collection_name, args.collection_label or collection_name, data_url)
+
 
     if metadata_path:
         # Read the metadata and set up the columns
@@ -119,31 +127,12 @@ if __name__ == '__main__':
         # Insert the metadata
         logger.info("Inserting metadata...")
                 
-        def get_aux_path(filename, zarr_path):
-            zarr_name, _ = os.path.splitext(zarr_path)
-            aux_path = os.path.join(args.aux_path, zarr_name, filename)
-            if SKIP_FILE_CHECKS:
-                return aux_path
-            elif fs.exists(aux_path):
-                logger.trace(f"Found auxiliary file: {fs.fsroot}/{aux_path}")
-                return aux_path
-            else:
-                logger.trace(f"Missing auxiliary file: {fs.fsroot}/{aux_path}")
-                return None
-                
         new_objs = []
         for _, row in df.iterrows():
             path = row[path_column_name]
             new_obj = {db.reverse_column_map[c]: row[c] for c in columns}
             new_obj['collection'] = collection_name
             new_obj['path'] = path
-
-            if args.aux_image_name:
-                new_obj['aux_image_path'] = get_aux_path(args.aux_image_name, path)
-
-            if args.thumbnail_name:
-                new_obj['thumbnail_path'] = get_aux_path(args.thumbnail_name, path)
-
             new_objs.append(new_obj)
 
         inserted = db.add_image_metadata(new_objs)
@@ -154,5 +143,83 @@ if __name__ == '__main__':
     generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
     db.persist_images(collection_name, generator,
         only_with_metadata=args.only_with_metadata)
+
+    if not args.no_aux:
+        # Load aux images and thumbnails
+        logger.info("Loading thumbnails...")
+
+        def create_parent_dirs(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+
+        def get_aux_path(zarr_path, filename):
+            zarr_name, _ = os.path.splitext(zarr_path)
+            aux_path = os.path.join(args.aux_path, zarr_name, filename)
+            return aux_path
+
+        images = db.get_dbimages(collection=collection_name, page_size=0)['images']
+        for image in images:
+            logger.info(f"Processing {image.path}")
+            metadata = image.image_metadata
+            updated_obj = {}
+            aux_abspath = None
+            
+            if args.aux_image_name and (not metadata or not metadata.aux_image_path):
+                aux_path = get_aux_path(image.path, args.aux_image_name)
+                aux_abspath = fs.get_absolute_path(aux_path)
+
+                updated_obj['aux_image_path'] = aux_path
+
+                if fs.exists(aux_path):
+                    logger.trace(f"Found auxiliary file: {aux_abspath}")
+                else:
+                    logger.trace(f"Creating auxiliary file: {aux_abspath}")
+                    zarr_path = fs.get_absolute_path(image.image_path)
+                    create_parent_dirs(aux_abspath)
+                    make_mip_from_zarr(zarr_path, aux_abspath, p_lower=args.p_lower, p_upper=args.p_upper)
+                    logger.info(f"Wrote {aux_abspath}")
+
+            if args.thumbnail_name and (not metadata or not metadata.thumbnail_path):
+                tb_path = get_aux_path(image.path, args.thumbnail_name)
+                tb_abspath = fs.get_absolute_path(tb_path)  
+                updated_obj['thumbnail_path'] = tb_path
+
+                if fs.exists(tb_path):
+                    logger.trace(f"Found thumbnail: {tb_abspath}")
+                elif aux_abspath:
+                    logger.trace(f"Creating thumbnail: {tb_abspath}")
+                    create_parent_dirs(tb_abspath)
+                    make_thumbnail(aux_abspath, tb_abspath)
+                    logger.info(f"Wrote {tb_abspath}")
+                else:
+                    logger.trace(f"Cannot make thumbnail for {path} without aux image")
+
+            if updated_obj:
+                if not metadata:
+                    # Metadata doesn't exist, create it
+                    inserted = db.add_image_metadata([{
+                        'collection': collection_name,
+                        'path': image.path,
+                        **updated_obj
+                    }])
+                    if inserted==1:
+                        logger.info(f"Inserted metadata for {image.path}")
+                    else:
+                        logger.error(f"Error inserting metadata for {image.path}")
+                else:
+                    # Metadata exists, update it
+                    db.update_image_metadata(metadata.id, updated_obj)
+                    logger.info(f"Updated metadata for {image.path}")
+        
+        # Update the images with the new metadata ids if ncessary
+        # This happens if we don't have user provided metadata and the metadatas
+        # were created at the thumbnail generation step.
+        path_to_metadata_id = db.get_path_to_metadata_id_map(collection_name)
+        images = db.get_dbimages(collection=collection_name, page_size=0)['images']
+        for image in images:
+            logger.info(f"Consolidating {image.path}")
+            if image.image_metadata_id is None:
+                image.image_metadata_id = path_to_metadata_id[image.path]
+                db.update_image(image)
+                logger.info(f"Updated image {image.path} with metadata id {image.image_metadata_id}")
 
     logger.info("Database initialization complete.")

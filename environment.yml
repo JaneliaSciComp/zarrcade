@@ -21,6 +21,7 @@ dependencies:
   - ipykernel
   - pydantic
   - pydantic-settings
+  - ray-default
   - pip
   - pip:
     - microfilm
