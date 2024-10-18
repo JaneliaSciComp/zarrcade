@@ -29,10 +29,10 @@ conda activate zarrcade
 
 ### 3. Create OME-Zarr images
 
-Convert your image(s) to OME-Zarr format, e.g. using bioformats2raw:
+If necessary, convert your image(s) to OME-Zarr format, e.g. using bioformats2raw:
 
 ```bash
-bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input.image /path/to/output.zarr
+bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/zarr
 ```
 
 If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to  your available compute resources (cluster, cloud, etc).
@@ -45,7 +45,9 @@ You can import images into Zarrcade using the provided command line script:
 bin/import.py -d /root/data/dir -c collection_name
 ```
 
-By default, this will create MIPs and thumbnails for each image in a folder named `.zarrcade`, within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
+This will create a local Sqlite database and populate it with information about the images in the specified directory. 
+
+By default, this will also create MIPs and thumbnails for each image in a folder named `.zarrcade` within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
 
 To add extra metadata about the images, you can provide a CSV file with the `-i` flag:
 
@@ -71,18 +73,23 @@ uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 
 Your data will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000).
 
+### 6. Further configuration
+
+You can further configure the Zarrcade service by editing the `settings.yaml` file, or by setting environment variables. See the [configuration documentation](./docs/Configuration.md) for more details.
+
+
 ## Deployment
 
 ### Remote deployment
 
-If you are running the service on a remote server, you'll need to use HTTPS and tell Zarrcade how to address your server. You can point Uvicorn to your SSL certificate and set your BASE_URL:
+If you are running the service on a remote server, you'll need to use HTTPS and tell Zarrcade how to address your server. You can point Uvicorn to your SSL certificate and set your `BASE_URL` like this:
 
 ```bash
 BASE_URL=https://myserver.mydomain.org:8000 uvicorn zarrcade.serve:app --host 0.0.0.0 \
     --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
 ```
 
-You can also set these variables in a `settings.yaml` file. 
+You can also set `BASE_URL` and other configuration options in the `settings.yaml` file. See the [configuration documentation](./docs/Configuration.md) for more details.
 
 
 ### Running with Docker
@@ -95,7 +102,7 @@ docker run -it -v /root/data/dir:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrc
 
 ## Production Deployment
  
-Using an Nginx reverse proxy server is usually preferred for production deployments. You can run both Nginx and Uvicorn using the [Docker Compose](https://docs.docker.com/compose/) configuration in the `./docker` folder. Make sure you have this installed on your system before proceeding.
+Using an [Nginx](https://nginx.org) reverse proxy server is usually preferred for production deployments. You can run Nginx and Uvicorn using the [Docker Compose](https://docs.docker.com/compose/) configuration in the `./docker` folder. Make sure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your system before proceeding.
 
 First, create a `.env` file in the `./docker` folder. You can copy the template like this:
 
@@ -110,20 +117,11 @@ Customize the `.env` file and then start the services:
 docker compose up -d
 ```
 
-## Testing
+## Further Documentation
 
-```bash
-python -m pytest --cov=zarrcade --cov-report html -W ignore::DeprecationWarning
-```
+* [Configuration](./docs/Configuration.md)
+* [Development Notes](./docs/Development.md)
 
-## Docker build
-
-To rebuild and republish the Docker container:
-
-```bash
-docker build --no-cache docker -t ghcr.io/janeliascicomp/zarrcade:latest
-docker push ghcr.io/janeliascicomp/zarrcade:latest
-```
 
 ## Attributions
 
