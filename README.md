@@ -10,9 +10,65 @@ Zarrcade is a web application for easily browsing collections of [NGFF](https://
 * File proxy for non-public storage backends
 * Support for optional image thumbnails
 
-The [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) tool can be used to easily convert images to OME-Zarr format.
 
-## Local Usage
+# Getting Started
+
+1. [Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
+
+2. Install the necessary dependencies: 
+
+```bash
+conda env create -f environment.yml
+conda activate zarrcade
+pip install neuroglancer  --no-dependencies
+```
+
+3. Convert your image(s) to OME-Zarr format:
+
+```bash
+bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input.image /path/to/output.zarr
+```
+
+If you have many images to convert, we recommend using the [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) Nextflow pipeline to efficiently run bioformats2raw on a collection of images. This pipelinecan also let you scale the conversion to your compute resources (cluster, cloud, etc).
+
+4. Import images and metadata into Zarrcade:
+
+You can import images into Zarrcade using the provided command line script:
+
+```bash
+bin/import.py -r /root/data/dir
+```
+
+To add extra metadata about the images, you can pass a CSV file with the `-i` flag:
+
+```bash
+bin/import.py -r /root/data/dir -i input.csv
+```
+
+The CSV file's first column must be a relative path pointing to OME-Zarr images within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery, e.g.:
+
+```csv
+Path,Line,Marker
+relative/path/to/ome1.zarr,JKF6363,Blu
+relative/path/to/ome2.zarr,JDH3562,Blu
+```
+
+5. Run the Zarrcade web application:
+
+Start the development server, pointing it to your OME-Zarr data:
+
+```bash
+DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
+```
+
+If you are running the service remote, you'll need to use HTTPS. Just point Uvicorn to your certificate and set your BASE_URL:
+
+```bash
+BASE_URL=https://myserver.mydomain.org:8000 DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 \
+    --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
+```
+
+
 
 To run the service locally using Docker, just point it at your OME-Zarr data:
 
@@ -43,46 +99,9 @@ docker compose up -d
 ```
 
 
-## Importing metadata
-
-You can import metadata into Zarrcade by pre-populating the SQLite database from a CSV file:
-
-```bash
-conda env create -f environment.yml -y
-conda activate zarrcade
-bin/import_metadata.py -i input.csv -r /root/data/dir --overwrite
-```
-
-The CSV file's first column must be a relative path pointing to OME-Zarr images within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery:
-
-```csv
-Path,Line,Marker
-relative/path/to/ome1.zarr,JKF6363,Blu
-relative/path/to/ome2.zarr,JDH3562,Blu
-```
 
 ## Development
 
-Install the necessary packages using conda and pip:
-
-```bash
-conda env create -f environment.yml
-conda activate zarrcade
-pip install neuroglancer  --no-dependencies
-```
-
-Start the development server, pointing it to your OME-Zarr data:
-
-```bash
-DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
-```
-
-If you are running the service remote, you'll need to use HTTPS. Just point Uvicorn to your certificate and set your BASE_URL:
-
-```bash
-BASE_URL=https://myserver.mydomain.org:8000 DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 \
-    --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
-```
 
 ## Testing
 
