@@ -33,7 +33,7 @@ Convert your image(s) to OME-Zarr format, e.g. using bioformats2raw:
 bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input.image /path/to/output.zarr
 ```
 
-If you have many images to convert, we recommend using the [nf-omezarr](https://github.com/JaneliaSciComp/nf-omezarr) Nextflow pipeline to efficiently run bioformats2raw on a collection of images. This pipelinecan also let you scale the conversion to your compute resources (cluster, cloud, etc).
+If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to  your available compute resources (cluster, cloud, etc).
 
 ### 4. Import images and metadata into Zarrcade
 
@@ -69,26 +69,31 @@ uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 
 Your data will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000).
 
-If you are running the service on a remote server, you'll need to use HTTPS. Just point Uvicorn to your certificate and set your BASE_URL:
+## Deployment
+
+### Remote deployment
+
+If you are running the service on a remote server, you'll need to use HTTPS and tell Zarrcade how to address your server. You can point Uvicorn to your SSL certificate and set your BASE_URL:
 
 ```bash
-BASE_URL=https://myserver.mydomain.org:8000 DATA_URL=/path/to/data uvicorn zarrcade.serve:app --host 0.0.0.0 \
+BASE_URL=https://myserver.mydomain.org:8000 uvicorn zarrcade.serve:app --host 0.0.0.0 \
     --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
 ```
 
-## Running with Docker
+You can also set these variables in a `settings.yaml` file. 
 
-To run the service locally using Docker, start the container and mount your OME-Zarr data:
+
+### Running with Docker
+
+To run the service locally using Docker, simply start the container and mount your OME-Zarr data:
 
 ```bash
 docker run -it -v /root/data/dir:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
 ```
 
 ## Production Deployment
-
-If your server is running remotely it will need to use HTTPS in order for the data proxy be able to accessible to the viewers. You'll need to provide a TLS certificate and a base URL for generating links to your server. This is possible with Uvicorn, but using an Nginx reverse proxy server is usually preferred. Furthermore, by default Zarrcade uses an in-memory Sqlite database. If you want to use something else, set the `DB_URL` variable to point to a SQL database.
-
-You can do this using [Docker Compose](https://docs.docker.com/compose/). Make sure you have this installed on your system before proceeding.
+ 
+Using an Nginx reverse proxy server is usually preferred for production deployments. You can run both Nginx and Uvicorn using the [Docker Compose](https://docs.docker.com/compose/) configuration in the `./docker` folder. Make sure you have this installed on your system before proceeding.
 
 First, create a `.env` file in the `./docker` folder. You can copy the template like this:
 
