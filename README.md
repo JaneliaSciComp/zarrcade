@@ -11,6 +11,8 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 * Searchable/filterable metadata
 * Support for image thumbnails
 
+![screenshot](https://github.com/user-attachments/assets/15ff03b4-2c90-4307-9771-fb6041676588)
+
 
 ## Getting Started
 
