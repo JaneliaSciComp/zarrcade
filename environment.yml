@@ -1,7 +1,9 @@
 name: zarrcade
 channels:
   - conda-forge
+  - ome
 dependencies:
+  - bioformats2raw
   - fastapi
   - fsspec
   - jinja2
@@ -22,3 +24,5 @@ dependencies:
   - pip
   - pip:
     - microfilm
+    - neuroglancer
+
