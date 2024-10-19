@@ -1,0 +1,37 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: conda-incubator/setup-miniconda@v3.0.4
+      with:
+        miniforge-version: latest
+        use-mamba: true
+        python-version: ${{ matrix.python-version }}
+        channel-priority: strict
+    - name: Install dependencies
+      run: |
+        mamba env update --file environment.yml --prune
+        which python
+        pip list
+        mamba list
+    - name: Test with pytest
+      run: |
+        python -m pytest --cov=zarrcade --cov-report=html --cov-report=term -W ignore::DeprecationWarning --html=htmlcov/test_results.html
+    - name: Upload pytest and coverage results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: testcoverage-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: |
+          htmlcov/*
