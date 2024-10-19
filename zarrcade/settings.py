@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from enum import Enum
-from typing import Union, List, Set, Dict
+from typing import List, Set, Dict
 from functools import cache
 
 from loguru import logger
@@ -13,30 +13,36 @@ from pydantic_settings import (
     YamlConfigSettingsSource
 )
 
+class Database(BaseModel):
+    """ Database settings """
+    url: AnyUrl = 'sqlite:///database.db'
+    debug_sql: bool = False
+
+
+class FileProxy(BaseModel):
+    """ File proxy settings """
+    collection: str
+    url: HttpUrl
+
+
 class DataType(str, Enum):
+    """ Possible filter data types """
     string = 'string'
     csv = 'csv'
 
 
 class FilterType(str, Enum):
+    """ Possible filter widget types """
     dropdown = 'dropdown'
 
 
 class Filter(BaseModel):
+    """ Filter settings """
     db_name: str = None
     column_name: str
     data_type: DataType = DataType.string
     filter_type: FilterType = FilterType.dropdown
-    values: Dict[str,str] = {}
-
-
-class Details(BaseModel):
-    hide_columns: Set[str] = set()
-
-
-class Proxy(BaseModel):
-    collection: str
-    url: HttpUrl
+    _values: Dict[str,str] = {}
 
 
 class Settings(BaseSettings):
@@ -46,16 +52,14 @@ class Settings(BaseSettings):
         be passed in the environment or in a .env file. 
     """
 
-    base_url: HttpUrl = 'http://127.0.0.1:8000/'
-    title: str = "Zarrcade"
-    title_column_name: str = None
-    db_url: AnyUrl = 'sqlite:///:memory:'
-    filters: List[Filter] = []
-    details: Details = Details()
     log_level: str = 'INFO'
-    debug_sql: bool = False
+    base_url: HttpUrl = 'http://127.0.0.1:8000/'
+    database: Database = Database()
+    proxies: List[FileProxy] = []
     exclude_paths: List[str] = []
-    proxies: List[Proxy] = []
+    filters: List[Filter] = []
+    title_column_name: str = None
+    hide_columns: Set[str] = set()
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

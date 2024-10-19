@@ -72,11 +72,11 @@ async def startup_event():
 
         # Get unique values from the database
         if s.data_type == DataType.string:
-            s.values = app.db.get_unique_values(s.db_name)
+            s._values = app.db.get_unique_values(s.db_name)
         elif s.data_type == DataType.csv:
-            s.values = app.db.get_unique_comma_delimited_values(s.db_name)
+            s._values = app.db.get_unique_comma_delimited_values(s.db_name)
 
-        logger.info(f"Configured {s.filter_type} filter for '{s.column_name}' ({len(s.values)} values)")
+        logger.info(f"Configured {s.filter_type} filter for '{s.column_name}' ({len(s._values)} values)")
 
     count = app.db.get_images_count()
     logger.info(f"Found {count} images in the database")
@@ -196,7 +196,7 @@ async def download_csv(request: Request, collection: str, search_string: str = '
 
     result = app.db.get_dbimages(collection, search_string, filter_params)
     column_map = app.db.column_map
-    hide_columns = app.settings.details.hide_columns
+    hide_columns = app.settings.hide_columns
 
     headers = ['Id','Collection','Name'] + [k for k in column_map.values() if k not in hide_columns]
     data = []
