@@ -6,11 +6,20 @@
 python -m pytest --cov=zarrcade --cov-report html -W ignore::DeprecationWarning
 ```
 
-## Docker build
+## Building the Docker container
 
-To rebuild and republish the Docker container (replacing 'latest' with the desired tag):
+Run the Docker build, replacing `<version>` with your version number:
 
 ```bash
-docker build --no-cache docker -t ghcr.io/janeliascicomp/zarrcade:latest
+cd docker/
+export VERSION=<version>
+docker build . --build-arg GIT_TAG=$VERSION -t ghcr.io/janeliascicomp/zarrcade:$VERSION
+```
+
+## Pushing the Docker container
+
+```bash
+docker push ghcr.io/janeliascicomp/zarrcade:$VERSION
+docker tag ghcr.io/janeliascicomp/zarrcade:$VERSION ghcr.io/janeliascicomp/zarrcade:latest
 docker push ghcr.io/janeliascicomp/zarrcade:latest
 ```
