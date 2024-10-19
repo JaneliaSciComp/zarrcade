@@ -17,12 +17,27 @@ defaults:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+
     strategy:
       matrix:
+        os: ["ubuntu-latest"]
         python-version: ["3.10"]
+
+    runs-on: "${{ matrix.os }}"
+
     steps:
+
     - uses: actions/checkout@v4
+
+    - name: "Cache conda"
+      uses: "actions/cache@v1"
+      env:
+        # Increase this value to reset cache if env.yml has not changed
+        CACHE_NUMBER: 0
+      with:
+        path: "~/conda_pkgs_dir"
+        key: "${{ matrix.os }}-conda-${{ matrix.python-version }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('enviroment.yml') }}"
+        
     - name: Set up Python ${{ matrix.python-version }}
       uses: conda-incubator/setup-miniconda@v3.0.4
       with:
@@ -31,14 +46,19 @@ jobs:
         python-version: ${{ matrix.python-version }}
         channel-priority: strict
         environment-file: environment.yml
+        activate-environment: "zarrcade"
+
     - name: Review dependencies
       run: |
         which python
         pip list
         mamba list
+
     - name: Test with pytest
       run: |
-        python -m pytest --cov=zarrcade --cov-report=html --cov-report=term -W ignore::DeprecationWarning --html=htmlcov/test_results.html
+        python -m pytest -W ignore::DeprecationWarning
+      #python -m pytest --cov=zarrcade --cov-report=html --cov-report=term -W ignore::DeprecationWarning --html=htmlcov/test_results.html
+
     - name: Upload pytest and coverage results
       uses: actions/upload-artifact@v4
       if: always()
