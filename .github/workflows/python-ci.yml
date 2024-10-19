@@ -4,6 +4,17 @@ on:
   push:
     branches: [ main ]
 
+# When this workflow is queued, automatically cancel any previous running
+# or pending jobs from the same branch
+concurrency:
+  group: conda-${{ github.ref }}
+  cancel-in-progress: true
+
+# Required shell entrypoint to have properly activated conda environments
+defaults:
+  run:
+    shell: bash -l {0}
+
 jobs:
   build:
     runs-on: ubuntu-latest

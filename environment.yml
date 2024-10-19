@@ -22,6 +22,7 @@ dependencies:
   - pydantic
   - pydantic-settings
   - ray-default
+  - pytest
   - pip
   - pip:
     - microfilm
