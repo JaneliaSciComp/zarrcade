@@ -64,14 +64,14 @@ def test_add_image_metadata(db):
 
 def test_persist_image(db):
     db.add_collection("test_collection", "Test Collection", "test_url")
-    image = Image(relative_path="test_image.png", zarr_path="/test/path", group_path="/test")
+    image = Image(relative_path="test_image.png", group_path="")
     db.persist_image("test_collection", image, None)
 
     with db.sessionmaker() as session:
         db_image = session.query(DBImage).filter_by(collection="test_collection", image_path="test_image.png").first()
         assert db_image is not None
-        assert db_image.path == "/test/path"
-        assert db_image.group_path == "/test"
+        assert db_image.path == "test_image.png"
+        assert db_image.group_path == ""
         assert db_image.get_image() == image
 
 def test_persist_images(db):
@@ -88,10 +88,10 @@ def test_persist_images(db):
 
     def image_generator():
         images = [
-            Image(relative_path="test_path1", zarr_path="test_path1/0", group_path="/0"),
-            Image(relative_path="test_path2", zarr_path="test_path2/0", group_path="/0"),
-            Image(relative_path="test_path3", zarr_path="test_path3/0", group_path="/0"),
-            Image(relative_path="test_path4", zarr_path="test_path4/0", group_path="/0")
+            Image(relative_path="test_path1", group_path="/0"),
+            Image(relative_path="test_path2", group_path="/0"),
+            Image(relative_path="test_path3", group_path="/0"),
+            Image(relative_path="test_path4", group_path="/0")
         ]
         for image in images:
             yield image
@@ -102,7 +102,7 @@ def test_persist_images(db):
     with db.sessionmaker() as session:
         all_images = session.query(DBImage).filter_by(collection="test_collection").all()
         assert len(all_images) == 3
-        assert set(image.image_path for image in all_images) == {"test_path1", "test_path2", "test_path3"}
+        assert set(image.image_path for image in all_images) == {"test_path1/0", "test_path2/0", "test_path3/0"}
 
     persisted_count = db.persist_images("test_collection", image_generator, only_with_metadata=False)
     assert persisted_count == 4
@@ -110,12 +110,12 @@ def test_persist_images(db):
     with db.sessionmaker() as session:
         all_images = session.query(DBImage).filter_by(collection="test_collection").all()
         assert len(all_images) == 4
-        assert set(image.image_path for image in all_images) == {"test_path1", "test_path2", "test_path3", "test_path4"}
+        assert set(image.image_path for image in all_images) == {"test_path1/0", "test_path2/0", "test_path3/0", "test_path4/0"}
 
 
 def test_get_dbimage(db):
     db.add_collection("test_collection", "Test Collection", "test_url")
-    image = Image(relative_path="test_image.png", zarr_path="/test/path", group_path="/test")
+    image = Image(relative_path="test_image.png", group_path="")
     db.persist_image("test_collection", image, None)
 
     metaimage = db.get_dbimage("test_collection", "test_image.png")
@@ -139,23 +139,23 @@ def test_metadata_search(db):
     with db.sessionmaker() as session:
         ims = session.query(DBImageMetadata).filter_by(collection="test_collection").all()
         for im in ims:
-            image = Image(relative_path=im.path, zarr_path=im.path+"/0", group_path="/0")
+            image = Image(relative_path=im.path, group_path="/0")
             db.persist_image("test_collection", image, im.id)
     
     result = db.get_dbimages("test_collection", filter_params={"color": "red"})
     assert len(result['images']) == 2
-    assert set(image.path for image in result['images']) == {"test_path1/0", "test_path3/0"}
+    assert set(image.image_path for image in result['images']) == {"test_path1/0", "test_path3/0"}
 
     result = db.get_dbimages("test_collection", search_string="blue")
     assert len(result['images']) == 1
-    assert result['images'][0].path == "test_path2/0"
+    assert result['images'][0].image_path == "test_path2/0"
 
 
 def test_pagination(db):
     db.add_collection("test_collection", "Test Collection", "test_url")
     num_images = 10
     for i in range(1, num_images+1):
-        image = Image(relative_path=f"test_image{i}.png", zarr_path=f"/test/path{i}", group_path="/test")
+        image = Image(relative_path=f"test_image{i}.png", group_path="/test")
         db.persist_image("test_collection", image, None)
 
     count = db.get_images_count()
