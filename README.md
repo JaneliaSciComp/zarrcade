@@ -2,6 +2,8 @@
 
 ![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
 
+![Python CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml/badge.svg)
+
 Zarrcade is a web application for easily browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
 
 * Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
