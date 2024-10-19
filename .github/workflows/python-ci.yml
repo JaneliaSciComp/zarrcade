@@ -30,9 +30,9 @@ jobs:
         use-mamba: true
         python-version: ${{ matrix.python-version }}
         channel-priority: strict
-    - name: Install dependencies
+        environment-file: environment.yml
+    - name: Review dependencies
       run: |
-        mamba env update --file environment.yml --prune
         which python
         pip list
         mamba list
