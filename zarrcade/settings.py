@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     proxies: List[FileProxy] = []
     exclude_paths: List[str] = []
     filters: List[Filter] = []
-    title_column_name: str = None
+    title_column_name: str | None = None
     hide_columns: Set[str] = set()
 
     model_config = SettingsConfigDict(
