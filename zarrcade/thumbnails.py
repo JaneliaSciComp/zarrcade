@@ -10,11 +10,16 @@ from microfilm.microplot import microshow
 
 
 def adjust_brightness(img: np.ndarray, p_lower=0, p_upper=90) -> np.ndarray:
+    """ Adjust the brightness of an image by stretching the histogram 
+        based on the specified percentiles.
+    """
     p_lower, p_upper = np.percentile(img, (p_lower, p_upper))
     return ski.exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
 
 
-def make_mip(root) -> Image:
+def _make_mip(root) -> Image:
+    """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
+    """
     multiscale = root['/'].attrs['multiscales'][0]
     datasets = multiscale['datasets']
 
@@ -53,6 +58,9 @@ def make_mip(root) -> Image:
     
     #mip.savefig('mip.png')
 
+    # We need to jump through some hoops to save the figure to a buffer 
+    # in memory (instead of a file) and convert it to a numpy array, 
+    # so that it can be processed further (e.g. for brightness adjustment).
     buf = io.BytesIO()
     mip.savefig(buf, format='png')
     buf.seek(0)
@@ -62,14 +70,18 @@ def make_mip(root) -> Image:
 
 
 def make_mip_from_zarr(zarr_path, mip_path, p_lower=0, p_upper=90):
+    """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
+    """
     store = zarr.DirectoryStore(zarr_path)
     root = zarr.open(store, mode='r')
-    mip = make_mip(root)
+    mip = _make_mip(root)
     adjusted = adjust_brightness(mip, p_lower, p_upper)
     ski.io.imsave(mip_path, adjusted)
 
 
 def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95):
+    """ Create a thumbnail from the given maximum intensity projection (MIP).
+    """
     image = Image.open(mip_path)
     max_size = (thumbnail_size, thumbnail_size)
     image.thumbnail(max_size)
@@ -81,6 +93,7 @@ def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95
     image.save(thumbnail_path, quality=jpeg_quality)
 
 
+# Test harness
 if __name__ == "__main__":
     zarr_path = '/nrs/flynp/EASI-FISH_NP_SS_OMEZarr/NP11_R3_20240513/NP11_R3_3_5_SS69117_AstA_546_AstC_647_150x_Central.zarr/0'
     make_thumbnail(zarr_path, 'mip_adjusted.png')
