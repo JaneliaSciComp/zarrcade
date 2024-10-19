@@ -63,6 +63,12 @@ relative/path/to/ome1.zarr,JKF6363,Blu
 relative/path/to/ome2.zarr,JDH3562,Blu
 ```
 
+To try an example, use the following command:
+
+```bash
+bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -i flyefish-example.csv
+```
+
 ### 5. Run the Zarrcade web application
 
 Start the development server, pointing it to your OME-Zarr data:
@@ -71,7 +77,7 @@ Start the development server, pointing it to your OME-Zarr data:
 uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
-Your data will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000).
+Your images and annotations will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000).
 
 ### 6. Further configuration
 
@@ -100,6 +106,7 @@ To run the service locally using Docker, simply start the container and mount yo
 docker run -it -v /root/data/dir:/data -p 8000:8000 ghcr.io/janeliascicomp/zarrcade
 ```
 
+
 ## Production Deployment
  
 Using an [Nginx](https://nginx.org) reverse proxy server is usually preferred for production deployments. You can run Nginx and Uvicorn using the [Docker Compose](https://docs.docker.com/compose/) configuration in the `./docker` folder. Make sure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed on your system before proceeding.
@@ -117,10 +124,12 @@ Customize the `.env` file and then start the services:
 docker compose up -d
 ```
 
+
 ## Further Documentation
 
-* [Configuration](./docs/Configuration.md)
-* [Development Notes](./docs/Development.md)
+* [Overview](./docs/Overview.md) - learn about the data model and overall architecture
+* [Configuration](./docs/Configuration.md) - configure the Zarrcade service using settings.yaml or environment variables
+* [Development Notes](./docs/Development.md) - technical notes for developers working on Zarrcade itself
 
 
 ## Attributions
