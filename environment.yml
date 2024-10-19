@@ -23,7 +23,7 @@ dependencies:
   - pydantic-settings
   - ray-default
   - pytest
-  - coverage
+  - pytest-cov
   - pip
   - pip:
     - microfilm
