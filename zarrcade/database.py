@@ -16,7 +16,7 @@ from zarrcade.model import Image
 from zarrcade.settings import get_settings
 
 
-if get_settings().debug_sql:
+if get_settings().database.debug_sql:
     import logging
     logging.basicConfig()
     logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
@@ -385,9 +385,11 @@ class Database:
         count = 0
 
         for image in image_generator():
-            relative_path = image.relative_path
-            if relative_path in metadata_ids:
-                metadata_id = metadata_ids[relative_path]
+            
+            if image.get_path() in metadata_ids:
+                metadata_id = metadata_ids[image.get_path()]
+            elif image.relative_path in metadata_ids:
+                metadata_id = metadata_ids[image.relative_path]
             else:
                 metadata_id = None
 
@@ -398,10 +400,10 @@ class Database:
                             image=image,
                             metadata_id=metadata_id
                 )
-                logger.info(f"Persisted {relative_path}")
+                logger.info(f"Persisted {image.get_path()}")
                 count += 1
             else:
-                logger.debug(f"Skipping image missing metadata: {relative_path}")
+                logger.debug(f"Skipping image missing metadata: {image.get_path()}")
 
         logger.debug(f"Persisted {count} images to the database")
         return count

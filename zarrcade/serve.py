@@ -57,7 +57,7 @@ async def startup_event():
     app.base_url = str(app.settings.base_url)
     logger.info(f"User-specified base URL is {app.base_url}")
 
-    db_url = str(app.settings.db_url)
+    db_url = str(app.settings.database.db_url)
     logger.info(f"User-specified database URL is {db_url}")
     app.db = Database(db_url)
 

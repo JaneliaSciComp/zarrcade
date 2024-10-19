@@ -49,3 +49,5 @@ class Image:
     def get_id(self):
         return self.relative_path
     
+    def get_path(self):
+        return f"{self.relative_path}{self.group_path}"

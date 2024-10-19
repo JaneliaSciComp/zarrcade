@@ -6,10 +6,10 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 
 * Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
 * Web gallery with convenient viewing links to NGFF-compliant viewers
+* MIP/thumbnail generation
+* Searchable/filterable metadata
 * Neuroglancer state generation for multichannel images
 * Build-in file proxy for non-public storage backends
-* Searchable/filterable metadata
-* Support for image thumbnails
 
 ![screenshot](https://github.com/user-attachments/assets/15ff03b4-2c90-4307-9771-fb6041676588)
 
@@ -42,10 +42,10 @@ If you have many images to convert, we recommend using the [nf-omezarr Nextflow 
 You can import images into Zarrcade using the provided command line script:
 
 ```bash
-bin/import.py -d /root/data/dir -c collection_name
+bin/import.py -d /root/data/dir -c mycollection
 ```
 
-This will create a local Sqlite database and populate it with information about the images in the specified directory. 
+This will automatically create a local Sqlite database containing an image collection named "mycollection" and populate it with information about the images in the specified directory. 
 
 By default, this will also create MIPs and thumbnails for each image in a folder named `.zarrcade` within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
 

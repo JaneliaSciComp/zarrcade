@@ -4,9 +4,9 @@
 
 Zarrcade supports automatic discovery of images through its [Agent](https://github.com/JaneliaSciComp/zarrcade/blob/main/zarrcade/agents/agent.py) API. An Agent is a Python class that implements the `walk` and `yield_images` methods, which is used to recursively search for images in a storage backend. 
 
-Currently, there is only one built-in agent `OmeZarrAgent` which discovers [OME-Zarr](https://ngff.openmicroscopy.org/latest) images. It checks for the presence of a `.zattrs` file, and if found, it will attempt to recursively parse the OME-Zarr metadata in the container. If the `bioformats2raw.layout` attribute is found, the [transitional bioformats2raw layout](https://ngff.openmicroscopy.org/latest/#bf2raw) is used to extract images. Otherwise, the groups are checked recursively to find any group with a `multiscales` attribute. 
+Currently, there is only one built-in agent called `OmeZarrAgent` which discovers [OME-Zarr](https://ngff.openmicroscopy.org/latest) images. It checks for the presence of a `.zattrs` file, and if found, it attempts to recursively parse the OME-Zarr metadata in the container. If the `bioformats2raw.layout` attribute is found, the [transitional bioformats2raw layout](https://ngff.openmicroscopy.org/latest/#bf2raw) is used to extract images. Otherwise, the groups are checked recursively to find any group with a `multiscales` attribute. 
 
-When [transitional Omero metadata](https://ngff.openmicroscopy.org/latest/#omero-md) is present, it is used to extract channels colors and intensity ranges, for use in e.g. Neuroglancer configuration.
+When [transitional Omero metadata](https://ngff.openmicroscopy.org/latest/#omero-md) is present, it is used to extract channels colors and intensity ranges, for use in e.g. Neuroglancer multichannelconfiguration.
 
 
 ## Neuroglancer Multichannel Configuration
