@@ -91,7 +91,7 @@ if __name__ == '__main__':
     fs = get_filestore(data_url, exclude_paths=tuple(exclude_paths))
 
     # Connect to the database
-    db_url = str(settings.database.db_url)
+    db_url = str(settings.database.url)
     logger.info(f"Database URL is {db_url}")
     db = Database(db_url)
 
