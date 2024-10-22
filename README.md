@@ -7,12 +7,13 @@
 Zarrcade is a web application for easily browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
 
 * Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
-* Web gallery with convenient viewing links to NGFF-compliant viewers
 * MIP/thumbnail generation
-* Searchable/filterable metadata
+* Web-based MIP gallery with convenient viewing links to NGFF-compliant viewers
+* Searchable/filterable metadata and annotations
 * Neuroglancer state generation for multichannel images
 * Build-in file proxy for non-public storage backends
-
+* Integration with external file proxies (e.g. [x2s3](https://github.com/JaneliaSciComp/x2s3))
+ 
 ![screenshot](https://github.com/user-attachments/assets/15ff03b4-2c90-4307-9771-fb6041676588)
 
 
@@ -37,7 +38,7 @@ If necessary, convert your image(s) to OME-Zarr format, e.g. using bioformats2ra
 bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/zarr
 ```
 
-If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to  your available compute resources (cluster, cloud, etc).
+If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
 
 ### 4. Import images and metadata into Zarrcade
 
@@ -47,7 +48,7 @@ You can import images into Zarrcade using the provided command line script:
 bin/import.py -d /root/data/dir -c mycollection
 ```
 
-This will automatically create a local Sqlite database containing an image collection named "mycollection" and populate it with information about the images in the specified directory. 
+This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. 
 
 By default, this will also create MIPs and thumbnails for each image in a folder named `.zarrcade` within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
 
@@ -57,7 +58,7 @@ To add extra metadata about the images, you can provide a CSV file with the `-i`
 bin/import.py -d /root/data/dir -c collection_name -i input.csv
 ```
 
-The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery, e.g.:
+The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery, e.g.:
 
 ```csv
 Path,Line,Marker
@@ -68,7 +69,7 @@ relative/path/to/ome2.zarr,JDH3562,Blu
 To try an example, use the following command:
 
 ```bash
-bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -i flyefish-example.csv
+bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -m docs/flyefish-example.csv
 ```
 
 ### 5. Run the Zarrcade web application
