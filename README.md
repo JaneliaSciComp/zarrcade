@@ -62,7 +62,7 @@ This will automatically create a local Sqlite database containing a Zarrcade **c
 To add extra metadata about the images, you can provide a CSV file with the `-i` flag:
 
 ```bash
-bin/import.py -d /root/data/dir -c collection_name -i input.csv
+./bin/import.py -d /root/data/dir -c collection_name -i input.csv
 ```
 
 The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery, e.g.:
@@ -92,7 +92,7 @@ Your images and annotations will be indexed and browseable at [http://0.0.0.0:80
 To try an example, follow steps 1 and 2 above and use the following command to import the example data:
 
 ```bash
-bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -m docs/flyefish-example.csv
+./bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -m docs/flyefish-example.csv
 ```
 
 Copy the example settings.yaml file to your working directory and start the server:
