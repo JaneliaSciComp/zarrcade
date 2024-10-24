@@ -69,10 +69,9 @@ def _make_mip(root) -> Image:
         return arr
 
 
-def make_mip_from_zarr(zarr_path, mip_path, p_lower=0, p_upper=90):
+def make_mip_from_zarr(store, mip_path, p_lower=0, p_upper=90):
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
-    store = zarr.DirectoryStore(zarr_path)
     root = zarr.open(store, mode='r')
     mip = _make_mip(root)
     adjusted = adjust_brightness(mip, p_lower, p_upper)
@@ -96,5 +95,7 @@ def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95
 # Test harness
 if __name__ == "__main__":
     zarr_path = '/nrs/flynp/EASI-FISH_NP_SS_OMEZarr/NP11_R3_20240513/NP11_R3_3_5_SS69117_AstA_546_AstC_647_150x_Central.zarr/0'
-    make_thumbnail(zarr_path, 'mip_adjusted.png')
+    store = zarr.DirectoryStore(zarr_path)
+    make_mip_from_zarr(store, 'mip_adjusted.png')
+    make_thumbnail('mip_adjusted.png', 'mip_adjusted_thumbnail.jpg')
 

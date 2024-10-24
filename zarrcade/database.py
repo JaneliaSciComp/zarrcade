@@ -198,7 +198,7 @@ class Database:
         """
         if db_name in self.column_map:
             # Column already exists
-            logger.info(f"Column {db_name} already exists")
+            logger.debug(f"Column {db_name} already exists")
             return
 
         with self.engine.connect() as connection:
@@ -339,7 +339,7 @@ class Database:
                     db_image.image_metadata_id = metadata_id
                     db_image.set_image(image)
                     session.commit()
-                    logger.debug(f"Updated image {image_path}")
+                    logger.info(f"Updated image {image_path}")
                     return False
                 else:
                     # Insert new record
@@ -353,7 +353,7 @@ class Database:
                     new_image.set_image(image)
                     session.add(new_image)
                     session.commit()
-                    logger.debug(f"Inserted image {image_path}")
+                    logger.info(f"Inserted image {image_path}")
                     return True
 
             except SQLAlchemyError as e:
@@ -400,7 +400,6 @@ class Database:
                             image=image,
                             metadata_id=metadata_id
                 )
-                logger.info(f"Persisted {image.get_path()}")
                 count += 1
             else:
                 logger.debug(f"Skipping image missing metadata: {image.get_path()}")

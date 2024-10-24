@@ -61,8 +61,8 @@ if __name__ == '__main__':
         help='Path to the CSV file containing additional metadata')
     parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
         help="Don't create auxiliary images or thumbnails.")
-    parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
-        help='Path to the folder containing auxiliary images (non-absolute paths are relative to data_url).')
+    parser.add_argument('-a', '--aux-path', type=str, default="static/.zarrcade",
+        help='Local path to the folder for auxiliary images.')
     parser.add_argument('--aux-image-name', type=str, default='zmax.png',
         help='Filename of the main auxiliary image.')
     parser.add_argument('--thumbnail-name', type=str, default='zmax_sm.jpg',
@@ -161,35 +161,33 @@ if __name__ == '__main__':
             logger.info(f"Processing {image.path}")
             metadata = image.image_metadata
             updated_obj = {}
-            aux_abspath = None
+            aux_path = None
             
             if args.aux_image_name and (not metadata or not metadata.aux_image_path):
                 aux_path = get_aux_path(image.path, args.aux_image_name)
-                aux_abspath = fs.get_absolute_path(aux_path)
 
                 updated_obj['aux_image_path'] = aux_path
 
                 if fs.exists(aux_path):
-                    logger.trace(f"Found auxiliary file: {aux_abspath}")
+                    logger.trace(f"Found auxiliary file: {aux_path}")
                 else:
-                    logger.trace(f"Creating auxiliary file: {aux_abspath}")
-                    zarr_path = fs.get_absolute_path(image.image_path)
-                    create_parent_dirs(aux_abspath)
-                    make_mip_from_zarr(zarr_path, aux_abspath, p_lower=args.p_lower, p_upper=args.p_upper)
-                    logger.info(f"Wrote {aux_abspath}")
+                    logger.trace(f"Creating auxiliary file: {aux_path}")
+                    create_parent_dirs(aux_path)
+                    store = fs.get_store(image.image_path)
+                    make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper)
+                    logger.info(f"Wrote {aux_path}")
 
             if args.thumbnail_name and (not metadata or not metadata.thumbnail_path):
                 tb_path = get_aux_path(image.path, args.thumbnail_name)
-                tb_abspath = fs.get_absolute_path(tb_path)  
                 updated_obj['thumbnail_path'] = tb_path
 
                 if fs.exists(tb_path):
-                    logger.trace(f"Found thumbnail: {tb_abspath}")
-                elif aux_abspath:
-                    logger.trace(f"Creating thumbnail: {tb_abspath}")
-                    create_parent_dirs(tb_abspath)
-                    make_thumbnail(aux_abspath, tb_abspath)
-                    logger.info(f"Wrote {tb_abspath}")
+                    logger.trace(f"Found thumbnail: {tb_path}")
+                elif aux_path:
+                    logger.trace(f"Creating thumbnail: {tb_path}")
+                    create_parent_dirs(tb_path)
+                    make_thumbnail(aux_path, tb_path)
+                    logger.info(f"Wrote {tb_path}")
                 else:
                     logger.trace(f"Cannot make thumbnail for {path} without aux image")
 

@@ -19,10 +19,16 @@ class Database(BaseModel):
     debug_sql: bool = False
 
 
-class FileProxy(BaseModel):
-    """ File proxy settings """
+class FilestoreProxy(BaseModel):
+    """ Filestore proxy settings """
     collection: str
     url: HttpUrl
+
+
+class FileProxy(BaseModel):
+    """ File proxy settings """
+    name: str
+    base_path: Path
 
 
 class DataType(str, Enum):
@@ -45,6 +51,16 @@ class Filter(BaseModel):
     _values: Dict[str,str] = {}
 
 
+class AuxImageMode(str, Enum):
+    """ How to find auxiliary images """
+    
+    local = 'local'
+    """ Use the local filesystem to find auxiliary images """
+
+    relative = 'relative'
+    """ Use the filestore to find auxiliary images, with paths relative to the data URL """
+
+
 class Settings(BaseSettings):
     """ Zarrcade settings can be read from a settings.yaml file, 
         or from the environment, with environment variables prepended 
@@ -55,11 +71,12 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     database: Database = Database()
-    proxies: List[FileProxy] = []
+    proxies: List[FilestoreProxy] = []
     exclude_paths: List[str] = []
     filters: List[Filter] = []
     title_column_name: str | None = None
     hide_columns: Set[str] = set()
+    aux_image_mode: AuxImageMode = AuxImageMode.local
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

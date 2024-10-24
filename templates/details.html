@@ -36,7 +36,7 @@ Open with:
 
 <div class="content">
     {% if dbimage.image_metadata and dbimage.image_metadata.aux_image_path %}
-    <img src="{{ get_relative_path_url(dbimage, dbimage.image_metadata.aux_image_path) }}" alt="Image thumbnail" class="image" />
+    <img src="{{ get_aux_path_url(dbimage, dbimage.image_metadata.aux_image_path, request) }}" alt="Image thumbnail" class="image" />
     {% else %}
     <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="image" />
     {% endif %}
@@ -54,7 +54,7 @@ Open with:
         <tr><td>Compression:</td><td><span class="data">{{ image.compression }}</span></td></tr>
         {% if dbimage.image_metadata %}
             {% for attr in column_map.keys() %}
-                {% if attr not in settings.details.hide_columns %}
+                {% if attr not in settings.hide_columns %}
                 <tr><td>{{ column_map[attr] }}:</td><td>{{ getattr(dbimage.image_metadata, attr) | safe }}</td></tr>
                 {% endif %}
             {% endfor %}

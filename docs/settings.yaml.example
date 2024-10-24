@@ -1,0 +1,24 @@
+log_level: INFO
+
+base_url: http://localhost:8000
+
+database:
+  url: sqlite:///database.db
+  debug_sql: False
+
+filters:
+  - column_name: "Driver line"
+    data_type: string
+    filter_type: dropdown
+  - column_name: "Probes"
+    data_type: csv
+    filter_type: dropdown
+  - column_name: "Region"
+  - column_name: "Zoom"
+
+title_column_name: "Image Name"
+
+hide_columns:
+  - "Probes"
+  - "Image Name"
+  

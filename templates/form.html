@@ -13,7 +13,7 @@
         {% if filter.filter_type == FilterType.dropdown %}
             <select name="{{ filter.db_name }}" onchange="submitForm()">
                 <option value="">Select...</option>
-                {% for key, value in filter_values | dictsort %}
+                {% for key, value in filter._values | dictsort %}
                 <option value="{{ key }}" {% if filter_params.get(filter.db_name) == key %}selected{% endif %}>
                     {{ key }} <!--({{ value }})-->
                 </option>

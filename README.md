@@ -19,9 +19,11 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 
 ## Getting Started
 
+
 ### 1. Install miniforge
 
 [Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
+
 
 ### 2. Initialize the conda environment
 
@@ -30,15 +32,22 @@ conda env create -f environment.yml
 conda activate zarrcade
 ```
 
+
+### (Optional) Try an example
+
+See the [Example](#example) section below to try out the example before working with your own data.
+
+
 ### 3. Create OME-Zarr images
 
-If necessary, convert your image(s) to OME-Zarr format, e.g. using bioformats2raw:
+If your images are not already in OME-Zarr format, you will need to convert them, e.g. using bioformats2raw:
 
 ```bash
 bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/zarr
 ```
 
 If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
+
 
 ### 4. Import images and metadata into Zarrcade
 
@@ -48,9 +57,7 @@ You can import images into Zarrcade using the provided command line script:
 bin/import.py -d /root/data/dir -c mycollection
 ```
 
-This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. 
-
-By default, this will also create MIPs and thumbnails for each image in a folder named `.zarrcade` within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
+This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. By default, this will also create MIPs and thumbnails for each image in `./static/.zarrcade`. 
 
 To add extra metadata about the images, you can provide a CSV file with the `-i` flag:
 
@@ -66,11 +73,8 @@ relative/path/to/ome1.zarr,JKF6363,Blu
 relative/path/to/ome2.zarr,JDH3562,Blu
 ```
 
-To try an example, use the following command:
+Read more about the import options in the [Data Import](./docs/DataImport.md) section of the documentation.
 
-```bash
-bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -m docs/flyefish-example.csv
-```
 
 ### 5. Run the Zarrcade web application
 
@@ -81,6 +85,24 @@ uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
 Your images and annotations will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
+
+
+## Example
+
+To try an example, follow steps 1 and 2 above and use the following command to import the example data:
+
+```bash
+bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -m docs/flyefish-example.csv
+```
+
+Copy the example settings.yaml file to your working directory and start the server:
+
+```bash
+cp docs/settings.yaml.example settings.yaml
+uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
+```
+
+The example should be visible at [http://0.0.0.0:8000](http://0.0.0.0:8000).
 
 
 ## Documentation

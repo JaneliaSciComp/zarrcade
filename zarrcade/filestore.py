@@ -68,6 +68,12 @@ class Filestore:
         """
         return os.path.join(self.fsroot, relative_path)
 
+
+    def get_url(self, relative_path):
+        """ Returns the full URL to the given path.
+        """
+        return os.path.join(self.data_url, relative_path)
+
  
     def exists(self, relative_path):
         """ Returns true if a file or folder exists at the given relative path.

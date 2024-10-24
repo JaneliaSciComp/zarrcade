@@ -27,7 +27,7 @@
         {% if not dbimage.image_metadata.thumbnail_path %}
             <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
         {% else %}
-            <img src="{{ get_relative_path_url(dbimage, dbimage.image_metadata.thumbnail_path) }}" alt="Image thumbnail" class="thumbnail" />
+            <img src="{{ get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request) }}" alt="Image thumbnail" class="thumbnail" />
         {% endif %}
             <div class="overlay">
 

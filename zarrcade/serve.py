@@ -17,7 +17,7 @@ import pandas as pd
 from zarrcade.filestore import get_filestore
 from zarrcade.database import Database, DBImage
 from zarrcade.viewers import Viewer, Neuroglancer
-from zarrcade.settings import get_settings, DataType, FilterType
+from zarrcade.settings import get_settings, DataType, FilterType, AuxImageMode
 
 # Create the API
 app = FastAPI(
@@ -57,7 +57,7 @@ async def startup_event():
     app.base_url = str(app.settings.base_url)
     logger.info(f"User-specified base URL is {app.base_url}")
 
-    db_url = str(app.settings.database.db_url)
+    db_url = str(app.settings.database.url)
     logger.info(f"User-specified database URL is {db_url}")
     app.db = Database(db_url)
 
@@ -140,6 +140,17 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
 
     # Proxy the data using the REST API
     return get_proxy_url(dbimage.collection, relative_path)
+
+
+def get_aux_path_url(dbimage: DBImage, relative_path: str, request: Request):
+    """ Return a web-accessible URL to the given relative path.
+    """
+    if app.settings.aux_image_mode == AuxImageMode.relative:
+        return get_relative_path_url(dbimage, relative_path)
+    elif app.settings.aux_image_mode == AuxImageMode.local:
+        return request.url_for('static', path=relative_path)
+    else:
+        raise ValueError(f"Unknown aux image mode: {app.settings.aux_image_mode}")
 
 
 def get_viewer_url(dbimage: DBImage, viewer: Viewer):
@@ -262,6 +273,7 @@ async def collection(request: Request, collection: str = '', search_string: str 
             "dbimages": result['images'],
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
+            "get_aux_path_url": get_aux_path_url,
             "get_data_url": get_data_url,
             "get_title": get_title,
             "get_query_string": partial(get_query_string, request.query_params),
@@ -289,6 +301,7 @@ async def details(request: Request, collection: str, image_id: str):
             "column_map": app.db.column_map,
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
+            "get_aux_path_url": get_aux_path_url,
             "get_title": get_title,
             "get_data_url": get_data_url,
             "getattr": getattr
