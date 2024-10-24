@@ -19,13 +19,19 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 
 ## Getting Started
 
-
 ### 1. Install miniforge
 
 [Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
 
 
-### 2. Initialize the conda environment
+### 2. Clone this repo
+
+```bash
+git clone https://github.com/JaneliaSciComp/zarrcade.git
+cd zarrcade
+```
+
+### 3. Initialize the conda environment
 
 ```bash
 conda env create -f environment.yml
@@ -38,7 +44,7 @@ conda activate zarrcade
 See the [Example](#example) section below to try out the example before working with your own data.
 
 
-### 3. Create OME-Zarr images
+### 4. Create OME-Zarr images
 
 If your images are not already in OME-Zarr format, you will need to convert them, e.g. using bioformats2raw:
 
@@ -49,7 +55,7 @@ bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/za
 If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
 
 
-### 4. Import images and metadata into Zarrcade
+### 5. Import images and metadata into Zarrcade
 
 You can import images into Zarrcade using the provided command line script:
 
@@ -76,7 +82,7 @@ relative/path/to/ome2.zarr,JDH3562,Blu
 Read more about the import options in the [Data Import](./docs/DataImport.md) section of the documentation.
 
 
-### 5. Run the Zarrcade web application
+### 6. Run the Zarrcade web application
 
 Start the development server, pointing it to your OME-Zarr data:
 
