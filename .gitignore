@@ -20,3 +20,7 @@ certs
 *.env
 settings*.yaml
 
+
+# pixi environments
+.pixi
+*.egg-info
