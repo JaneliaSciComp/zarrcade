@@ -21,7 +21,7 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 
 ### 1. Install miniforge
 
-[Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
+[Install miniforge]([https://docs.conda.io/en/latest/miniforge.html](https://github.com/conda-forge/miniforge)) if you don't already have it.
 
 
 ### 2. Clone this repo
