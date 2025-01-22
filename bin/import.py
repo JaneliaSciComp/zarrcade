@@ -61,8 +61,10 @@ if __name__ == '__main__':
         help='Path to the CSV file containing additional metadata')
     parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
         help="Don't create auxiliary images or thumbnails.")
-    parser.add_argument('-a', '--aux-path', type=str, default="static/.zarrcade",
+    parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
         help='Local path to the folder for auxiliary images.')
+    parser.add_argument('--skip-image-load', action=argparse.BooleanOptionalAction, default=False,
+        help="Skip loading images from the data directory.")
     parser.add_argument('--aux-image-name', type=str, default='zmax.png',
         help='Filename of the main auxiliary image.')
     parser.add_argument('--thumbnail-name', type=str, default='zmax_sm.jpg',
@@ -139,10 +141,11 @@ if __name__ == '__main__':
         logger.info(f"Inserted {inserted} rows of metadata")
 
     # Load the images
-    logger.info("Loading images...")
-    generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
-    db.persist_images(collection_name, generator,
-        only_with_metadata=args.only_with_metadata)
+    if not args.skip_image_load:
+        logger.info("Loading images...")
+        generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
+        db.persist_images(collection_name, generator,
+            only_with_metadata=args.only_with_metadata)
 
     if not args.no_aux:
         # Load aux images and thumbnails
