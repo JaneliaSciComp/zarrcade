@@ -7,7 +7,7 @@ services:
         ports:
           - 8000
         volumes:
-          - ${CONFIG_FILE}:/app/zarrcade/config.yaml
+          - ${CONFIG_FILE}:/app/zarrcade/settings.yaml
           - ${DATA_DIR}:/data:ro,shared
           - ${DB_DIR}:/db:rw,shared
         environment:
