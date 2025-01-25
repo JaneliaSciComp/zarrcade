@@ -65,6 +65,8 @@ if __name__ == '__main__':
         help='Local path to the folder for auxiliary images.')
     parser.add_argument('--skip-image-load', action=argparse.BooleanOptionalAction, default=False,
         help="Skip loading images from the data directory.")
+    parser.add_argument('--skip-thumbnail-creation', action=argparse.BooleanOptionalAction, default=False,
+        help="Skip creating thumbnails if they do not already exist.")
     parser.add_argument('--aux-image-name', type=str, default='zmax.png',
         help='Filename of the main auxiliary image.')
     parser.add_argument('--thumbnail-name', type=str, default='zmax_sm.jpg',
@@ -137,8 +139,9 @@ if __name__ == '__main__':
             new_obj['path'] = path
             new_objs.append(new_obj)
 
-        inserted = db.add_image_metadata(new_objs)
+        inserted, updated = db.add_image_metadata(new_objs)
         logger.info(f"Inserted {inserted} rows of metadata")
+        logger.info(f"Updated {updated} rows of metadata")
 
     # Load the images
     if not args.skip_image_load:
@@ -160,37 +163,52 @@ if __name__ == '__main__':
             return aux_path
 
         images = db.get_dbimages(collection=collection_name, page_size=0)['images']
-        for image in images:
-            logger.info(f"Processing {image.path}")
-            metadata = image.image_metadata
+        for dbimage in images:
+            logger.info(f"Processing {dbimage.path}")
+            metadata = dbimage.image_metadata
+            image = dbimage.get_image()
             updated_obj = {}
             aux_path = None
             
+            logger.debug(f"aux_image_name: {args.aux_image_name}")
+            logger.debug(f"Metadata: {metadata}")
+            if metadata:
+                logger.debug(f"Metadata aux_image_path: {metadata.aux_image_path}")
+            
             if args.aux_image_name and (not metadata or not metadata.aux_image_path):
-                aux_path = get_aux_path(image.path, args.aux_image_name)
-
-                updated_obj['aux_image_path'] = aux_path
+                aux_path = get_aux_path(dbimage.path, args.aux_image_name)
+                logger.debug(f"Auxiliary path: {aux_path}")
 
                 if fs.exists(aux_path):
                     logger.trace(f"Found auxiliary file: {aux_path}")
+                    updated_obj['aux_image_path'] = aux_path
+                elif args.skip_thumbnail_creation:
+                    logger.trace(f"Skipping auxiliary file creation: {aux_path}")
                 else:
                     logger.trace(f"Creating auxiliary file: {aux_path}")
                     create_parent_dirs(aux_path)
-                    store = fs.get_store(image.image_path)
-                    make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper)
+                    store = fs.get_store(dbimage.image_path)
+                    colors = []
+                    for channel in image.channels:
+                        colors.append(channel['color'])
+                    make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper, colors=colors)
                     logger.info(f"Wrote {aux_path}")
+                    updated_obj['aux_image_path'] = aux_path
 
             if args.thumbnail_name and (not metadata or not metadata.thumbnail_path):
-                tb_path = get_aux_path(image.path, args.thumbnail_name)
-                updated_obj['thumbnail_path'] = tb_path
+                tb_path = get_aux_path(dbimage.path, args.thumbnail_name)
 
                 if fs.exists(tb_path):
                     logger.trace(f"Found thumbnail: {tb_path}")
+                    updated_obj['thumbnail_path'] = tb_path
+                elif args.skip_thumbnail_creation:
+                    logger.trace(f"Skipping thumbnail creation: {tb_path}")
                 elif aux_path:
                     logger.trace(f"Creating thumbnail: {tb_path}")
                     create_parent_dirs(tb_path)
                     make_thumbnail(aux_path, tb_path)
                     logger.info(f"Wrote {tb_path}")
+                    updated_obj['thumbnail_path'] = tb_path
                 else:
                     logger.trace(f"Cannot make thumbnail for {path} without aux image")
 
@@ -199,28 +217,30 @@ if __name__ == '__main__':
                     # Metadata doesn't exist, create it
                     inserted = db.add_image_metadata([{
                         'collection': collection_name,
-                        'path': image.path,
+                        'path': dbimage.path,
                         **updated_obj
                     }])
                     if inserted==1:
-                        logger.info(f"Inserted metadata for {image.path}")
+                        logger.info(f"Inserted metadata for {dbimage.path}")
                     else:
-                        logger.error(f"Error inserting metadata for {image.path}")
+                        logger.error(f"Error inserting metadata for {dbimage.path}")
                 else:
                     # Metadata exists, update it
                     db.update_image_metadata(metadata.id, updated_obj)
-                    logger.info(f"Updated metadata for {image.path}")
+                    logger.info(f"Updated metadata for {dbimage.path}")
         
         # Update the images with the new metadata ids if ncessary
         # This happens if we don't have user provided metadata and the metadatas
         # were created at the thumbnail generation step.
         path_to_metadata_id = db.get_path_to_metadata_id_map(collection_name)
         images = db.get_dbimages(collection=collection_name, page_size=0)['images']
-        for image in images:
-            logger.info(f"Consolidating {image.path}")
-            if image.image_metadata_id is None:
-                image.image_metadata_id = path_to_metadata_id[image.path]
-                db.update_image(image)
-                logger.info(f"Updated image {image.path} with metadata id {image.image_metadata_id}")
+        for dbimage in images:
+            if dbimage.image_metadata_id is None:
+                if dbimage.path in path_to_metadata_id:
+                    dbimage.image_metadata_id = path_to_metadata_id[dbimage.path]
+                    db.update_image(dbimage)
+                    logger.info(f"Updated image {dbimage.path} with metadata id {dbimage.image_metadata_id}")
+                else:
+                    logger.warning(f"No metadata found for {dbimage.path}")
 
     logger.info("Database initialization complete.")

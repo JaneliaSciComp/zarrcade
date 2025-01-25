@@ -240,16 +240,30 @@ class Database:
         with self.sessionmaker() as session:
             try:
                 inserted = 0
+                updated = 0
                 for row in image_metadata_rows:
                     new_metadata = metadata_table.insert().values(row)
                     try:
                         session.execute(new_metadata)
                         inserted += 1
                     except IntegrityError:
-                        pass
+                        # Try updating instead
+                        update_stmt = metadata_table.update().where(
+                            and_(
+                                metadata_table.c.collection == row['collection'],
+                                metadata_table.c.path == row['path']
+                            )
+                        ).values(row)
+                        result = session.execute(update_stmt)
+                        if result.rowcount > 0:
+                            updated += 1
 
                 session.commit()
-                return inserted
+
+                if inserted+updated < len(image_metadata_rows):
+                    logger.warning(f"Only added {inserted+updated} rows of {len(image_metadata_rows)}")
+
+                return inserted, updated
 
             except OperationalError as e:
                 session.rollback()
@@ -394,11 +408,10 @@ class Database:
                 metadata_id = None
 
             if metadata_id or not only_with_metadata:
-                logger.trace(f"Persisting {image}")
                 self.persist_image(
-                            collection=collection,
-                            image=image,
-                            metadata_id=metadata_id
+                    collection=collection,
+                    image=image,
+                    metadata_id=metadata_id
                 )
                 count += 1
             else:

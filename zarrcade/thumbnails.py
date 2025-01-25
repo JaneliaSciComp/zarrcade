@@ -4,9 +4,34 @@ import os
 import numpy as np
 import zarr
 import skimage as ski
+from skimage import exposure
 from loguru import logger
 from PIL import Image
 from microfilm.microplot import microshow
+
+SIMPLE_HEX_COLOR_MAP = {
+    'FF0000': 'pure_red',
+    '00FF00': 'pure_green',
+    '0000FF': 'pure_blue',
+    'FF00FF': 'pure_magenta',
+    '00FFFF': 'pure_cyan',
+    'FFFF00': 'pure_yellow',
+    'FFFFFF': 'gray',
+    'red': 'pure_red',
+    'green': 'pure_green',
+    'blue': 'pure_blue',
+    'magenta': 'pure_magenta',
+    'cyan': 'pure_cyan',
+    'yellow': 'pure_yellow',
+    'white': 'gray',
+}
+
+def translate_color(color: str) -> str:
+    """ Attempt to translate a color from a hex string to a microfilm color name.
+        If we can't then return the original color.
+        See https://guiwitz.github.io/microfilm/docs/source/microfilm.html#microfilm.colorify.cmaps_def
+    """
+    return SIMPLE_HEX_COLOR_MAP.get(color, color)
 
 
 def adjust_brightness(img: np.ndarray, p_lower=0, p_upper=90) -> np.ndarray:
@@ -17,9 +42,27 @@ def adjust_brightness(img: np.ndarray, p_lower=0, p_upper=90) -> np.ndarray:
     return ski.exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
 
 
-def _make_mip(root) -> Image:
+def adjust_file_brightness(src_path, dst_path):
+    img = ski.io.imread(src_path)
+    p_lower, p_upper = np.percentile(img, (0, 99.90))
+    img_rescale = exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
+    ski.io.imsave(dst_path, img_rescale)
+
+
+def _make_mip(root, colors=None) -> Image:
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
+    if not colors:
+        colors = ['pure_green','pure_red', 'pure_magenta', 'pure_cyan']
+    else:
+        for color in colors:
+            if color not in SIMPLE_HEX_COLOR_MAP:
+                logger.warning(f"Unknown color: {color}")
+            else:
+                translated_color = translate_color(color)
+                logger.trace(f"Translated color: {color} -> {translated_color}")
+        colors = [translate_color(color) for color in colors]
+
     multiscale = root['/'].attrs['multiscales'][0]
     datasets = multiscale['datasets']
 
@@ -53,8 +96,7 @@ def _make_mip(root) -> Image:
     mip = microshow(
         images=mip_images[:,0,:,:],
         fig_scaling=5,
-        # TODO: read colormap from Omero metadata
-        cmaps=['pure_green','pure_red', 'pure_magenta', 'pure_cyan'])
+        cmaps=colors)
     
     #mip.savefig('mip.png')
 
@@ -69,11 +111,11 @@ def _make_mip(root) -> Image:
         return arr
 
 
-def make_mip_from_zarr(store, mip_path, p_lower=0, p_upper=90):
+def make_mip_from_zarr(store, mip_path, p_lower=0, p_upper=90, colors=None):
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
     root = zarr.open(store, mode='r')
-    mip = _make_mip(root)
+    mip = _make_mip(root, colors)
     adjusted = adjust_brightness(mip, p_lower, p_upper)
     ski.io.imsave(mip_path, adjusted)
 
@@ -94,8 +136,8 @@ def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95
 
 # Test harness
 if __name__ == "__main__":
-    zarr_path = '/nrs/flynp/EASI-FISH_NP_SS_OMEZarr/NP11_R3_20240513/NP11_R3_3_5_SS69117_AstA_546_AstC_647_150x_Central.zarr/0'
+    zarr_path = '/nearline/flynp/EASI-FISH_NP_SS_OMEZarr/NP51_R1_20240522/NP51_R1_4_1_SS75253_Tk_546_Mip_647_036x_CentralDapi.zarr/0'
     store = zarr.DirectoryStore(zarr_path)
-    make_mip_from_zarr(store, 'mip_adjusted.png')
+    make_mip_from_zarr(store, 'mip_adjusted.png', colors=['00FFFF'])
     make_thumbnail('mip_adjusted.png', 'mip_adjusted_thumbnail.jpg')
 
