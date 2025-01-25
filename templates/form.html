@@ -30,6 +30,6 @@
         document.getElementById('filter-form').submit();
     }
     function resetForm() {
-        window.location.href = "{{ url_for('index') }}";
+        window.location.href = window.location.pathname;
     }
 </script>
