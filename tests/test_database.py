@@ -40,26 +40,36 @@ def test_add_image_metadata(db):
     metadata_rows = [
         {"collection": "test_collection", "path": "test_path", "color": "red"}
     ]
-    inserted = db.add_image_metadata(metadata_rows)
+    inserted, updated = db.add_image_metadata(metadata_rows)
     assert inserted == 1
-    
+    assert updated == 0
+
     # Test inserting duplicate row (should not increase count)
-    inserted = db.add_image_metadata(metadata_rows)
+    inserted, updated = db.add_image_metadata(metadata_rows)
     assert inserted == 0
 
     # Test inserting new row
     new_metadata_row = [
         {"collection": "test_collection", "path": "test_path2", "color": "blue"}
     ]
-    inserted = db.add_image_metadata(new_metadata_row)
+    inserted, updated = db.add_image_metadata(new_metadata_row)
     assert inserted == 1
+    assert updated == 0
+
+    # Test updating row
+    new_metadata_row = [
+        {"collection": "test_collection", "path": "test_path2", "color": "yellow"}
+    ]
+    inserted, updated = db.add_image_metadata(new_metadata_row)
+    assert inserted == 0
+    assert updated == 1
 
     # Verify both rows are now in the database
     with db.sessionmaker() as session:
         all_rows = session.query(DBImageMetadata).filter_by(collection="test_collection").all()
         assert len(all_rows) == 2
         assert set(row.path for row in all_rows) == {"test_path", "test_path2"}
-        assert set(row.color for row in all_rows) == {"red", "blue"}
+        assert set(row.color for row in all_rows) == {"red", "yellow"}
 
 
 def test_persist_image(db):
@@ -83,7 +93,7 @@ def test_persist_images(db):
         {"collection": "test_collection", "path": "test_path2/0", "color": "blue"},
         {"collection": "test_collection", "path": "test_path3/0", "color": "red"}
     ]
-    inserted = db.add_image_metadata(metadata_rows)
+    inserted, updated = db.add_image_metadata(metadata_rows)
     assert inserted == 3
 
     def image_generator():
@@ -133,7 +143,7 @@ def test_metadata_search(db):
         {"collection": "test_collection", "path": "test_path3", "color": "red"}
     ]
 
-    inserted = db.add_image_metadata(metadata_rows)
+    inserted, updated = db.add_image_metadata(metadata_rows)
     assert inserted == 3
 
     with db.sessionmaker() as session:
