@@ -4,7 +4,7 @@ version = "1.0.0"
 description = " Create web-based OME-Zarr galleries"
 authors = ["Konrad Rokicki <rokickik@janelia.hhmi.org>"]
 channels = ["conda-forge", "ome"]
-platforms = ["linux-64", "osx-arm64"]
+platforms = ["linux-64", "osx-arm64", "osx-64"]
 
 [tasks]
 
