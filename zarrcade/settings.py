@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     database: Database = Database()
     proxies: List[FilestoreProxy] = []
-    exclude_paths: List[str] = []
+    exclude_paths: List[str] = ['.zarrcade']
     filters: List[Filter] = []
     title_column_name: str | None = None
     hide_columns: Set[str] = set()

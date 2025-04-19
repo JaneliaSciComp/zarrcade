@@ -22,7 +22,7 @@ def _yield_color() -> Iterator[str]:
         yield c
 
 
-def _encode_image(path: str, image_group: zarr.Group) -> Image:
+def _encode_image(image_group: zarr.Group) -> Image:
     """ Encode an image from an OME-Zarr group.
     """
     if 'multiscales' not in image_group.attrs:
@@ -119,7 +119,6 @@ def _encode_image(path: str, image_group: zarr.Group) -> Image:
             channels.append(Channel(name, color))
 
     return Image(
-        relative_path = path,
         group_path = group_path,
         num_channels = num_channels,
         num_timepoints = num_timepoints,
@@ -196,4 +195,5 @@ class OmeZarrAgent():
 
         with logger.catch(message=f"Failed to process {absolute_path}"):
             for image_group in _yield_image_groups(fs, path):
-                yield _encode_image(path, image_group)
+                t = (path, _encode_image(image_group))
+                yield t

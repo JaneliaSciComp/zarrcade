@@ -6,7 +6,7 @@ from loguru import logger
 
 from zarrcade.filestore import Filestore
 from zarrcade.model import Image
-
+from zarrcade.settings import get_settings
 class WalkResult(Enum):
     """ Result of the walk operation.
     """
@@ -70,7 +70,9 @@ def yield_images(fs: Filestore,
     """
     if depth>maxdepth: return
 
-    for exclude_path in fs.exclude_paths:
+    settings = get_settings()
+
+    for exclude_path in settings.exclude_paths:
         spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, exclude_path.splitlines())
         if spec.match_file(path):
             logger.trace(f"excluding {path}")

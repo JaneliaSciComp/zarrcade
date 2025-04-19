@@ -22,7 +22,7 @@ Copy data link:
 
 <section>
 Open with: 
-{% for viewer in dbimage.get_image().get_compatible_viewers() %}
+{% for viewer in image.get_compatible_viewers() %}
     <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
         <div class="tooltip">
             <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">

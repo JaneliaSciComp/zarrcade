@@ -24,9 +24,9 @@ from skimage import exposure
 import numpy as np
 from PIL import Image
 
-from zarrcade import Database, get_filestore
+from zarrcade import get_filestore
 from zarrcade.settings import get_settings
-from zarrcade.images import yield_ome_zarrs
+from zarrcade.agents import yield_ome_zarrs
 from zarrcade.thumbnails import make_mip, adjust_brightness
 
 JPEG_QUALITY = 95

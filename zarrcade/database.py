@@ -29,7 +29,7 @@ class DBCollection(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     label = Column(String)
-    data_url = Column(String, nullable=False)
+    data_url = Column(String, nullable=True)
 
 
 class DBMetadataColumn(Base):
@@ -325,7 +325,7 @@ class Database:
             return path_to_id
 
 
-    def persist_image(self, collection: str, image: Image, metadata_id: int) -> bool:
+    def persist_image(self, collection: str, path: str, image: Image, metadata_id: int) -> bool:
         """ Save (update or insert) the given image to the database.
 
             Args:
@@ -337,7 +337,6 @@ class Database:
                 bool: True if the image was inserted, False if it was updated.
         """
         logger.trace(f"Persisting image {image}")
-        path = image.relative_path
         group_path = image.group_path
         image_path = f"{path}{group_path}"
 
@@ -398,18 +397,20 @@ class Database:
         # Walk the storage root and populate the database
         count = 0
 
-        for image in image_generator():
-            
-            if image.get_path() in metadata_ids:
-                metadata_id = metadata_ids[image.get_path()]
-            elif image.relative_path in metadata_ids:
-                metadata_id = metadata_ids[image.relative_path]
+        for path, image in image_generator():
+            full_path = f"{path}{image.group_path}"
+
+            if full_path in metadata_ids:
+                metadata_id = metadata_ids[full_path]
+            elif path in metadata_ids:
+                metadata_id = metadata_ids[path]
             else:
                 metadata_id = None
 
             if metadata_id or not only_with_metadata:
                 self.persist_image(
                     collection=collection,
+                    path=path,
                     image=image,
                     metadata_id=metadata_id
                 )

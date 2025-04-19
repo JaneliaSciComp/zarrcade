@@ -22,9 +22,6 @@ from zarrcade.agents import yield_images
 from zarrcade.agents.omezarr import OmeZarrAgent
 from zarrcade.thumbnails import make_mip_from_zarr, make_thumbnail
 
-EXCLUDE_PATHS = ['.zarrcade']
-
-
 # Adapted from https://github.com/django/django/blob/main/django/utils/text.py
 def slugify(value, allow_unicode=False):
     """
@@ -61,7 +58,7 @@ if __name__ == '__main__':
         help='Path to the CSV file containing additional metadata')
     parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
         help="Don't create auxiliary images or thumbnails.")
-    parser.add_argument('-a', '--aux-path', type=str, default=".zarrcade",
+    parser.add_argument('-a', '--aux-path', type=str, default="static/.zarrcade",
         help='Local path to the folder for auxiliary images.')
     parser.add_argument('--skip-image-load', action=argparse.BooleanOptionalAction, default=False,
         help="Skip loading images from the data directory.")
@@ -91,8 +88,7 @@ if __name__ == '__main__':
 
     # Connect to the filestore
     logger.info(f"Data URL is {data_url}")
-    exclude_paths = EXCLUDE_PATHS + settings.exclude_paths + args.exclude
-    fs = get_filestore(data_url, exclude_paths=tuple(exclude_paths))
+    fs = get_filestore(data_url)
 
     # Connect to the database
     db_url = str(settings.database.url)

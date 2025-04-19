@@ -54,11 +54,15 @@ async def startup_event():
 
     # Load settings from config file and environment
     app.settings = get_settings()
+
+    logger.info(f"Settings:")
+    logger.info(f"  aux_image_mode: {app.settings.aux_image_mode}")
+    logger.info(f"  base_url: {app.settings.base_url}")
+    logger.info(f"  database.url: {app.settings.database.url}")
+
     app.base_url = str(app.settings.base_url)
-    logger.info(f"User-specified base URL is {app.base_url}")
 
     db_url = str(app.settings.database.url)
-    logger.info(f"User-specified database URL is {db_url}")
     app.db = Database(db_url)
 
     for s in app.settings.filters:
@@ -97,7 +101,7 @@ def get_collection_filestore(collection: str):
     """ Return the filestore for the given collection.
     """
     data_url = app.db.collection_map[collection].data_url
-    return get_filestore(data_url, app.settings.exclude_paths)
+    return get_filestore(data_url)
 
 
 def get_proxy_url(collection: str, relative_path: str):
@@ -112,16 +116,16 @@ def get_data_url(dbimage: DBImage):
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
     fs = get_collection_filestore(dbimage.collection)
-    image = dbimage.get_image()
 
     # Check if the collection is proxied
     proxy = next((p for p in app.settings.proxies if p.collection == dbimage.collection), None)
     if proxy:
         return os.path.join(str(proxy.url), dbimage.image_path)
 
-    if fs.url:
+    web_url = fs.get_url(dbimage.image_path)
+    if web_url:
         # This filestore is already web-accessible
-        return os.path.join(fs.url, dbimage.image_path)
+        return web_url
 
     # Proxy the data using the REST API
     return get_proxy_url(dbimage.collection, dbimage.image_path)
@@ -309,11 +313,11 @@ async def details(request: Request, collection: str, image_id: str):
     )
 
 
-@app.head("/data/{collection}/{relative_path:path}")
-async def data_proxy_head(relative_path: str, collection: str):
+@app.head("/data/{collection}/{file_path:path}")
+async def data_proxy_head(collection: str, file_path: str):
     try:
         fs = get_collection_filestore(collection)
-        size = fs.get_size(relative_path)
+        size = fs.get_size(file_path)
         headers = {}
         headers["Content-Type"] = "binary/octet-stream"
         headers["Content-Length"] = str(size)
@@ -322,11 +326,11 @@ async def data_proxy_head(relative_path: str, collection: str):
         return Response(status_code=404)
 
 
-@app.get("/data/{collection}/{relative_path:path}")
-async def data_proxy_get(relative_path: str, collection: str):
+@app.get("/data/{collection}/{file_path:path}")
+async def data_proxy_get(collection: str, file_path: str):
     try:
         fs = get_collection_filestore(collection)
-        with fs.open(relative_path) as f:
+        with fs.open(file_path) as f:
             data = f.read()
             headers = {}
             headers["Content-Type"] = "binary/octet-stream"
