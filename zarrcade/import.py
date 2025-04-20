@@ -5,8 +5,6 @@ Optionally imports metadata and 2d thumbnails.
 """
 
 import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
 
 import os
 import re
