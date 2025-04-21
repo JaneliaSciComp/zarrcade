@@ -423,7 +423,7 @@ class Database:
                 )
                 count += 1
             else:
-                logger.debug(f"Skipping image missing metadata: {image.get_path()}")
+                logger.debug(f"Skipping image missing metadata: {path}")
 
         logger.debug(f"Persisted {count} images to the database")
         return count
