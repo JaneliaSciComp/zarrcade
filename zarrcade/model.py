@@ -36,6 +36,7 @@ class Image:
     dimensions_voxels: str = None
     chunk_size: str = None
     voxel_sizes: str = None
+    dtype: str = None
     compression: str = None
     channels: list[Channel] = field(default_factory=lambda: [])
     axes: dict[str, Axis] = field(default_factory=lambda: [])

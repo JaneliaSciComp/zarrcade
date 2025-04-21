@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-
+import numpy as np
 from zarrcade.filestore import get_filestore
 from zarrcade.database import Database, DBImage
 from zarrcade.viewers import Viewer, Neuroglancer
@@ -165,13 +165,8 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
     """
     url = get_data_url(dbimage)
     if viewer==Neuroglancer:
-        image = dbimage.get_image()
-        if image.axes_order == 'tczyx':
-            # Generate a multichannel config on-the-fly
-            url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, dbimage.image_path)
-        else:
-            # Prepend format for Neuroglancer to understand
-            url = 'zarr://' + url
+        # Generate a multichannel config on-the-fly
+        url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, dbimage.image_path)
 
     return viewer.get_viewer_url(url)
 
@@ -222,7 +217,7 @@ async def download_csv(request: Request, collection: str, search_string: str = '
         row = {
             'Id': dbimage.id,
             'Collection': dbimage.collection,
-            'Name': dbimage.path
+            'Path': dbimage.path
         }
         metadata = dbimage.image_metadata
         if metadata:
@@ -352,9 +347,9 @@ async def neuroglancer_state(collection: str, image_id: str):
     image = dbimage.get_image()
     url = get_data_url(dbimage)
 
-    if image.axes_order != 'tczyx':
-        logger.error("Neuroglancer states can currently only be generated for TCZYX images")
-        return Response(status_code=400)
+    # if image.axes_order != 'tczyx':
+    #     logger.error("Neuroglancer states can currently only be generated for TCZYX images")
+    #     return Response(status_code=400)
 
     state = ViewerState()
     # TODO: dataclasses don't dsupport nested deserialization which makes this strange. Should switch to Pydantic.
@@ -364,10 +359,11 @@ async def neuroglancer_state(collection: str, image_id: str):
     units = []
     position = []
     for name in names:
-        axis = image.axes[name]
-        scales.append(axis['scale'])
-        units.append(axis['unit'])
-        position.append(int(axis['extent'] / 2))
+        if name in image.axes:
+            axis = image.axes[name]
+            scales.append(axis['scale'])
+            units.append(axis['unit'])
+            position.append(int(axis['extent'] / 2))
 
     state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
     state.position = position
@@ -376,10 +372,14 @@ async def neuroglancer_state(collection: str, image_id: str):
     state.crossSectionScale = 4.5
     state.projectionScale = 2048
 
+    dtype_info = np.iinfo(image.dtype)
+    dtype_min = dtype_info.min
+    dtype_max = dtype_info.max
+
     for i, channel in enumerate(image.channels):
 
-        min_value = channel['pixel_intensity_min'] or 0
-        max_value = channel['pixel_intensity_max'] or 4096
+        min_value = channel['pixel_intensity_min'] or dtype_min
+        max_value = channel['pixel_intensity_max'] or dtype_max
 
         color = channel['color']
         if re.match(r'^([\dA-F]){6}$', color):
@@ -398,11 +398,11 @@ async def neuroglancer_state(collection: str, image_id: str):
                         f"void main(){{emitRGBA(vec4(hue*normalized(),1));}}")
             )
 
-        start = channel['contrast_limit_start']
-        end = channel['contrast_limit_end']
+        start = channel['contrast_limit_start'] or dtype_min
+        end = channel['contrast_limit_end'] or dtype_max * 0.75
 
         # TODO: temporary hack to make Fly-eFISH data brighter
-        end = min(end, 4000)
+        #end = min(end, 4000)
 
         if start and end:
             layer.shaderControls={

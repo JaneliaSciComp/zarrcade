@@ -3,6 +3,7 @@ import itertools
 from typing import Iterator, Any
 
 import zarr
+import numpy as np
 from loguru import logger
 
 from zarrcade.filestore import Filestore
@@ -39,7 +40,7 @@ def _encode_image(image_group: zarr.Group) -> Image:
     multiscale = multiscales[0]
     version = get(multiscale, 'version')
     if version != '0.4':
-        raise ValueError(f"Unsupported multiscales version {version}")
+        raise ValueError(f"Unsupported OME-Zarr version: {version}")
     
     # Use highest resolution
     fullres = multiscale['datasets'][0]
@@ -118,6 +119,10 @@ def _encode_image(image_group: zarr.Group) -> Image:
             color = next(color_generator)
             channels.append(Channel(name, color))
 
+    # If there is only one channel, make it white
+    if len(channels) == 1:
+        channels[0].color = 'white'
+
     return Image(
         group_path = group_path,
         num_channels = num_channels,
@@ -126,6 +131,7 @@ def _encode_image(image_group: zarr.Group) -> Image:
         dimensions = ' ✕ '.join(dimensions),
         dimensions_voxels = ' ✕ '.join(dimensions_voxels),
         chunk_size = ' ✕ '.join(chunks),
+        dtype = str(array.dtype),
         compression = str(array.compressor),
         channels = channels,
         axes_order = ''.join(axes_names),
