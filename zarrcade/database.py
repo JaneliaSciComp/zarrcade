@@ -295,6 +295,13 @@ class Database:
                 return False
 
 
+    def get_all_image_metadata(self) -> List[DBImageMetadata]:
+        """ Get all image metadata from the database.
+        """
+        with self.sessionmaker() as session:
+            return session.query(DBImageMetadata).all()
+
+
     def get_images_count(self) -> int:
         """ Get the total number of images in the database.
 

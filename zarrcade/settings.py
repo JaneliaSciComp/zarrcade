@@ -54,11 +54,14 @@ class Filter(BaseModel):
 class AuxImageMode(str, Enum):
     """ How to find auxiliary images """
     
-    local = 'local'
-    """ Use the local filesystem to find auxiliary images """
+    absolute = 'absolute'
+    """ Use an absolute URL to the auxiliary image """
 
     relative = 'relative'
     """ Use the filestore to find auxiliary images, with paths relative to the data URL """
+
+    local = 'local'
+    """ Use the local filesystem to find auxiliary images """
 
 
 class Settings(BaseSettings):

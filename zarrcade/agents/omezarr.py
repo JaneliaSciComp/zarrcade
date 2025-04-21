@@ -197,3 +197,13 @@ class OmeZarrAgent():
             for image_group in _yield_image_groups(fs, path):
                 t = (path, _encode_image(image_group))
                 yield t
+
+
+    def get_image(self, fs: Filestore, zarr_path: str, group_path: str) -> Image:
+        """ Get the image from the given group path.
+        """
+        logger.info(f"Opening zarr store at {zarr_path}")
+        store = fs.get_store(zarr_path)
+        z = zarr.open(store, mode='r')
+        image_group = z[group_path]
+        return _encode_image(image_group)

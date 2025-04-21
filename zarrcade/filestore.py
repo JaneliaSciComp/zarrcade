@@ -149,9 +149,8 @@ class AbsoluteFilestore(Filestore):
     """
     def get_store(self, uri):
         """Returns a fsspec store for the given relative path."""
-        resolver = self.get_resolver(uri)
-        root = os.path.join(resolver.fsroot, uri)
-        return resolver.fs.get_mapper(root)
+        resolver = get_resolver(uri)
+        return resolver.fs.get_mapper(uri)
 
     def get_absolute_path(self, uri):
         """Returns the full absolute path to the given path."""
@@ -159,29 +158,29 @@ class AbsoluteFilestore(Filestore):
 
     def get_url(self, uri):
         """Returns the full URL to the given path."""
-        resolver = self.get_resolver(uri)
+        resolver = get_resolver(uri)
         return resolver.web_url
 
     def exists(self, uri):
         """Returns true if a file or folder exists at the given relative path."""
-        resolver = self.get_resolver(uri)
+        resolver = get_resolver(uri)
         return resolver.fs.exists(uri)
 
     def open(self, uri):
         """Opens the file at the given relative path and returns
         the file handle."""
-        resolver = self.get_resolver(uri)
+        resolver = get_resolver(uri)
         return resolver.fs.open(uri)
 
     def get_size(self, uri):
         """Returns the size of the file at the given relative path."""
-        resolver = self.get_resolver(uri)
+        resolver = get_resolver(uri)
         info = resolver.fs.info(uri)
         return info['size']
 
     def get_children(self, uri):
         """Returns the children of the given relative path."""
-        resolver = self.get_resolver(uri)
+        resolver = get_resolver(uri)
         children = []
         for child in resolver.fs.ls(uri, detail=True):
             abspath = child['name']
@@ -194,10 +193,9 @@ class AbsoluteFilestore(Filestore):
         return children
 
 
-
 @cache
-def get_filestore(data_url: str = None) -> Filestore:
+def get_filestore(data_url = None) -> Filestore:
     if data_url is None:
-        return AbsoluteFilestore(data_url=data_url)
+        return AbsoluteFilestore()
     else:
         return RelativeFilestore(data_url=data_url)
