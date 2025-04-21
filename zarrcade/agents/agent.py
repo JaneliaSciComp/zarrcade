@@ -6,7 +6,7 @@ from loguru import logger
 
 from zarrcade.filestore import Filestore
 from zarrcade.model import Image
-
+from zarrcade.settings import get_settings
 class WalkResult(Enum):
     """ Result of the walk operation.
     """
@@ -60,6 +60,21 @@ class Agent(Protocol):
         """
         ...
 
+    def get_image(self, fs: Filestore, zarr_path: str, group_path: str) -> Image:
+        """ Get the image at the given path.
+
+        This method should be overridden by subclasses to get the OME-Zarr image 
+        at the given path within the zarr store.
+
+        Args:
+            zarr_path (str): The path to the zarr store.
+            group_path (str): The path to the group in the zarr store.
+
+        Returns:
+            Image: The image at the given path.
+        """
+        ...
+
 
 def yield_images(fs: Filestore, 
                  agents: Sequence[Agent], 
@@ -70,7 +85,9 @@ def yield_images(fs: Filestore,
     """
     if depth>maxdepth: return
 
-    for exclude_path in fs.exclude_paths:
+    settings = get_settings()
+
+    for exclude_path in settings.exclude_paths:
         spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, exclude_path.splitlines())
         if spec.match_file(path):
             logger.trace(f"excluding {path}")
@@ -96,4 +113,12 @@ def yield_images(fs: Filestore,
     if not container_found:
         # recursively search for images
         for d in [c['path'] for c in children if c['type']=='directory']:
-            yield from yield_images(fs, agents,d, depth+1)
+            yield from yield_images(fs, agents, d, depth+1)
+
+
+def yield_image(fs: Filestore, path: str) -> Iterator[Image]:
+    """ Yield images in the given path.
+    """
+    children = fs.get_children(path)
+    for image in yield_images(fs, agents, path, 0, 1):
+        yield image

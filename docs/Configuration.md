@@ -43,6 +43,7 @@ proxies:
     url: https://rokickik-dev.int.janelia.org/nrs-flynp-omezarr/
 
 exclude_paths:
+  - '.zarrcade'
   - "*.n5"
   - "*align"
   - "mag1"

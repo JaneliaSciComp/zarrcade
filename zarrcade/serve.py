@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
-
+import numpy as np
 from zarrcade.filestore import get_filestore
 from zarrcade.database import Database, DBImage
 from zarrcade.viewers import Viewer, Neuroglancer
@@ -54,11 +54,15 @@ async def startup_event():
 
     # Load settings from config file and environment
     app.settings = get_settings()
+
+    logger.info(f"Settings:")
+    logger.info(f"  aux_image_mode: {app.settings.aux_image_mode}")
+    logger.info(f"  base_url: {app.settings.base_url}")
+    logger.info(f"  database.url: {app.settings.database.url}")
+
     app.base_url = str(app.settings.base_url)
-    logger.info(f"User-specified base URL is {app.base_url}")
 
     db_url = str(app.settings.database.url)
-    logger.info(f"User-specified database URL is {db_url}")
     app.db = Database(db_url)
 
     for s in app.settings.filters:
@@ -97,7 +101,7 @@ def get_collection_filestore(collection: str):
     """ Return the filestore for the given collection.
     """
     data_url = app.db.collection_map[collection].data_url
-    return get_filestore(data_url, app.settings.exclude_paths)
+    return get_filestore(data_url)
 
 
 def get_proxy_url(collection: str, relative_path: str):
@@ -112,16 +116,16 @@ def get_data_url(dbimage: DBImage):
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
     fs = get_collection_filestore(dbimage.collection)
-    image = dbimage.get_image()
 
     # Check if the collection is proxied
     proxy = next((p for p in app.settings.proxies if p.collection == dbimage.collection), None)
     if proxy:
         return os.path.join(str(proxy.url), dbimage.image_path)
 
-    if fs.url:
+    web_url = fs.get_url(dbimage.image_path)
+    if web_url:
         # This filestore is already web-accessible
-        return os.path.join(fs.url, dbimage.image_path)
+        return web_url
 
     # Proxy the data using the REST API
     return get_proxy_url(dbimage.collection, dbimage.image_path)
@@ -145,7 +149,9 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
 def get_aux_path_url(dbimage: DBImage, relative_path: str, request: Request):
     """ Return a web-accessible URL to the given relative path.
     """
-    if app.settings.aux_image_mode == AuxImageMode.relative:
+    if app.settings.aux_image_mode == AuxImageMode.absolute:
+        return relative_path
+    elif app.settings.aux_image_mode == AuxImageMode.relative:
         return get_relative_path_url(dbimage, relative_path)
     elif app.settings.aux_image_mode == AuxImageMode.local:
         return request.url_for('static', path=relative_path)
@@ -159,13 +165,8 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
     """
     url = get_data_url(dbimage)
     if viewer==Neuroglancer:
-        image = dbimage.get_image()
-        if image.axes_order == 'tczyx':
-            # Generate a multichannel config on-the-fly
-            url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, dbimage.image_path)
-        else:
-            # Prepend format for Neuroglancer to understand
-            url = 'zarr://' + url
+        # Generate a multichannel config on-the-fly
+        url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, dbimage.image_path)
 
     return viewer.get_viewer_url(url)
 
@@ -216,7 +217,7 @@ async def download_csv(request: Request, collection: str, search_string: str = '
         row = {
             'Id': dbimage.id,
             'Collection': dbimage.collection,
-            'Name': dbimage.path
+            'Path': dbimage.path
         }
         metadata = dbimage.image_metadata
         if metadata:
@@ -309,11 +310,11 @@ async def details(request: Request, collection: str, image_id: str):
     )
 
 
-@app.head("/data/{collection}/{relative_path:path}")
-async def data_proxy_head(relative_path: str, collection: str):
+@app.head("/data/{collection}/{file_path:path}")
+async def data_proxy_head(collection: str, file_path: str):
     try:
         fs = get_collection_filestore(collection)
-        size = fs.get_size(relative_path)
+        size = fs.get_size(file_path)
         headers = {}
         headers["Content-Type"] = "binary/octet-stream"
         headers["Content-Length"] = str(size)
@@ -322,11 +323,11 @@ async def data_proxy_head(relative_path: str, collection: str):
         return Response(status_code=404)
 
 
-@app.get("/data/{collection}/{relative_path:path}")
-async def data_proxy_get(relative_path: str, collection: str):
+@app.get("/data/{collection}/{file_path:path}")
+async def data_proxy_get(collection: str, file_path: str):
     try:
         fs = get_collection_filestore(collection)
-        with fs.open(relative_path) as f:
+        with fs.open(file_path) as f:
             data = f.read()
             headers = {}
             headers["Content-Type"] = "binary/octet-stream"
@@ -346,9 +347,9 @@ async def neuroglancer_state(collection: str, image_id: str):
     image = dbimage.get_image()
     url = get_data_url(dbimage)
 
-    if image.axes_order != 'tczyx':
-        logger.error("Neuroglancer states can currently only be generated for TCZYX images")
-        return Response(status_code=400)
+    # if image.axes_order != 'tczyx':
+    #     logger.error("Neuroglancer states can currently only be generated for TCZYX images")
+    #     return Response(status_code=400)
 
     state = ViewerState()
     # TODO: dataclasses don't dsupport nested deserialization which makes this strange. Should switch to Pydantic.
@@ -358,10 +359,11 @@ async def neuroglancer_state(collection: str, image_id: str):
     units = []
     position = []
     for name in names:
-        axis = image.axes[name]
-        scales.append(axis['scale'])
-        units.append(axis['unit'])
-        position.append(int(axis['extent'] / 2))
+        if name in image.axes:
+            axis = image.axes[name]
+            scales.append(axis['scale'])
+            units.append(axis['unit'])
+            position.append(int(axis['extent'] / 2))
 
     state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
     state.position = position
@@ -370,10 +372,14 @@ async def neuroglancer_state(collection: str, image_id: str):
     state.crossSectionScale = 4.5
     state.projectionScale = 2048
 
+    dtype_info = np.iinfo(image.dtype)
+    dtype_min = dtype_info.min
+    dtype_max = dtype_info.max
+
     for i, channel in enumerate(image.channels):
 
-        min_value = channel['pixel_intensity_min'] or 0
-        max_value = channel['pixel_intensity_max'] or 4096
+        min_value = channel['pixel_intensity_min'] or dtype_min
+        max_value = channel['pixel_intensity_max'] or dtype_max
 
         color = channel['color']
         if re.match(r'^([\dA-F]){6}$', color):
@@ -392,11 +398,11 @@ async def neuroglancer_state(collection: str, image_id: str):
                         f"void main(){{emitRGBA(vec4(hue*normalized(),1));}}")
             )
 
-        start = channel['contrast_limit_start']
-        end = channel['contrast_limit_end']
+        start = channel['contrast_limit_start'] or dtype_min
+        end = channel['contrast_limit_end'] or dtype_max * 0.75
 
         # TODO: temporary hack to make Fly-eFISH data brighter
-        end = min(end, 4000)
+        #end = min(end, 4000)
 
         if start and end:
             layer.shaderControls={
