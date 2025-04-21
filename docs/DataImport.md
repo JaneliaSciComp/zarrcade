@@ -11,7 +11,7 @@ This will automatically create a local Sqlite database containing a Zarrcade **c
 
 ## Annotations
 
-You can add additional annotations to the images by providing a CSV file with the `-m` flag. The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery.
+You can add additional annotations to the images by providing a CSV file with the `-I` flag. The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery.
 
 You can modify the service configuration to control how the annotations are displayed and searched in the gallery. See the [Configuration](./Configuration.md) section for more details.
 
