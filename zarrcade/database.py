@@ -489,7 +489,6 @@ class Database:
 
             # Apply search filters using LIKE
             search_filters = []
-
             if search_string:
                 search_filters.append(DBImage.path.ilike(f'%{search_string}%'))
                 for column in self.column_map:
@@ -501,7 +500,9 @@ class Database:
             # Apply additional filters
             if filter_params:
                 for column, value in filter_params.items():
-                    if value:
+                    if value == "None":
+                        query = query.filter(getattr(DBImageMetadata, column).is_(None))
+                    elif value:
                         query = query.filter(getattr(DBImageMetadata, column).ilike(f'%{value}%'))
 
             # Count total results
