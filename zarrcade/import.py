@@ -106,6 +106,7 @@ if __name__ == '__main__':
     # Set up the collection
     db.add_collection(collection_name, args.collection_label or collection_name, data_url)
 
+    thumbnail_column = None
     if metadata_path:
         
         # Read the metadata and set up the columns
@@ -126,7 +127,6 @@ if __name__ == '__main__':
         columns = df.columns[1:]
 
         # Slugify the column names and add them to the database
-        thumbnail_column = None
         for original_name in columns:
             if "thumbnail" in original_name.lower():
                 logger.info(f"Found thumbnail URL column: {original_name}")
