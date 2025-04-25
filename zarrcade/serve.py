@@ -155,7 +155,7 @@ def get_aux_path_url(dbimage: DBImage, relative_path: str, request: Request):
     elif app.settings.aux_image_mode == AuxImageMode.relative:
         return get_relative_path_url(dbimage, relative_path)
     elif app.settings.aux_image_mode == AuxImageMode.local:
-        return request.url_for('static', path=relative_path)
+        return request.url_for('static', path=relative_path.replace('static/',''))
     else:
         raise ValueError(f"Unknown aux image mode: {app.settings.aux_image_mode}")
 
