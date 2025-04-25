@@ -138,9 +138,10 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
         return None
 
     fs = get_collection_filestore(dbimage.collection)
-    if fs.url:
+    url = fs.get_url(relative_path)
+    if url:
         # This filestore is already web-accessible
-        return os.path.join(fs.url, relative_path)
+        return url
 
     # Proxy the data using the REST API
     return get_proxy_url(dbimage.collection, relative_path)
