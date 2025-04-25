@@ -85,6 +85,7 @@ if __name__ == '__main__':
     data_url = args.data_url
     print(f"data_url: {data_url}")
     fs = get_filestore(data_url)
+    local_fs = get_filestore()
     collection_name = slugify(args.collection_name)
     metadata_path = args.metadata_path
     
@@ -207,17 +208,12 @@ if __name__ == '__main__':
             image = dbimage.get_image()
             updated_obj = {}
             aux_path = None
-            
-            logger.debug(f"aux_image_name: {args.aux_image_name}")
-            logger.debug(f"Metadata: {metadata}")
-            if metadata:
-                logger.debug(f"Metadata aux_image_path: {metadata.aux_image_path}")
-            
+
             if args.aux_image_name and (not metadata or not metadata.aux_image_path):
                 aux_path = get_aux_path(dbimage.path, args.aux_image_name)
                 logger.debug(f"Auxiliary path: {aux_path}")
 
-                if fs.exists(aux_path):
+                if local_fs.exists(aux_path):
                     logger.trace(f"Found auxiliary file: {aux_path}")
                     updated_obj['aux_image_path'] = aux_path
                 elif args.skip_thumbnail_creation:
@@ -240,7 +236,7 @@ if __name__ == '__main__':
             if args.thumbnail_name and (not metadata or not metadata.thumbnail_path):
                 tb_path = get_aux_path(dbimage.path, args.thumbnail_name)
 
-                if fs.exists(tb_path):
+                if local_fs.exists(tb_path):
                     logger.trace(f"Found thumbnail: {tb_path}")
                     updated_obj['thumbnail_path'] = tb_path
                 elif args.skip_thumbnail_creation:
@@ -257,7 +253,7 @@ if __name__ == '__main__':
             if updated_obj:
                 if not metadata:
                     # Metadata doesn't exist, create it
-                    inserted = db.add_image_metadata([{
+                    inserted, updated = db.add_image_metadata([{
                         'collection': collection_name,
                         'path': dbimage.path,
                         **updated_obj
@@ -270,12 +266,11 @@ if __name__ == '__main__':
                     # Metadata exists, update it
                     db.update_image_metadata(metadata.id, updated_obj)
                     logger.info(f"Updated metadata for {dbimage.path}")
-        
+
         # Update the images with the new metadata ids if ncessary
         # This happens if we don't have user provided metadata and the metadatas
         # were created at the thumbnail generation step.
         path_to_metadata_id = db.get_path_to_metadata_id_map(collection_name)
-        logger.info(f"path_to_metadata_id: {path_to_metadata_id}")
         for dbimage in get_all_images(db, collection_name):
             if dbimage.image_metadata_id is None:
                 if dbimage.path in path_to_metadata_id:
