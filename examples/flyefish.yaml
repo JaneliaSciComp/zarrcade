@@ -1,0 +1,16 @@
+data_url: s3://janelia-data-examples/fly-efish
+metadata_file: ./flyefish.csv
+
+title_column_name: "Image Name"
+
+filters:
+  - column_name: "Driver line"
+  - column_name: "Probes"
+    data_type: csv
+  - column_name: "Region"
+  - column_name: "Zoom"
+
+hide_columns:
+  - "Probes"
+  - "Image Name"
+
