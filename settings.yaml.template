@@ -1,0 +1,9 @@
+log_level: INFO
+
+base_url: http://127.0.0.1:8000
+
+database:
+  url: sqlite:///database.db
+  debug_sql: False
+
+
