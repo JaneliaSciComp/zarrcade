@@ -23,7 +23,6 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 
 [Install miniforge]([https://docs.conda.io/en/latest/miniforge.html](https://github.com/conda-forge/miniforge)) if you don't already have it.
 
-
 ### 2. Clone this repo
 
 ```bash
@@ -38,11 +37,9 @@ conda env create -f environment.yml
 conda activate zarrcade
 ```
 
-
 ### (Optional) Try an example
 
-See the [Example](#example) section below to try out the example before working with your own data.
-
+See the [Example](#examples) section below to try out an example data set before working with your own data.
 
 ### 4. Create OME-Zarr images
 
@@ -54,35 +51,24 @@ bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/za
 
 If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
 
+### 5. Create YAML configuration for your data collection
 
-### 5. Import images and metadata into Zarrcade
+There is [documentation](docs/Configuration.md) on creating collection settings files, or you can follow one of the [examples below](#examples).
+
+
+### 6. Import images and metadata into Zarrcade
 
 You can import images into Zarrcade using the provided command line script:
 
 ```bash
-python -m zarrcade.import -d /root/data/dir -c mycollection
+python -m zarrcade.import -s path/to/mycollection.yaml
 ```
 
-This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. By default, this will also create MIPs and thumbnails for each image in `./static/.zarrcade`. 
-
-To add extra metadata about the images, you can provide a CSV file with the `-i` flag:
-
-```bash
-python zarrcade.import -d /root/data/dir -c collection_name -i input.csv
-```
-
-The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery, e.g.:
-
-```csv
-Path,Line,Marker
-relative/path/to/ome1.zarr,JKF6363,Blu
-relative/path/to/ome2.zarr,JDH3562,Blu
-```
+This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. By default, this will also create MIPs and thumbnails for each image in `./static/.zarrcade` (unless your metadata file already contains thumbnail paths). 
 
 Read more about the import options in the [Data Import](./docs/DataImport.md) section of the documentation.
 
-
-### 6. Run the Zarrcade web application
+### 7. Run the Zarrcade web application
 
 Start the development server, pointing it to your OME-Zarr data:
 
@@ -90,30 +76,28 @@ Start the development server, pointing it to your OME-Zarr data:
 uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
-Your images and annotations will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
+Your images and annotations will be browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
 
 
 ## Examples
 
-To try a simple example, follow steps 1-3 above to configure your environment and then use one of following commands to import the example data before starting the server.
+To try a simple example, use one of following commands to import the example data before starting the server.
 
-### Find all OME-Zarr images stored within a given location
+### Example 1: Discover all OME-Zarr images stored within a given location
 
-With a data URL specified (`--data-url` or `-d`), Zarrcade will recursively find and import all OME-Zarr images. Metadata is optionally included in a companion spreadsheet, with the first column specifying the path to the image relative to the data directory.
+This example runs Zarr discovery on an S3 bucket. The metadata file adds textual annotations for each image. 
 
 ```bash
-python -m zarrcade.import -d s3://janelia-data-examples/fly-efish -c flyefish -i docs/flyefish-example.csv
-cp docs/settings.yaml.example1 settings.yaml
+python -m zarrcade.import -c flyefish -s examples/flyefish.yaml
 uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
-### Import OME-Zarr images specified in a spreadsheet
+### Example 2: Import OME-Zarr images specified in a spreadsheet
 
-When the data dir is not provided, the image locations provided in the spreadsheet are assumed to be absolute URIs or paths. 
+In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the metadata file, along with absolute thumbnail paths.
 
 ```bash
-python -m zarrcade.import -c open-organelle -i ~/Desktop/open-organelle-zarr.txt
-cp docs/settings.yaml.example2 settings.yaml
+python -m zarrcade.import -c openorganelle -s examples/openorganelle.yaml 
 uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
