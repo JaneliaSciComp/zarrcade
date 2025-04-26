@@ -88,7 +88,7 @@ To try a simple example, use one of following commands to import the example dat
 This example runs Zarr discovery on an S3 bucket. The metadata file adds textual annotations for each image. 
 
 ```bash
-python -m zarrcade.import -c flyefish -s examples/flyefish.yaml
+python -m zarrcade.import -s examples/flyefish.yaml
 uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 
@@ -97,7 +97,7 @@ uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the metadata file, along with absolute thumbnail paths.
 
 ```bash
-python -m zarrcade.import -c openorganelle -s examples/openorganelle.yaml 
+python -m zarrcade.import -s examples/openorganelle.yaml 
 uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
 ```
 

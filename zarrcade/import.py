@@ -52,8 +52,6 @@ if __name__ == '__main__':
         description=__doc__,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument('-c', '--collection-name', type=str,
-        help='Short name for collection. Only lowercase letters and underscores allowed.', required=True)
     parser.add_argument('-s', '--collection-settings', type=str,
         help='Path to the YAML file containing collection settings.')
     parser.add_argument('--skip-image-load', action=argparse.BooleanOptionalAction, default=False,
@@ -78,7 +76,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     local_fs = get_filestore()
-    collection_name = slugify(args.collection_name)
     
     # Connect to the database
     db_url = str(settings.database.url)
@@ -94,6 +91,10 @@ if __name__ == '__main__':
         logger.info("Current metadata columns:")
         for key, value in db.column_map.items():
             logger.info(f"  {key}: {value}")
+
+
+    # extract the file name args.collection_settings
+    collection_name = slugify(os.path.basename(args.collection_settings))
 
     # Read the collection settings
     collection_settings = load_collection_settings(args.collection_settings)
