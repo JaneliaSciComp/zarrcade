@@ -115,7 +115,6 @@ class Database:
         with self.sessionmaker() as session:
             result = session.query(DBCollection).all()
             self.collection_map = {item.name: item for item in result}
-            self.reverse_collection_map = {item.data_url: item for item in result}
 
         # Read the attribute naming map from the database
         with self.sessionmaker() as session:
@@ -141,7 +140,7 @@ class Database:
         return Table(table_name, self.metadata, autoload_with=self.engine)
 
 
-    def add_collection(self, name, label, data_url):
+    def add_collection(self, name, settings_path):
         """ Add a new collection to the database.
 
             Args:
@@ -151,29 +150,16 @@ class Database:
         """
         if name in self.collection_map:
 
-            if self.collection_map[name].data_url != data_url:
-                # Collection already exists, but with a different URL
-                raise ValueError(f"Collection {name} already exists with a different URL: {self.collection_map[name].data_url}")
+            if self.collection_map[name].settings_path != settings_path:
+                raise ValueError(f"Collection {name} already exists with a different settings path: {self.collection_map[name].settings_path}")
                 
-            # Update the label if it has changed
-            if self.collection_map[name].label != label:
-                with self.engine.connect() as connection:
-                    collections = self.get_table('collections')
-                    update_stmt = collections.update().where(collections.c.name == name).values(label=label)
-                    connection.execute(update_stmt)
-                    connection.commit()
-                    self.collection_map[name].label = label
-                    logger.info(f"Updated label for collection {name} to {label}")
-
             # Collection already exists
             return
 
-        if label is None:
-            label = name
         with self.engine.connect() as connection:
             # Insert into collections
             collections = self.get_table('collections')
-            insert_stmt = collections.insert().values(name=name, label=label, data_url=data_url)
+            insert_stmt = collections.insert().values(name=name, settings_path=settings_path)
             connection.execute(insert_stmt)
             connection.commit()
 
@@ -183,8 +169,7 @@ class Database:
 
             # Update internal state
             self.collection_map[name] = result
-            self.reverse_collection_map[data_url] = result
-            logger.info(f"Added new collection: {name} (label={label}, url={data_url})")
+            logger.info(f"Added new collection: {name} (settings_path={settings_path})")
 
 
     def add_metadata_column(self, db_name, original_name):

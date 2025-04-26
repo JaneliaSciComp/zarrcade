@@ -46,8 +46,8 @@ class DiscoverySettings(BaseModel):
     data_url: AnyUrl | Path | None = None
     """ The URL to the images. May be None if full image paths are provided in the metadata file. """
 
-    exclude_paths: List[str] = ['.zarrcade']
-    """ Paths to exclude when discovering images in the data URL. """
+    exclude_paths: List[str] = ['**/.zarrcade']
+    """ Paths to exclude when discovering images in the data URL. Supports git-style wildcards like **/*.tiff"""
 
     proxy_url: HttpUrl | None = None
     """ The URL of the proxy server. If provided, the relative image paths will be fetched 
@@ -62,7 +62,7 @@ class CollectionSettings(BaseSettings):
 
     discovery: DiscoverySettings | None = None
     """ Settings for how to discover images within a common data URL. """
-    
+
     metadata_file: str | None = None
     """ The path to the metadata file used during the loading process. """
 

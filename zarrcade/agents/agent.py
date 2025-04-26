@@ -1,12 +1,13 @@
 from enum import Enum
-from typing import Iterator, Sequence, Protocol
+from typing import Iterator, Sequence, Protocol, List
 
 import pathspec
 from loguru import logger
 
 from zarrcade.filestore import Filestore
 from zarrcade.model import Image
-from zarrcade.settings import get_settings
+
+
 class WalkResult(Enum):
     """ Result of the walk operation.
     """
@@ -80,14 +81,13 @@ def yield_images(fs: Filestore,
                  agents: Sequence[Agent], 
                  path: str = '', 
                  depth: int = 0, 
-                 maxdepth: int = 10) -> Iterator[Image]:
+                 maxdepth: int = 10,
+                 exclude_paths: List[str] = []) -> Iterator[Image]:
     """ Discover images in the given filestore and yield them one by one.
     """
     if depth>maxdepth: return
 
-    settings = get_settings()
-
-    for exclude_path in settings.exclude_paths:
+    for exclude_path in exclude_paths:
         spec = pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, exclude_path.splitlines())
         if spec.match_file(path):
             logger.trace(f"excluding {path}")
@@ -113,12 +113,4 @@ def yield_images(fs: Filestore,
     if not container_found:
         # recursively search for images
         for d in [c['path'] for c in children if c['type']=='directory']:
-            yield from yield_images(fs, agents, d, depth+1)
-
-
-def yield_image(fs: Filestore, path: str) -> Iterator[Image]:
-    """ Yield images in the given path.
-    """
-    children = fs.get_children(path)
-    for image in yield_images(fs, agents, path, 0, 1):
-        yield image
+            yield from yield_images(fs, agents, d, depth+1, maxdepth, exclude_paths)

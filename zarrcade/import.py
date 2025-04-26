@@ -18,6 +18,7 @@ from zarrcade.settings import get_settings
 from zarrcade.agents import yield_images
 from zarrcade.agents.omezarr import OmeZarrAgent
 from zarrcade.thumbnails import make_mip_from_zarr, make_thumbnail
+from zarrcade.collection import load_collection_settings
 
 # Adapted from https://github.com/django/django/blob/main/django/utils/text.py
 def slugify(value, allow_unicode=False):
@@ -53,20 +54,19 @@ if __name__ == '__main__':
     )
     parser.add_argument('-c', '--collection-name', type=str,
         help='Short name for collection. Only lowercase letters and underscores allowed.', required=True)
-    parser.add_argument('-n', '--collection-label', type=str,
-        help='Label for collection.')
-    parser.add_argument('-d', '--data-url', type=str,
-        help='Common URL to the root of the data. If not provided, images must have absolute URIs.')
-    parser.add_argument('-i', '--metadata-path', type=str,
-        help='Path to the CSV file containing additional metadata')
-    parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
-        help="Don't create auxiliary images or thumbnails.")
-    parser.add_argument('-a', '--aux-path', type=str, default="static/.zarrcade",
-        help='Local path to the folder for auxiliary images.')
+    parser.add_argument('-s', '--collection-settings', type=str,
+        help='Path to the YAML file containing collection settings.')
     parser.add_argument('--skip-image-load', action=argparse.BooleanOptionalAction, default=False,
         help="Skip loading images from the data directory.")
     parser.add_argument('--skip-thumbnail-creation', action=argparse.BooleanOptionalAction, default=False,
         help="Skip creating thumbnails if they do not already exist.")
+    parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
+        help="Only load images for which metadata is provided?")
+    
+    parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
+        help="Don't create auxiliary images or thumbnails.")
+    parser.add_argument('-a', '--aux-path', type=str, default="static/.zarrcade",
+        help='Local path to the folder for auxiliary images.')
     parser.add_argument('--aux-image-name', type=str, default='thumbnail.png',
         help='Filename of the main auxiliary image in the auxiliary image folder.')
     parser.add_argument('--thumbnail-name', type=str, default='thumbnail.jpg',
@@ -75,19 +75,10 @@ if __name__ == '__main__':
         help='Lower percentile for thumbnail brightness adjustment.')
     parser.add_argument('--p-upper', type=int, default=90,
         help='Upper percentile for thumbnail brightness adjustment.')
-    parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
-        help="Only load images for which metadata is provided?")
-    parser.add_argument('--exclude', type=str, nargs='+', default=[],  # This allows multiple --exclude arguments
-        help='Paths to exclude (this argument can be used multiple times). Supports git-style wildcards like **/*.zarrcade'
-    )
 
     args = parser.parse_args()
-    data_url = args.data_url
-    print(f"data_url: {data_url}")
-    fs = get_filestore(data_url)
     local_fs = get_filestore()
     collection_name = slugify(args.collection_name)
-    metadata_path = args.metadata_path
     
     # Connect to the database
     db_url = str(settings.database.url)
@@ -104,10 +95,19 @@ if __name__ == '__main__':
         for key, value in db.column_map.items():
             logger.info(f"  {key}: {value}")
 
+    # Read the collection settings
+    collection_settings = load_collection_settings(args.collection_settings)
+
     # Set up the collection
-    db.add_collection(collection_name, args.collection_label or collection_name, data_url)
+    db.add_collection(collection_name, args.collection_settings)
 
     thumbnail_column = None
+    metadata_path = collection_settings.metadata_file
+    if metadata_path and not os.path.isabs(metadata_path):
+        # Make metadata path relative to collection settings file location
+        settings_dir = os.path.dirname(os.path.abspath(args.collection_settings))
+        metadata_path = os.path.join(settings_dir, metadata_path)
+
     if metadata_path:
         
         # Read the metadata and set up the columns
@@ -119,10 +119,7 @@ if __name__ == '__main__':
     
         # Assume the first column is the image path
         path_column_name = df.columns[0]
-        if data_url:
-            logger.info(f"The first column '{path_column_name}' will be treated as the relative image path")
-        else:
-            logger.info(f"The first column '{path_column_name}' will be treated as the image URI")
+        logger.info(f"The first column '{path_column_name}' will be treated as the image URI")
 
         # Skip the first column which is the path
         columns = df.columns[1:]
@@ -157,18 +154,18 @@ if __name__ == '__main__':
 
     # Load the images
     if not args.skip_image_load:
-        logger.info("Loading images...")
-
-        if data_url:
-            # Connect to the filestore
-            logger.info(f"Data URL is {data_url}")
-            generator = partial(yield_images, fs, agents=[OmeZarrAgent()])
+        if collection_settings.discovery:
+            data_url = str(collection_settings.discovery.data_url)
+            fs = get_filestore(data_url)
+            logger.info(f"Discovering images at URL: {data_url}")
+            generator = partial(yield_images, fs, agents=[OmeZarrAgent()], exclude_paths=collection_settings.discovery.exclude_paths)
             db.persist_images(collection_name, generator,
                 only_with_metadata=args.only_with_metadata)
         else:
+            logger.info(f"Loading images for collection {collection_name}")
+
             # Get all images from metadata
-            def generate_images():
-                logger.info(f"Generating images for collection {collection_name}")
+            def generate_images():    
                 for dbimage_metadata in db.get_all_image_metadata():
                     # Split path into zarr path and any remaining path components
                     zarr_path = dbimage_metadata.path.split('.zarr')[0] + '.zarr'
@@ -181,7 +178,6 @@ if __name__ == '__main__':
                     except Exception as e:
                         logger.warning(f"Error encoding image at {zarr_path}/{group_path}: {e}")
                     
-
             db.persist_images(collection_name, generate_images, 
                             only_with_metadata=args.only_with_metadata)
 
