@@ -1,6 +1,5 @@
 """ Data model and API for accessing the data
 """
-import os
 import json
 from dataclasses import asdict
 from typing import Iterator, Dict, List
@@ -9,7 +8,7 @@ from collections import defaultdict
 from loguru import logger
 from sqlalchemy import create_engine, text, func, and_, or_
 from sqlalchemy import String, Integer, Index, ForeignKey, MetaData, Table, Column, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, joinedload, contains_eager
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, contains_eager
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 
 from zarrcade.model import Image
@@ -28,8 +27,7 @@ class DBCollection(Base):
     __tablename__ = 'collections'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    label = Column(String)
-    data_url = Column(String, nullable=True)
+    settings_path = Column(String, nullable=True)
 
 
 class DBMetadataColumn(Base):

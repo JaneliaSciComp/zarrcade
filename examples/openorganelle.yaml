@@ -1,3 +1,5 @@
+label: "Open Organelle"
+
 metadata_file: ./openorganelle.tsv
 
 aux_image_mode: absolute

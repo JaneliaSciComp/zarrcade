@@ -1,4 +1,7 @@
+label: "Fly-eFISH"
+
 data_url: s3://janelia-data-examples/fly-efish
+
 metadata_file: ./flyefish.csv
 
 title_column_name: "Image Name"

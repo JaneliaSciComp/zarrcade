@@ -57,8 +57,12 @@ class DiscoverySettings(BaseModel):
 class CollectionSettings(BaseSettings):
     """ Configuration for an image collection """
 
-    discovery: DiscoverySettings | None = None
+    label: str
+    """ The label shown in the UI for the collection. """
 
+    discovery: DiscoverySettings | None = None
+    """ Settings for how to discover images within a common data URL. """
+    
     metadata_file: str | None = None
     """ The path to the metadata file used during the loading process. """
 
