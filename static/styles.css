@@ -217,7 +217,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 }
 
 .gallery .buttons {
-    margin: 20px auto 0 auto;
+    margin: 10px auto 0 auto;
     opacity: 1;
 }
 
@@ -227,7 +227,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 }
 
 .gallery .buttons a img {
-    padding: 2px;
+    padding: 0px;
     background-color: white;
     border-radius: 4px;
 }
