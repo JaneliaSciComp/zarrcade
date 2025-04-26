@@ -88,7 +88,7 @@ if __name__ == '__main__':
     if db.collection_map:
         logger.info("Current collections:")
         for key, value in db.collection_map.items():
-            logger.info(f"  {key} (URL: {value.data_url})")
+            logger.info(f"  {key} ({value})")
 
     if db.column_map:
         logger.info("Current metadata columns:")
@@ -166,17 +166,17 @@ if __name__ == '__main__':
 
             # Get all images from metadata
             def generate_images():    
-                for dbimage_metadata in db.get_all_image_metadata():
+                for dbimage_metadata in db.get_all_image_metadata(collection_name):
                     # Split path into zarr path and any remaining path components
                     zarr_path = dbimage_metadata.path.split('.zarr')[0] + '.zarr'
                     group_path = dbimage_metadata.path[len(zarr_path):]
                     logger.info(f"Looking for image under URI: {zarr_path} / {group_path}")
                     agent = OmeZarrAgent()
                     try:
-                        image = agent.get_image(fs, zarr_path, group_path)
+                        image = agent.get_image(local_fs, zarr_path, group_path)
                         yield (zarr_path, image)
                     except Exception as e:
-                        logger.warning(f"Error encoding image at {zarr_path}/{group_path}: {e}")
+                        logger.exception(f"Error encoding image at {zarr_path}/{group_path}: {e}")
                     
             db.persist_images(collection_name, generate_images, 
                             only_with_metadata=args.only_with_metadata)

@@ -1,69 +1,42 @@
 # Configuration
 
-You can configure Zarrcade by editing the `settings.yaml` file, or by setting environment variables. Environment variables are named with the prefix `zarrcade_` and will override settings in the `settings.yaml` file. These settings affect both the CLI scripts (e.g. `import.py`) and the web service.
+## Configuring collections
 
-The following configuration options are available:
+Each data collection in Zarrcade needs a YAML file which describes how the data is found and presented in the web UI. There are two main ways to load in Zarr images:
+1) **Run image discovery** - During the import step, Zarrcade will walk a filesystem to find all Zarr images and import them automatically. This method uses the `discovery` settings below. When using image discovery, any image paths in the `metadata_path` file should be relative to the `data_url`.
+2) **Provide absolute URIs** - You provide an absolute path to each Zarr container or image. This method uses the `metadata_path` below.
 
-`log_level`: The logging level to use for the Zarrcade service. This can be `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. Default: `INFO`
+All of the possible collection settings are listed below.
 
-`base_url`: The base URL for the Zarrcade service. This is used to generate URLs for the images and other resources in the service. It's required when using the build-in file proxy. Default: `http://127.0.0.1:8000/`
-
-`database`: The database settings:
-* `db_url`: The URL of the database to use for the Zarrcade service. This can be a SQLite database, a PostgreSQL database, or other database supported by SQLAlchemy. Default: `sqlite:///database.db`
-* `debug_sql`: If true, SQLAlchemy queries will be logged at the `DEBUG` level.
-
-`proxies`: A list of file proxies to use for the Zarrcade service. This can be used to proxy images from non-public storage backends, on a per-collection basis. Each proxy configuration is a dictionary with the following keys:
-* `collection`: The name of the collection to use for the Zarrcade service.
-* `url` or `URL`: Browser-accessible URL of the proxy.
-
-`exclude_paths`: A list of path patterns to exclude when discovering images. These can be Git-style wildcards like `**/*.n5`. Excluding certain paths can be used to speed up the image discovery process.
-
-`filters`: A list of filters to apply to the images. Filters are used to select a subset of the images in the service. Each filter is a dictionary with the following keys:
-* `column_name`: The name of the column in the image annotation table.
-* `data_type`: The type of the data in the column. This can be `string` or `csv`. When `csv`, the filter will be a dropdown with one option per unique value in each CSV value. Default: `string`.
-* `filter_type`: How to display the filter in the UI. Currently, this can only be `dropdown`. Default: `dropdown`.
-
+`label`: UI label for the collection
+`discovery`: Discovery settings
+  * `data_url`: The top-level URL that will be walked to find images. Can be a local path or S3 URI. 
+  * `exclude_paths`: Paths to exclude when discovering images in the data URL. Supports git-style wildcards like `**/*.tiff`.
+  * `proxy_url`: The URL of the proxy server. If provided, the relative image paths will be fetched via the proxy server. 
+`metadata_file`: Path to a CSV or TSV file which provides metadata about images. See the [Metadata File](#metadata) section below for more information.
+`aux_image_mode`: This setting controls how auxiliary images (e.g. thumbnails) are found, with these possible values:
+  * `absolute` - treat paths as absolute 
+  * `relative` - uses paths relative to the `data_url`
+  * `local` - treat paths as relative to the `./static` folder
 `title_column_name`: The name of the column in the annotations table that contains the title of the image. This is used to display the title of the image in the image gallery and other places. It may contain HTML markup, such as colors and links.
-
+`filters`: A list of filters to apply to the images. Filters are used to select a subset of the images in the service. Each filter is a dictionary with the following keys:
+  * `column_name`: The name of the column in the image annotation table.
+  * `data_type`: The type of the data in the column. This can be `string` or `csv`. When `csv`, the filter will be a dropdown with one option per unique value in each CSV value. Default: `string`.
+  * `filter_type`: How to display the filter in the UI. Currently, this can only be `dropdown`. Default: `dropdown`.
 `hide_columns`: A list of annotation table columns to hide when displaying the image details page. 
 
-Example `settings.yaml` file:
 
-```yaml
-log_level: INFO
+## Metadata file
 
-base_url: https://localhost:8888
+The metadata file is used to provide arbitrary metadata for each image. It may be in CSV (comma-separated value) or TSV (tab-separated value) format. 
 
-database:
-  url: sqlite:///database.db
-  debug_sql: False
+This file's first column must be the path to the OME-Zarr image. If using `discovery`, then this path must be relative to the `data_url`, otherwise it must be absolute. 
+If any column contains `thumbnail` (case-sensitive), then it will be imported as the aux path for the image. 
+The remaining columns may be any annotations which will be made searchable and displayed within the gallery, e.g.:
 
-proxies:
-  - collection: easifish_np_ss
-    url: https://rokickik-dev.int.janelia.org/nrs-flynp-omezarr/
-
-exclude_paths:
-  - '.zarrcade'
-  - "*.n5"
-  - "*align"
-  - "mag1"
-  - "raw"
-  - "dat"
-  - "tiles_destreak"
-
-filters:
-  - column_name: "Driver line"
-    data_type: string
-    filter_type: dropdown
-  - column_name: "Probes"
-    data_type: csv
-    filter_type: dropdown
-  - column_name: "Region"
-  - column_name: "Zoom"
-
-title_column_name: "Image Name"
-
-hide_columns:
-  - "Probes"
-  - "Image Name"
+```csv
+Path,Line,Marker
+relative/path/to/ome1.zarr,JKF6363,Blu
+relative/path/to/ome2.zarr,JDH3562,Blu
 ```
+

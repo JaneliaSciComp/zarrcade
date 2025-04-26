@@ -3,10 +3,10 @@
 You can import images into Zarrcade using the provided command line script:
 
 ```bash
-python zarrcade.import -d /root/data/dir -c mycollection
+python -m zarrcade.import -s path/to/mycollection.yaml
 ```
 
-This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. You can also add a label to the collection by setting the `--collection-label` parameter. This label will be displayed in the web UI when choosing the collection to view.
+This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. Note that if you already have a database existing, this command will add images to it. 
 
 
 ## Annotations

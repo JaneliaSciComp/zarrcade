@@ -284,11 +284,11 @@ class Database:
                 return False
 
 
-    def get_all_image_metadata(self) -> List[DBImageMetadata]:
+    def get_all_image_metadata(self, collection: str) -> List[DBImageMetadata]:
         """ Get all image metadata from the database.
         """
         with self.sessionmaker() as session:
-            return session.query(DBImageMetadata).all()
+            return session.query(DBImageMetadata).filter(DBImageMetadata.collection == collection).all()
 
 
     def get_images_count(self) -> int:

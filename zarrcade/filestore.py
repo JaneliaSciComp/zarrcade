@@ -1,8 +1,7 @@
 import os
 from functools import cache
-from typing import Tuple, Sequence, Iterator, Protocol
+from typing import Protocol
 from urllib.parse import urlparse
-from dataclasses import dataclass
 
 import fsspec
 from loguru import logger
