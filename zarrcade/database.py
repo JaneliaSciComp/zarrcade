@@ -14,7 +14,6 @@ from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 from zarrcade.model import Image
 from zarrcade.settings import get_settings
 
-
 if get_settings().database.debug_sql:
     import logging
     logging.basicConfig()
@@ -126,6 +125,13 @@ class Database:
         for column in self.column_map:
             if not hasattr(DBImageMetadata, column):
                 setattr(DBImageMetadata, column, Column(column, String))
+
+
+    def get_collections(self) -> List[DBCollection]:
+        """ Get all collections from the database.
+        """
+        with self.sessionmaker() as session:
+            return session.query(DBCollection).all()
 
 
     def get_table(self, table_name: str) -> Table:
@@ -423,7 +429,7 @@ class Database:
             session.commit()
 
 
-    def get_dbimage(self, collection: str, image_path: str):
+    def get_dbimage(self, collection: str, image_path: str) -> DBImage | None:
         """ Returns the image and metadata for the given image path 
             within a collection.
 
@@ -450,7 +456,7 @@ class Database:
             filter_params: Dict[str,str] = None,
             page: int = 0,
             page_size: int = 0
-        ):
+        ) -> Dict:
         """
         Find images and metadata with optional search parameters and pagination.
 

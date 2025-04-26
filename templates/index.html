@@ -10,7 +10,7 @@
 <ul>
     {% for collection_name in collection_map.keys() %}
     <li>
-        <a href="{{ url_for('collection', collection=collection_name) }}">{{ collection_map[collection_name].label }}</a>
+        <a href="{{ url_for('collection', collection=collection_name) }}">{{ collections[collection_name].label }}</a>
     </li>
     {% endfor %}
 </ul>

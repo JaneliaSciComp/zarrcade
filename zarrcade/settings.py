@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     database: Database = Database()
+    title: str = 'Zarrcade'
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",
