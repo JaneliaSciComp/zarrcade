@@ -313,10 +313,10 @@ async def collection(request: Request, collection: str = '', search_string: str 
     )
 
 
-@app.get("/details/{collection}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
-async def details(request: Request, collection: str, image_id: str):
+@app.get("/details/{collection_name}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
+async def details(request: Request, collection_name: str, image_id: str):
 
-    collection_name = collection
+    print(f"Getting dbimage for {collection_name} / {image_id}")
     dbimage = app.db.get_dbimage(collection_name, image_id)
     if not dbimage:
         return Response(status_code=404)

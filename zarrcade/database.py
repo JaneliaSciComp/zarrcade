@@ -445,7 +445,7 @@ class Database:
             session.commit()
 
 
-    def get_dbimage(self, collection: str, image_path: str) -> DBImage | None:
+    def get_dbimage(self, collection_name: str, image_path: str) -> DBImage | None:
         """ Returns the image and metadata for the given image path 
             within a collection.
 
@@ -457,7 +457,7 @@ class Database:
                 DBImage: The metadata image, or None if it doesn't exist.
         """
         with self.sessionmaker() as session:
-            collection_id = self.collection_map[collection].id
+            collection_id = self.collection_map[collection_name].id
             query = (
                 session.query(DBImage)
                 .join(DBCollection)
