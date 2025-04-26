@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
 
     # extract the file name args.collection_settings
-    collection_name = slugify(os.path.basename(args.collection_settings))
+    collection_name = slugify(os.path.splitext(os.path.basename(args.collection_settings))[0])
 
     # Read the collection settings
     collection_settings = load_collection_settings(args.collection_settings)
@@ -143,13 +143,12 @@ if __name__ == '__main__':
         for _, row in df.iterrows():
             path = row[path_column_name].rstrip('/')
             new_obj = {db.reverse_column_map[c]: row[c] for c in columns if c != thumbnail_column}
-            new_obj['collection'] = collection_name
             new_obj['path'] = path
             if thumbnail_column:
                 new_obj['thumbnail_path'] = row[thumbnail_column]
             new_objs.append(new_obj)
 
-        inserted, updated = db.add_image_metadata(new_objs)
+        inserted, updated = db.add_image_metadata(collection_name, new_objs)
         logger.info(f"Inserted {inserted} rows of metadata")
         logger.info(f"Updated {updated} rows of metadata")
 
@@ -250,8 +249,7 @@ if __name__ == '__main__':
             if updated_obj:
                 if not metadata:
                     # Metadata doesn't exist, create it
-                    inserted, updated = db.add_image_metadata([{
-                        'collection': collection_name,
+                    inserted, updated = db.add_image_metadata(collection_name, [{
                         'path': dbimage.path,
                         **updated_obj
                     }])
@@ -261,7 +259,7 @@ if __name__ == '__main__':
                         logger.error(f"Error inserting metadata for {dbimage.path}")
                 else:
                     # Metadata exists, update it
-                    db.update_image_metadata(metadata.id, updated_obj)
+                    db.update_image_metadata(collection_name, metadata.id, updated_obj)
                     logger.info(f"Updated metadata for {dbimage.path}")
 
         # Update the images with the new metadata ids if ncessary

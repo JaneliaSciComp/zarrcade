@@ -117,18 +117,19 @@ def get_proxy_url(collection: str, relative_path: str):
     """ Returns a web-accessible URL to the file store 
         which is proxied by this server.
     """
-    return os.path.join(app.base_url, "data", collection,relative_path)
+    return os.path.join(app.base_url, "data", collection, relative_path)
 
 
 def get_data_url(dbimage: DBImage):
     """ Return a web-accessible URL to the given image.
     """
     # The data location can be a local path or a cloud bucket URL -- anything supported by FSSpec
-    fs = get_collection_filestore(dbimage.collection)
+    collection_name = dbimage.collection.name
+    fs = get_collection_filestore(collection_name)
 
     # Check if the collection is proxied
-    if app.collections[dbimage.collection].discovery:
-        proxy_url = app.collections[dbimage.collection].discovery.proxy_url
+    if app.collections[collection_name].discovery:
+        proxy_url = app.collections[collection_name].discovery.proxy_url
         if proxy_url:
             return os.path.join(str(proxy_url), dbimage.image_path)
 
@@ -138,7 +139,7 @@ def get_data_url(dbimage: DBImage):
         return web_url
 
     # Proxy the data using the REST API
-    return get_proxy_url(dbimage.collection, dbimage.image_path)
+    return get_proxy_url(collection_name, dbimage.image_path)
 
 
 def get_relative_path_url(dbimage: DBImage, relative_path: str):
@@ -147,20 +148,22 @@ def get_relative_path_url(dbimage: DBImage, relative_path: str):
     if not relative_path:
         return None
 
-    fs = get_collection_filestore(dbimage.collection)
+    collection_name = dbimage.collection.name
+    fs = get_collection_filestore(collection_name)
     url = fs.get_url(relative_path)
     if url:
         # This filestore is already web-accessible
         return url
 
     # Proxy the data using the REST API
-    return get_proxy_url(dbimage.collection, relative_path)
+    return get_proxy_url(collection_name, relative_path)
 
 
 def get_aux_path_url(dbimage: DBImage, relative_path: str, request: Request):
     """ Return a web-accessible URL to the given relative path.
     """
-    collection_settings = app.collections[dbimage.collection]
+    collection_name = dbimage.collection.name
+    collection_settings = app.collections[collection_name]
     if collection_settings.aux_image_mode == AuxImageMode.absolute:
         return relative_path
     elif collection_settings.aux_image_mode == AuxImageMode.relative:
@@ -175,10 +178,11 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
     """ Returns a web-accessible URL that opens the given image 
         in the specified viewer.
     """
+    collection_name = dbimage.collection.name
     url = get_data_url(dbimage)
     if viewer==Neuroglancer:
         # Generate a multichannel config on-the-fly
-        url = os.path.join(app.base_url, "neuroglancer", dbimage.collection, dbimage.image_path)
+        url = os.path.join(app.base_url, "neuroglancer", collection_name, dbimage.image_path)
 
     return viewer.get_viewer_url(url)
 
@@ -186,7 +190,8 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
 def get_title(dbimage: DBImage):
     """ Returns the title to display underneath the given image.
     """
-    collection_settings = app.collections[dbimage.collection]
+    collection_name = dbimage.collection.name
+    collection_settings = app.collections[collection_name]
     if collection_settings.title_column_name in app.db.reverse_column_map:
         col_name = app.db.reverse_column_map[ collection_settings.title_column_name]
         if col_name:
@@ -211,7 +216,8 @@ def get_query_string(query_params, **new_params):
 
 async def download_csv(request: Request, collection: str, search_string: str = ''):
 
-    collection_settings = app.collections[collection]
+    collection_name = collection
+    collection_settings = app.collections[collection_name]
 
     # Did the user select any filters?
     filter_params = {}
@@ -220,7 +226,7 @@ async def download_csv(request: Request, collection: str, search_string: str = '
         if param_value:
             filter_params[s.db_name] = param_value
 
-    result = app.db.get_dbimages(collection, search_string, filter_params)
+    result = app.db.get_dbimages(collection_name, search_string, filter_params)
     column_map = app.db.column_map
     hide_columns = collection_settings.hide_columns
 
@@ -230,7 +236,7 @@ async def download_csv(request: Request, collection: str, search_string: str = '
     for dbimage in result['images']:
         row = {
             'Id': dbimage.id,
-            'Collection': dbimage.collection,
+            'Collection': dbimage.collection.name,
             'Path': dbimage.path
         }
         metadata = dbimage.image_metadata
@@ -274,7 +280,8 @@ async def collection(request: Request, collection: str = '', search_string: str 
     if request.query_params.get('download'):
         return await download_csv(request, collection, search_string)
 
-    collection_settings = app.collections[collection]
+    collection_name = collection
+    collection_settings = app.collections[collection_name]
     
     # Did the user select any filters?
     filter_params = {}
@@ -283,7 +290,7 @@ async def collection(request: Request, collection: str = '', search_string: str 
         if param_value:
             filter_params[s.db_name] = param_value
 
-    result = app.db.get_dbimages(collection, search_string, filter_params, page, page_size)
+    result = app.db.get_dbimages(collection_name, search_string, filter_params, page, page_size)
 
     return templates.TemplateResponse(
         request=request, name="collection.html", context={
@@ -309,14 +316,15 @@ async def collection(request: Request, collection: str = '', search_string: str 
 @app.get("/details/{collection}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
 async def details(request: Request, collection: str, image_id: str):
 
-    dbimage = app.db.get_dbimage(collection, image_id)
+    collection_name = collection
+    dbimage = app.db.get_dbimage(collection_name, image_id)
     if not dbimage:
         return Response(status_code=404)
 
     return templates.TemplateResponse(
         request=request, name="details.html", context={
             "settings": app.settings,
-            "collection_settings": app.collections[collection],
+            "collection_settings": app.collections[collection_name],
             "dbimage": dbimage,
             "column_map": app.db.column_map,
             "get_viewer_url": get_viewer_url,
@@ -332,7 +340,8 @@ async def details(request: Request, collection: str, image_id: str):
 @app.head("/data/{collection}/{file_path:path}")
 async def data_proxy_head(collection: str, file_path: str):
     try:
-        fs = get_collection_filestore(collection)
+        collection_name = collection
+        fs = get_collection_filestore(collection_name)
         size = fs.get_size(file_path)
         headers = {}
         headers["Content-Type"] = "binary/octet-stream"
@@ -345,7 +354,8 @@ async def data_proxy_head(collection: str, file_path: str):
 @app.get("/data/{collection}/{file_path:path}")
 async def data_proxy_get(collection: str, file_path: str):
     try:
-        fs = get_collection_filestore(collection)
+        collection_name = collection
+        fs = get_collection_filestore(collection_name)
         with fs.open(file_path) as f:
             data = f.read()
             headers = {}
@@ -359,7 +369,8 @@ async def data_proxy_get(collection: str, file_path: str):
 async def neuroglancer_state(collection: str, image_id: str):
 
     from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
-    dbimage = app.db.get_dbimage(collection, image_id)
+    collection_name = collection
+    dbimage = app.db.get_dbimage(collection_name, image_id)
     if not dbimage:
         return Response(status_code=404)
 
