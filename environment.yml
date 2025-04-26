@@ -3,15 +3,16 @@ channels:
   - conda-forge
   - ome
 dependencies:
+  - python>=3.11
   - bioformats2raw
   - fastapi
   - fsspec
   - jinja2
   - loguru
-  - python=3.10
   - s3fs
   - uvicorn
   - zarr<3
+  - numcodecs>=0.14
   - tornado
   - pillow
   - pathspec

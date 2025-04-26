@@ -1,7 +1,4 @@
 import sys
-from pathlib import Path
-from enum import Enum
-from typing import List, Set, Dict
 from functools import cache
 
 from loguru import logger
@@ -19,51 +16,6 @@ class Database(BaseModel):
     debug_sql: bool = False
 
 
-class FilestoreProxy(BaseModel):
-    """ Filestore proxy settings """
-    collection: str
-    url: HttpUrl
-
-
-class FileProxy(BaseModel):
-    """ File proxy settings """
-    name: str
-    base_path: Path
-
-
-class DataType(str, Enum):
-    """ Possible filter data types """
-    string = 'string'
-    csv = 'csv'
-
-
-class FilterType(str, Enum):
-    """ Possible filter widget types """
-    dropdown = 'dropdown'
-
-
-class Filter(BaseModel):
-    """ Filter settings """
-    db_name: str = None
-    column_name: str
-    data_type: DataType = DataType.string
-    filter_type: FilterType = FilterType.dropdown
-    _values: Dict[str,str] = {}
-
-
-class AuxImageMode(str, Enum):
-    """ How to find auxiliary images """
-    
-    absolute = 'absolute'
-    """ Use an absolute URL to the auxiliary image """
-
-    relative = 'relative'
-    """ Use the filestore to find auxiliary images, with paths relative to the data URL """
-
-    local = 'local'
-    """ Use the local filesystem to find auxiliary images """
-
-
 class Settings(BaseSettings):
     """ Zarrcade settings can be read from a settings.yaml file, 
         or from the environment, with environment variables prepended 
@@ -74,12 +26,7 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     database: Database = Database()
-    proxies: List[FilestoreProxy] = []
-    exclude_paths: List[str] = ['.zarrcade']
-    filters: List[Filter] = []
-    title_column_name: str | None = None
-    hide_columns: Set[str] = set()
-    aux_image_mode: AuxImageMode = AuxImageMode.local
+    title: str = 'Zarrcade'
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

@@ -1,8 +1,7 @@
 import os
 from functools import cache
-from typing import Tuple, Sequence, Iterator, Protocol
+from typing import Protocol
 from urllib.parse import urlparse
-from dataclasses import dataclass
 
 import fsspec
 from loguru import logger
@@ -30,8 +29,6 @@ class FilestoreResolver:
 
     def __init__(self, uri: str):
         self.uri = uri
-        logger.debug(f"Data URL: {self.uri}")
-
         pu = urlparse(uri)
         if pu.scheme in ['http','https'] and pu.netloc.endswith('.s3.amazonaws.com'):
             # Convert S3 HTTP URLs (which do not support list operations) back to S3 REST API

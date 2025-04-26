@@ -32,7 +32,7 @@
             <div class="overlay">
 
                 <div class="buttons">
-                    <a href="{{ url_for('details', collection=dbimage.collection, image_id=dbimage.image_path) }}" class="icon">
+                    <a href="{{ url_for('details', collection_name=dbimage.collection.name, image_id=dbimage.image_path) }}" class="icon">
                         <div class="tooltip">
                             <img src="{{ url_for('static', path='view-details-64.png') }}" alt="View details icon">
                             <span class="tooltiptext">View details</span>

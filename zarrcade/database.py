@@ -1,6 +1,5 @@
 """ Data model and API for accessing the data
 """
-import os
 import json
 from dataclasses import asdict
 from typing import Iterator, Dict, List
@@ -9,12 +8,11 @@ from collections import defaultdict
 from loguru import logger
 from sqlalchemy import create_engine, text, func, and_, or_
 from sqlalchemy import String, Integer, Index, ForeignKey, MetaData, Table, Column, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, joinedload, contains_eager
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, contains_eager
 from sqlalchemy.exc import SQLAlchemyError, OperationalError, IntegrityError
 
 from zarrcade.model import Image
 from zarrcade.settings import get_settings
-
 
 if get_settings().database.debug_sql:
     import logging
@@ -28,8 +26,7 @@ class DBCollection(Base):
     __tablename__ = 'collections'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    label = Column(String)
-    data_url = Column(String, nullable=True)
+    settings_path = Column(String, nullable=True)
 
 
 class DBMetadataColumn(Base):
@@ -42,30 +39,32 @@ class DBMetadataColumn(Base):
 class DBImageMetadata(Base):
     __tablename__ = 'image_metadata'
     id = Column(Integer, primary_key=True)
-    collection = Column(String, nullable=False)
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     path = Column(String, nullable=False)
     aux_image_path = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
-    images = relationship('DBImage', back_populates='image_metadata', uselist=True)
+    images = relationship('DBImage', back_populates='image_metadata')
+    collection = relationship('DBCollection')
 
     __table_args__ = (
-        UniqueConstraint('collection', 'path', name='uq_collection_path'),
-        Index('ix_collection_path', 'collection', 'path')
+        UniqueConstraint('collection_id', 'path', name='uq_collection_path'),
+        Index('ix_collection_path', 'collection_id', 'path')
     )
 
 class DBImage(Base):
     __tablename__ = 'images'
     id = Column(Integer, primary_key=True)
-    collection = Column(String, nullable=False)
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     image_path = Column(String, nullable=False, index=True)
     path = Column(String, nullable=False)
     group_path = Column(String, nullable=False)
     image_info = Column(String, nullable=False)
     image_metadata_id = Column(Integer, ForeignKey('image_metadata.id'), nullable=True, index=True)
     image_metadata = relationship('DBImageMetadata', back_populates='images')
+    collection = relationship('DBCollection')
     
     __table_args__ = (
-        Index('collection_path_idx', 'collection', 'path'),
+        Index('collection_path_idx', 'collection_id', 'path'),
     )
 
     def get_image(self) -> Image:
@@ -117,7 +116,6 @@ class Database:
         with self.sessionmaker() as session:
             result = session.query(DBCollection).all()
             self.collection_map = {item.name: item for item in result}
-            self.reverse_collection_map = {item.data_url: item for item in result}
 
         # Read the attribute naming map from the database
         with self.sessionmaker() as session:
@@ -129,6 +127,13 @@ class Database:
         for column in self.column_map:
             if not hasattr(DBImageMetadata, column):
                 setattr(DBImageMetadata, column, Column(column, String))
+
+
+    def get_collections(self) -> List[DBCollection]:
+        """ Get all collections from the database.
+        """
+        with self.sessionmaker() as session:
+            return session.query(DBCollection).all()
 
 
     def get_table(self, table_name: str) -> Table:
@@ -143,7 +148,7 @@ class Database:
         return Table(table_name, self.metadata, autoload_with=self.engine)
 
 
-    def add_collection(self, name, label, data_url):
+    def add_collection(self, name, settings_path) -> DBCollection:
         """ Add a new collection to the database.
 
             Args:
@@ -153,29 +158,16 @@ class Database:
         """
         if name in self.collection_map:
 
-            if self.collection_map[name].data_url != data_url:
-                # Collection already exists, but with a different URL
-                raise ValueError(f"Collection {name} already exists with a different URL: {self.collection_map[name].data_url}")
+            if self.collection_map[name].settings_path != settings_path:
+                raise ValueError(f"Collection {name} already exists with a different settings path: {self.collection_map[name].settings_path}")
                 
-            # Update the label if it has changed
-            if self.collection_map[name].label != label:
-                with self.engine.connect() as connection:
-                    collections = self.get_table('collections')
-                    update_stmt = collections.update().where(collections.c.name == name).values(label=label)
-                    connection.execute(update_stmt)
-                    connection.commit()
-                    self.collection_map[name].label = label
-                    logger.info(f"Updated label for collection {name} to {label}")
-
             # Collection already exists
             return
 
-        if label is None:
-            label = name
         with self.engine.connect() as connection:
             # Insert into collections
             collections = self.get_table('collections')
-            insert_stmt = collections.insert().values(name=name, label=label, data_url=data_url)
+            insert_stmt = collections.insert().values(name=name, settings_path=settings_path)
             connection.execute(insert_stmt)
             connection.commit()
 
@@ -185,8 +177,9 @@ class Database:
 
             # Update internal state
             self.collection_map[name] = result
-            self.reverse_collection_map[data_url] = result
-            logger.info(f"Added new collection: {name} (label={label}, url={data_url})")
+            logger.info(f"Added new collection: {name} (settings_path={settings_path})")
+
+            return result
 
 
     def add_metadata_column(self, db_name, original_name):
@@ -228,7 +221,7 @@ class Database:
             logger.info(f"Added new metadata column: {db_name} (original={original_name})")
             
 
-    def add_image_metadata(self, image_metadata_rows: List[Dict[str,str]]) -> int:
+    def add_image_metadata(self, collection_name: str, image_metadata_rows: List[Dict[str,str]]) -> int:
         """ Add metadata for a set of images.
 
             Args:
@@ -242,6 +235,10 @@ class Database:
                 inserted = 0
                 updated = 0
                 for row in image_metadata_rows:
+                    # Get collection id from name
+                    collection = self.collection_map[collection_name]
+                    row['collection_id'] = collection.id
+
                     new_metadata = metadata_table.insert().values(row)
                     try:
                         session.execute(new_metadata)
@@ -250,7 +247,7 @@ class Database:
                         # Try updating instead
                         update_stmt = metadata_table.update().where(
                             and_(
-                                metadata_table.c.collection == row['collection'],
+                                metadata_table.c.collection_id == row['collection_id'],
                                 metadata_table.c.path == row['path']
                             )
                         ).values(row)
@@ -270,7 +267,7 @@ class Database:
                 logger.exception(f"Error inserting data: {e}")
 
 
-    def update_image_metadata(self, metadata_id: int, updated_metadata: Dict[str, str]) -> bool:
+    def update_image_metadata(self, collection_name: str, metadata_id: int, updated_metadata: Dict[str, str]) -> bool:
         """ Update the metadata for an image.
 
             Args:
@@ -283,11 +280,16 @@ class Database:
         metadata_table = self.get_table('image_metadata')
         with self.sessionmaker() as session:
             try:
+                # Get collection id if collection name provided
+                collection = self.collection_map[collection_name]
+                updated_metadata['collection_id'] = collection.id
+
                 update_stmt = metadata_table.update().where(
                     metadata_table.c.id == metadata_id
                 ).values(updated_metadata)
                 result = session.execute(update_stmt)
                 session.commit()
+
                 return result.rowcount > 0
             except OperationalError as e:
                 session.rollback()
@@ -295,11 +297,12 @@ class Database:
                 return False
 
 
-    def get_all_image_metadata(self) -> List[DBImageMetadata]:
+    def get_all_image_metadata(self, collection: str) -> List[DBImageMetadata]:
         """ Get all image metadata from the database.
         """
         with self.sessionmaker() as session:
-            return session.query(DBImageMetadata).all()
+            collection_id = self.collection_map[collection].id
+            return session.query(DBImageMetadata).filter(DBImageMetadata.collection_id == collection_id).all()
 
 
     def get_images_count(self) -> int:
@@ -326,8 +329,9 @@ class Database:
                 dict: A dictionary which maps relative paths to metadata ids.
         """
         with self.sessionmaker() as session:
+            collection_id = self.collection_map[collection].id
             query = session.query(DBImageMetadata.path, DBImageMetadata.id) \
-                        .filter(DBImageMetadata.collection == collection)
+                        .filter(DBImageMetadata.collection_id == collection_id)
             path_to_id = {path: _id for path, _id in query}
             return path_to_id
 
@@ -346,11 +350,12 @@ class Database:
         logger.trace(f"Persisting image {image}")
         group_path = image.group_path
         image_path = f"{path}{group_path}"
+        collection_id = self.collection_map[collection].id
 
         with self.sessionmaker() as session:
             try:
                 db_image = session.query(DBImage) \
-                                  .filter_by(collection=collection, image_path=image_path) \
+                                  .filter_by(collection_id=collection_id, image_path=image_path) \
                                   .first()
                 if db_image:
                     # Update existing record with new values
@@ -364,7 +369,7 @@ class Database:
                 else:
                     # Insert new record
                     new_image = DBImage(
-                        collection = collection,
+                        collection_id = collection_id,
                         image_path = image_path,
                         path = path,
                         group_path = group_path,
@@ -440,7 +445,7 @@ class Database:
             session.commit()
 
 
-    def get_dbimage(self, collection: str, image_path: str):
+    def get_dbimage(self, collection_name: str, image_path: str) -> DBImage | None:
         """ Returns the image and metadata for the given image path 
             within a collection.
 
@@ -452,11 +457,14 @@ class Database:
                 DBImage: The metadata image, or None if it doesn't exist.
         """
         with self.sessionmaker() as session:
+            collection_id = self.collection_map[collection_name].id
             query = (
                 session.query(DBImage)
+                .join(DBCollection)
                 .outerjoin(DBImageMetadata)
                 .options(contains_eager(DBImage.image_metadata))
-                .filter(and_(DBImage.collection == collection, DBImage.image_path == image_path))
+                .options(contains_eager(DBImage.collection))
+                .filter(and_(DBImage.collection_id == collection_id, DBImage.image_path == image_path))
             )
             return query.one_or_none()
 
@@ -467,7 +475,7 @@ class Database:
             filter_params: Dict[str,str] = None,
             page: int = 0,
             page_size: int = 0
-        ):
+        ) -> Dict:
         """
         Find images and metadata with optional search parameters and pagination.
 
@@ -486,13 +494,16 @@ class Database:
         with self.sessionmaker() as session:
             query = (session
                      .query(DBImage)
-                     .outerjoin(DBImageMetadata)
+                     .outerjoin(DBImage.collection)
+                     .outerjoin(DBImage.image_metadata)
                      .options(contains_eager(DBImage.image_metadata))
+                     .options(contains_eager(DBImage.collection))
                      )
 
             # Apply collection filter
             if collection:
-                query = query.filter(DBImage.collection == collection)
+                collection_id = self.collection_map[collection].id
+                query = query.filter(DBImage.collection_id == collection_id)
 
             # Apply search filters using LIKE
             search_filters = []
@@ -519,6 +530,7 @@ class Database:
             offset = (page - 1) * page_size
             if page_size > 0:
                 query = query.limit(page_size).offset(offset)
+            logger.debug(f"Page size: {page_size}, offset: {offset}")
 
             images = query.all()
 
