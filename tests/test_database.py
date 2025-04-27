@@ -2,7 +2,6 @@ import pytest
 from zarrcade.database import Database, DBImageMetadata, DBImage
 from zarrcade.model import Image
 
-
 @pytest.fixture
 def db_url():
     return "sqlite:///:memory:"
@@ -28,6 +27,7 @@ def test_add_collection(db):
 
 
 def test_add_metadata_column(db):
+    db.add_collection("test_collection", "test_url")
     db.add_metadata_column("test_collection", "test_column", "Test Column")
     assert "test_column" in db.get_column_map("test_collection")
     assert db.get_column_map("test_collection")["test_column"] == "Test Column"
@@ -35,8 +35,8 @@ def test_add_metadata_column(db):
     assert db.get_reverse_column_map("test_collection")["Test Column"] == "test_column"
 
 def test_add_image_metadata(db):
-    db.add_metadata_column("test_collection", "color", "Color")
     collection = db.add_collection("test_collection", "test_url")
+    db.add_metadata_column("test_collection", "color", "Color")
     metadata_rows = [
         {"path": "test_path", "color": "red"}
     ]
