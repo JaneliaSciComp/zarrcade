@@ -10,7 +10,6 @@ __pycache__
 
 # Data
 data
-*.csv
 .zarrcade
 
 # Zarrcade databases
