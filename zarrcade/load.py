@@ -45,36 +45,8 @@ def get_all_images(db, collection_name):
     return db.get_dbimages(collection=collection_name, page_size=0)['images']
         
 
-if __name__ == '__main__':
+def load(settings_path, args):
     settings = get_settings()
-
-    parser = argparse.ArgumentParser(
-        description=__doc__,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument('-s', '--collection-settings', type=str,
-        help='Path to the YAML file containing collection settings.')
-    parser.add_argument('--skip-image-load', action=argparse.BooleanOptionalAction, default=False,
-        help="Skip loading images from the data directory.")
-    parser.add_argument('--skip-thumbnail-creation', action=argparse.BooleanOptionalAction, default=False,
-        help="Skip creating thumbnails if they do not already exist.")
-    parser.add_argument('--only-with-metadata', action=argparse.BooleanOptionalAction, default=False,
-        help="Only load images for which metadata is provided?")
-    
-    parser.add_argument('-x', '--no-aux', action=argparse.BooleanOptionalAction, default=False,
-        help="Don't create auxiliary images or thumbnails.")
-    parser.add_argument('-a', '--aux-path', type=str, default="static/.zarrcade",
-        help='Local path to the folder for auxiliary images.')
-    parser.add_argument('--aux-image-name', type=str, default='thumbnail.png',
-        help='Filename of the main auxiliary image in the auxiliary image folder.')
-    parser.add_argument('--thumbnail-name', type=str, default='thumbnail.jpg',
-        help='Filename of the downsampled thumbnail image in the auxiliary image folder.')
-    parser.add_argument('--p-lower', type=int, default=0,
-        help='Lower percentile for thumbnail brightness adjustment.')
-    parser.add_argument('--p-upper', type=int, default=90,
-        help='Upper percentile for thumbnail brightness adjustment.')
-
-    args = parser.parse_args()
     local_fs = get_filestore()
     
     # Connect to the database
@@ -91,20 +63,20 @@ if __name__ == '__main__':
             for key, value in column_map.items():
                 logger.info(f"    {key}: {value}")
 
-    # extract the file name args.collection_settings
-    collection_name = slugify(os.path.splitext(os.path.basename(args.collection_settings))[0])
+    # extract the file name
+    collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
 
     # Read the collection settings
-    collection_settings = load_collection_settings(args.collection_settings)
+    collection_settings = load_collection_settings(settings_path)
 
     # Set up the collection
-    db.add_collection(collection_name, args.collection_settings)
+    db.add_collection(collection_name, settings_path)
 
     thumbnail_column = None
     metadata_path = collection_settings.metadata_file
     if metadata_path and not os.path.isabs(metadata_path):
         # Make metadata path relative to collection settings file location
-        settings_dir = os.path.dirname(os.path.abspath(args.collection_settings))
+        settings_dir = os.path.dirname(os.path.abspath(settings_path))
         metadata_path = os.path.join(settings_dir, metadata_path)
 
     if metadata_path:

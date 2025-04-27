@@ -3,7 +3,7 @@
 ## Testing
 
 ```bash
-python -m pytest --cov=zarrcade --cov-report html -W ignore::DeprecationWarning
+zarrcade test
 ```
 
 ## Building the Docker container

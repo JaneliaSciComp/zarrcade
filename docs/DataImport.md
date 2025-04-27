@@ -1,9 +1,9 @@
 # Data Import
 
-You can import images into Zarrcade using the provided command line script:
+You can load images into Zarrcade using the provided command line script:
 
 ```bash
-python -m zarrcade.import -s path/to/mycollection.yaml
+zarrcade load path/to/mycollection.yaml
 ```
 
 This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. Note that if you already have a database existing, this command will add images to it. 
@@ -11,7 +11,7 @@ This will automatically create a local Sqlite database containing a Zarrcade **c
 
 ## Annotations
 
-You can add additional annotations to the images by providing a CSV file with the `-I` flag. The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery.
+You can add additional annotations to the images by providing a CSV file. The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any annotations that will be searched and displayed within the gallery.
 
 You can modify the service configuration to control how the annotations are displayed and searched in the gallery. See the [Configuration](./Configuration.md) section for more details.
 
