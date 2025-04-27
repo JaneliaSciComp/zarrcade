@@ -211,6 +211,75 @@ class Database:
             logger.info(f"Added new collection: {name} (settings_path={settings_path})")
 
             return result
+        
+
+    def get_collection(self, id: int) -> DBCollection:
+        """ Get a collection by its ID.
+
+            Args:
+                id (int): The ID of the collection.
+
+            Returns:
+                DBCollection: The collection with the specified ID, or None if not found.
+        """
+        with self.engine.connect() as connection:
+            collections = self.get_table('collections')
+            select_stmt = collections.select().where(collections.c.id == id)
+            result = connection.execute(select_stmt).fetchone()
+            return result
+
+
+    def delete_collection(self, collection_name: str) -> None:
+        """ Delete a collection and all associated data from the database.
+
+            Args:
+                collection_name (str): The name of the collection to delete.
+
+            Raises:
+                ValueError: If the collection does not exist.
+        """
+        if collection_name not in self.collection_map:
+            raise ValueError(f"Collection {collection_name} does not exist")
+
+        collection_id = self.collection_map[collection_name].id
+        
+        with self.engine.connect() as connection:
+            try:
+                # Delete all associated image metadata first (due to foreign key constraints)
+                image_metadata = self.get_table('image_metadata')
+                delete_image_metadata_stmt = image_metadata.delete().where(
+                    image_metadata.c.collection_id == collection_id
+                )
+                connection.execute(delete_image_metadata_stmt)
+                
+                # Delete all associated metadata columns
+                metadata_columns = self.get_table('metadata_columns')
+                delete_metadata_columns_stmt = metadata_columns.delete().where(
+                    metadata_columns.c.collection_id == collection_id
+                )
+                connection.execute(delete_metadata_columns_stmt)
+                
+                # Finally delete the collection itself
+                collections = self.get_table('collections')
+                delete_collection_stmt = collections.delete().where(
+                    collections.c.id == collection_id
+                )
+                connection.execute(delete_collection_stmt)
+                
+                connection.commit()
+                
+                # Update internal state
+                if collection_id in self.column_map:
+                    del self.column_map[collection_id]
+                if collection_id in self.reverse_column_map:
+                    del self.reverse_column_map[collection_id]
+                del self.collection_map[collection_name]
+                
+                logger.info(f"Deleted collection: {collection_name} (id={collection_id})")
+            except SQLAlchemyError as e:
+                connection.rollback()
+                logger.error(f"Error deleting collection {collection_name}: {e}")
+                raise
 
 
     def add_metadata_column(self, collection_name, db_name, original_name):
