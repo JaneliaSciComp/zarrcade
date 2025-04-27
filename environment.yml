@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python>=3.11
   - bioformats2raw
+  - click
   - fastapi
   - fsspec
   - jinja2
