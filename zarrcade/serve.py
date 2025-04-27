@@ -232,14 +232,16 @@ async def download_csv(request: Request, collection: str, search_string: str = '
     column_map = app.db.get_column_map(collection_name)
     hide_columns = collection_settings.hide_columns
 
-    headers = ['Id','Collection','Name'] + [k for k in column_map.values() if k not in hide_columns]
+    # Header names are chosen for compatibility with BioFile Finder
+    headers = ['File Path','File Name','Collection','Thumbnail'] + [k for k in column_map.values() if k not in hide_columns]
     data = []
 
     for dbimage in result['images']:
         row = {
-            'Id': dbimage.id,
+            'File Path': get_data_url(dbimage),
+            'File Name': dbimage.image_path,
             'Collection': dbimage.collection.name,
-            'Path': dbimage.path
+            'Thumbnail': get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request)
         }
         metadata = dbimage.image_metadata
         if metadata:
@@ -257,7 +259,12 @@ async def download_csv(request: Request, collection: str, search_string: str = '
     response = Response(
         content=content,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=data.csv"}
+        headers={
+            "Content-Disposition": "attachment; filename=data.csv",
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
     )
     return response
 
