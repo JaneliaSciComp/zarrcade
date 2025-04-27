@@ -24,8 +24,10 @@ dependencies:
   - pydantic-settings
   - pytest
   - pytest-cov
+  - setuptools
   - pip
   - pip:
     - microfilm
     - neuroglancer
+    - -e .
 
