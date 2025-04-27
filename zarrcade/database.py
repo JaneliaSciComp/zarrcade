@@ -46,11 +46,11 @@ class DBMetadataColumn(Base):
 class DBImageMetadata(Base):
     __tablename__ = 'image_metadata'
     id = Column(Integer, primary_key=True)
-    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     path = Column(String, nullable=False)
     aux_image_path = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
     images = relationship('DBImage', back_populates='image_metadata')
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     collection = relationship('DBCollection')
 
     __table_args__ = (
@@ -61,13 +61,13 @@ class DBImageMetadata(Base):
 class DBImage(Base):
     __tablename__ = 'images'
     id = Column(Integer, primary_key=True)
-    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     image_path = Column(String, nullable=False, index=True)
     path = Column(String, nullable=False)
     group_path = Column(String, nullable=False)
     image_info = Column(String, nullable=False)
     image_metadata_id = Column(Integer, ForeignKey('image_metadata.id'), nullable=True, index=True)
     image_metadata = relationship('DBImageMetadata', back_populates='images')
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     collection = relationship('DBCollection')
     
     __table_args__ = (
