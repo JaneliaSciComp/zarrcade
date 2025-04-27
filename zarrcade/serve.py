@@ -75,16 +75,17 @@ async def startup_event():
             # Infer db name for the column if the user didn't provide it
             if s.db_name is None:
                 try:
-                    s.db_name = app.db.reverse_column_map[s.column_name]
+                    reverse_column_map = app.db.get_reverse_column_map(collection.name)
+                    s.db_name = reverse_column_map[s.column_name]
                 except KeyError:
                     logger.warning(f"Metadata missing column: {s.column_name}")
                     continue
 
             # Get unique values from the database
             if s.data_type == DataType.string:
-                s._values = app.db.get_unique_values(s.db_name)
+                s._values = app.db.get_unique_values(collection.name, s.db_name)
             elif s.data_type == DataType.csv:
-                s._values = app.db.get_unique_comma_delimited_values(s.db_name)
+                s._values = app.db.get_unique_comma_delimited_values(collection.name, s.db_name)
 
             logger.info(f"Configured {s.filter_type} filter for '{s.column_name}' ({len(s._values)} values)")
 
@@ -192,8 +193,9 @@ def get_title(dbimage: DBImage):
     """
     collection_name = dbimage.collection.name
     collection_settings = app.collections[collection_name]
-    if collection_settings.title_column_name in app.db.reverse_column_map:
-        col_name = app.db.reverse_column_map[ collection_settings.title_column_name]
+    reverse_column_map = app.db.get_reverse_column_map(collection_name)
+    if collection_settings.title_column_name in reverse_column_map:
+        col_name = reverse_column_map[collection_settings.title_column_name]
         if col_name:
             try:
                 metadata = dbimage.image_metadata
@@ -227,23 +229,25 @@ async def download_csv(request: Request, collection: str, search_string: str = '
             filter_params[s.db_name] = param_value
 
     result = app.db.get_dbimages(collection_name, search_string, filter_params)
-    column_map = app.db.column_map
+    column_map = app.db.get_column_map(collection_name)
     hide_columns = collection_settings.hide_columns
 
-    headers = ['Id','Collection','Name'] + [k for k in column_map.values() if k not in hide_columns]
+    # Header names are chosen for compatibility with BioFile Finder
+    headers = ['File Path','File Name','Collection','Thumbnail'] + [k for k in column_map.values() if k not in hide_columns]
     data = []
 
     for dbimage in result['images']:
         row = {
-            'Id': dbimage.id,
+            'File Path': get_data_url(dbimage),
+            'File Name': dbimage.image_path,
             'Collection': dbimage.collection.name,
-            'Path': dbimage.path
+            'Thumbnail': get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request)
         }
         metadata = dbimage.image_metadata
         if metadata:
             for column in metadata.__table__.columns:
-                if column.name not in hide_columns and column.name in app.db.column_map:
-                    row[app.db.column_map[column.name]] = getattr(metadata, column.name)
+                if column.name not in hide_columns and column.name in column_map:
+                    row[column_map[column.name]] = getattr(metadata, column.name)
         data.append(row)
 
     df = pd.DataFrame(data, columns=headers)
@@ -255,7 +259,12 @@ async def download_csv(request: Request, collection: str, search_string: str = '
     response = Response(
         content=content,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=data.csv"}
+        headers={
+            "Content-Disposition": "attachment; filename=data.csv",
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
     )
     return response
 
@@ -316,7 +325,6 @@ async def collection(request: Request, collection: str = '', search_string: str 
 @app.get("/details/{collection_name}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
 async def details(request: Request, collection_name: str, image_id: str):
 
-    print(f"Getting dbimage for {collection_name} / {image_id}")
     dbimage = app.db.get_dbimage(collection_name, image_id)
     if not dbimage:
         return Response(status_code=404)
@@ -326,7 +334,7 @@ async def details(request: Request, collection_name: str, image_id: str):
             "settings": app.settings,
             "collection_settings": app.collections[collection_name],
             "dbimage": dbimage,
-            "column_map": app.db.column_map,
+            "column_map": app.db.get_column_map(collection_name),
             "get_viewer_url": get_viewer_url,
             "get_relative_path_url": get_relative_path_url,
             "get_aux_path_url": get_aux_path_url,

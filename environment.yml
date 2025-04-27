@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python>=3.11
   - bioformats2raw
+  - click
   - fastapi
   - fsspec
   - jinja2
@@ -19,14 +20,14 @@ dependencies:
   - pandas
   - sqlalchemy
   - sqlite
-  - ipykernel
   - pydantic
   - pydantic-settings
-  - ray-default
   - pytest
   - pytest-cov
+  - setuptools
   - pip
   - pip:
     - microfilm
     - neuroglancer
+    - -e .
 

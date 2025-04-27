@@ -32,11 +32,18 @@ database:
 
 ## Remote deployment
 
-If you are running the service on a remote server, you'll need to use HTTPS and tell Zarrcade how to address your server. You can point Uvicorn to your SSL certificate and set your `ZARRCADE_BASE_URL` like this:
+If you are running the service on a remote server, you'll need to use HTTPS and tell Zarrcade how to address your server. You can point Uvicorn to your SSL certificate and set your `ZARRCADE_BASE_URL` (it could also be set in the `settings.yaml` file):
+
+```bash
+ZARRCADE_BASE_URL=https://myserver.mydomain.org:8000 zarrcade start --host 0.0.0.0 \
+    --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
+```
+
+You can also run Uvicorn directly for access to more options:
 
 ```bash
 ZARRCADE_BASE_URL=https://myserver.mydomain.org:8000 uvicorn zarrcade.serve:app --host 0.0.0.0 \
-    --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --reload 
+    --ssl-keyfile certs/cert.key --ssl-certfile certs/cert.crt --proxy-headers
 ```
 
 

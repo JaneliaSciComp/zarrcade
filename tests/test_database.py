@@ -2,7 +2,6 @@ import pytest
 from zarrcade.database import Database, DBImageMetadata, DBImage
 from zarrcade.model import Image
 
-
 @pytest.fixture
 def db_url():
     return "sqlite:///:memory:"
@@ -28,14 +27,16 @@ def test_add_collection(db):
 
 
 def test_add_metadata_column(db):
-    db.add_metadata_column("test_column", "Test Column")
-    assert "test_column" in db.column_map
-    assert db.column_map["test_column"] == "Test Column"
-
+    db.add_collection("test_collection", "test_url")
+    db.add_metadata_column("test_collection", "test_column", "Test Column")
+    assert "test_column" in db.get_column_map("test_collection")
+    assert db.get_column_map("test_collection")["test_column"] == "Test Column"
+    assert "Test Column" in db.get_reverse_column_map("test_collection")
+    assert db.get_reverse_column_map("test_collection")["Test Column"] == "test_column"
 
 def test_add_image_metadata(db):
-    db.add_metadata_column("color", "Color")
     collection = db.add_collection("test_collection", "test_url")
+    db.add_metadata_column("test_collection", "color", "Color")
     metadata_rows = [
         {"path": "test_path", "color": "red"}
     ]
@@ -85,7 +86,7 @@ def test_persist_image(db):
 
 def test_persist_images(db):
     collection = db.add_collection("test_collection", "test_url")
-    db.add_metadata_column("color", "Color")
+    db.add_metadata_column("test_collection", "color", "Color")
     
     metadata_rows = [
         {"path": "test_path1/0", "color": "red"},
@@ -134,7 +135,7 @@ def test_get_dbimage(db):
 
 def test_metadata_search(db):
     collection = db.add_collection("test_collection", "test_url")
-    db.add_metadata_column("color", "Color")
+    db.add_metadata_column("test_collection", "color", "Color")
     
     metadata_rows = [
         {"path": "test_path1", "color": "red"},
@@ -196,7 +197,7 @@ def test_pagination(db):
 
 def test_get_unique_values(db):
     db.add_collection("test_collection", "test_url")
-    db.add_metadata_column("test_column", "Test Column")
+    db.add_metadata_column("test_collection", "test_column", "Test Column")
     
     metadata_rows = [
         {"path": "test_path1", "test_column": "value1"},
@@ -205,13 +206,13 @@ def test_get_unique_values(db):
     ]
     db.add_image_metadata("test_collection", metadata_rows)
 
-    unique_values = db.get_unique_values("test_column")
+    unique_values = db.get_unique_values("test_collection", "test_column")
     assert unique_values == {"value1": 2, "value2": 1}
 
 
 def test_get_unique_comma_delimited_values(db):
     db.add_collection("test_collection", "test_url")
-    db.add_metadata_column("test_column", "Test Column")
+    db.add_metadata_column("test_collection", "test_column", "Test Column")
     
     metadata_rows = [
         {"path": "test_path1", "test_column": "value1"},
@@ -220,5 +221,5 @@ def test_get_unique_comma_delimited_values(db):
     ]
     db.add_image_metadata("test_collection", metadata_rows)
 
-    unique_values = db.get_unique_comma_delimited_values("test_column")
+    unique_values = db.get_unique_comma_delimited_values("test_collection", "test_column")
     assert unique_values == {"value1": 2, "value2": 1, "value3": 1, "value4": 1}

@@ -27,6 +27,7 @@ class DBCollection(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     settings_path = Column(String, nullable=True)
+    metadata_columns = relationship('DBMetadataColumn', back_populates='collection')
 
 
 class DBMetadataColumn(Base):
@@ -34,16 +35,22 @@ class DBMetadataColumn(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     db_name = Column(String, nullable=False, unique=True)
     original_name = Column(String, nullable=False)
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
+    collection = relationship('DBCollection', back_populates='metadata_columns')
+
+    __table_args__ = (
+        UniqueConstraint('collection_id', 'db_name', name='uq_collection_db_name'),
+    )
 
 
 class DBImageMetadata(Base):
     __tablename__ = 'image_metadata'
     id = Column(Integer, primary_key=True)
-    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     path = Column(String, nullable=False)
     aux_image_path = Column(String, nullable=True)
     thumbnail_path = Column(String, nullable=True)
     images = relationship('DBImage', back_populates='image_metadata')
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     collection = relationship('DBCollection')
 
     __table_args__ = (
@@ -54,13 +61,13 @@ class DBImageMetadata(Base):
 class DBImage(Base):
     __tablename__ = 'images'
     id = Column(Integer, primary_key=True)
-    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     image_path = Column(String, nullable=False, index=True)
     path = Column(String, nullable=False)
     group_path = Column(String, nullable=False)
     image_info = Column(String, nullable=False)
     image_metadata_id = Column(Integer, ForeignKey('image_metadata.id'), nullable=True, index=True)
     image_metadata = relationship('DBImageMetadata', back_populates='images')
+    collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     collection = relationship('DBCollection')
     
     __table_args__ = (
@@ -117,16 +124,40 @@ class Database:
             result = session.query(DBCollection).all()
             self.collection_map = {item.name: item for item in result}
 
-        # Read the attribute naming map from the database
+        # Read the attribute naming map from the database, organized by collection
         with self.sessionmaker() as session:
             result = session.query(DBMetadataColumn).all()
-            self.column_map = {item.db_name: item.original_name for item in result}
-            self.reverse_column_map = {item.original_name: item.db_name for item in result}
+            self.column_map = defaultdict(dict)
+            self.reverse_column_map = defaultdict(dict)
+            
+            for item in result:
+                collection_id = item.collection_id
+                if collection_id not in self.column_map:
+                    self.column_map[collection_id] = {}
+                    self.reverse_column_map[collection_id] = {}
+                
+                self.column_map[collection_id][item.db_name] = item.original_name
+                self.reverse_column_map[collection_id][item.original_name] = item.db_name
 
         # Add dynamic metadata columns
-        for column in self.column_map:
-            if not hasattr(DBImageMetadata, column):
-                setattr(DBImageMetadata, column, Column(column, String))
+        for collection_id, columns in self.column_map.items():
+            for column in columns:
+                if not hasattr(DBImageMetadata, column):
+                    setattr(DBImageMetadata, column, Column(column, String))
+
+
+    def get_column_map(self, collection_name: str) -> Dict[str,str]:
+        """ Get the column map for a collection.
+        """
+        collection = self.collection_map[collection_name]
+        return self.column_map[collection.id]
+
+
+    def get_reverse_column_map(self, collection_name: str) -> Dict[str,str]:
+        """ Get the reverse column map for a collection.
+        """
+        collection = self.collection_map[collection_name]
+        return self.reverse_column_map[collection.id]
 
 
     def get_collections(self) -> List[DBCollection]:
@@ -180,25 +211,98 @@ class Database:
             logger.info(f"Added new collection: {name} (settings_path={settings_path})")
 
             return result
+        
+
+    def get_collection(self, id: int) -> DBCollection:
+        """ Get a collection by its ID.
+
+            Args:
+                id (int): The ID of the collection.
+
+            Returns:
+                DBCollection: The collection with the specified ID, or None if not found.
+        """
+        with self.engine.connect() as connection:
+            collections = self.get_table('collections')
+            select_stmt = collections.select().where(collections.c.id == id)
+            result = connection.execute(select_stmt).fetchone()
+            return result
 
 
-    def add_metadata_column(self, db_name, original_name):
+    def delete_collection(self, collection_name: str) -> None:
+        """ Delete a collection and all associated data from the database.
+
+            Args:
+                collection_name (str): The name of the collection to delete.
+
+            Raises:
+                ValueError: If the collection does not exist.
+        """
+        if collection_name not in self.collection_map:
+            raise ValueError(f"Collection {collection_name} does not exist")
+
+        collection_id = self.collection_map[collection_name].id
+        
+        with self.engine.connect() as connection:
+            try:
+                # Delete all associated image metadata first (due to foreign key constraints)
+                image_metadata = self.get_table('image_metadata')
+                delete_image_metadata_stmt = image_metadata.delete().where(
+                    image_metadata.c.collection_id == collection_id
+                )
+                connection.execute(delete_image_metadata_stmt)
+                
+                # Delete all associated metadata columns
+                metadata_columns = self.get_table('metadata_columns')
+                delete_metadata_columns_stmt = metadata_columns.delete().where(
+                    metadata_columns.c.collection_id == collection_id
+                )
+                connection.execute(delete_metadata_columns_stmt)
+                
+                # Finally delete the collection itself
+                collections = self.get_table('collections')
+                delete_collection_stmt = collections.delete().where(
+                    collections.c.id == collection_id
+                )
+                connection.execute(delete_collection_stmt)
+                
+                connection.commit()
+                
+                # Update internal state
+                if collection_id in self.column_map:
+                    del self.column_map[collection_id]
+                if collection_id in self.reverse_column_map:
+                    del self.reverse_column_map[collection_id]
+                del self.collection_map[collection_name]
+                
+                logger.info(f"Deleted collection: {collection_name} (id={collection_id})")
+            except SQLAlchemyError as e:
+                connection.rollback()
+                logger.error(f"Error deleting collection {collection_name}: {e}")
+                raise
+
+
+    def add_metadata_column(self, collection_name, db_name, original_name):
         """ Add a new dynamic metadata column to the database.
 
             Args:
+                collection_name (str): The name of the collection.
                 db_name (str): The name of the new column in the database.
                 original_name (str): The original name (i.e. label) of the column.
         """
-        if db_name in self.column_map:
-            # Column already exists
-            logger.debug(f"Column {db_name} already exists")
+        collection_id = self.collection_map[collection_name].id
+        
+        # Check if column already exists for this collection
+        if collection_id in self.column_map and db_name in self.column_map[collection_id]:
+            logger.debug(f"Column {db_name} already exists for collection {collection_name}")
             return
 
         with self.engine.connect() as connection:
             try:
-                # Add column to the image_metadata table
-                alter_stmt = text(f'ALTER TABLE image_metadata ADD COLUMN {db_name} VARCHAR')
-                connection.execute(alter_stmt)
+                # Add column to the image_metadata table if it doesn't exist
+                if not db_name in self.metadata.tables['image_metadata'].columns:
+                    alter_stmt = text(f'ALTER TABLE image_metadata ADD COLUMN {db_name} VARCHAR')
+                    connection.execute(alter_stmt)
 
             except OperationalError as e:
                 # This can happen if the image_metadata table gets out of sync
@@ -209,16 +313,21 @@ class Database:
             metadata_columns = self.get_table('metadata_columns')
             insert_stmt = metadata_columns.insert().values(
                 db_name=db_name, 
-                original_name=original_name
+                original_name=original_name,
+                collection_id=collection_id
             )
             connection.execute(insert_stmt)
             connection.commit()
 
             # Update internal state
-            self.column_map[db_name] = original_name
-            self.reverse_column_map[original_name] = db_name
+            if collection_id not in self.column_map:
+                self.column_map[collection_id] = {}
+                self.reverse_column_map[collection_id] = {}
+                
+            self.column_map[collection_id][db_name] = original_name
+            self.reverse_column_map[collection_id][original_name] = db_name
             self.load()
-            logger.info(f"Added new metadata column: {db_name} (original={original_name})")
+            logger.info(f"Added new metadata column: {db_name} (original={original_name}) for collection {collection_name}")
             
 
     def add_image_metadata(self, collection_name: str, image_metadata_rows: List[Dict[str,str]]) -> int:
@@ -460,8 +569,8 @@ class Database:
             collection_id = self.collection_map[collection_name].id
             query = (
                 session.query(DBImage)
-                .join(DBCollection)
-                .outerjoin(DBImageMetadata)
+                .join(DBImage.collection)
+                .outerjoin(DBImage.image_metadata)
                 .options(contains_eager(DBImage.image_metadata))
                 .options(contains_eager(DBImage.collection))
                 .filter(and_(DBImage.collection_id == collection_id, DBImage.image_path == image_path))
@@ -494,13 +603,14 @@ class Database:
         with self.sessionmaker() as session:
             query = (session
                      .query(DBImage)
-                     .outerjoin(DBImage.collection)
+                     .join(DBImage.collection)
                      .outerjoin(DBImage.image_metadata)
                      .options(contains_eager(DBImage.image_metadata))
                      .options(contains_eager(DBImage.collection))
                      )
 
             # Apply collection filter
+            collection_id = None
             if collection:
                 collection_id = self.collection_map[collection].id
                 query = query.filter(DBImage.collection_id == collection_id)
@@ -509,19 +619,23 @@ class Database:
             search_filters = []
             if search_string:
                 search_filters.append(DBImage.path.ilike(f'%{search_string}%'))
-                for column in self.column_map:
-                    search_filters.append(getattr(DBImageMetadata, column).ilike(f'%{search_string}%'))
+                
+                # Only search in columns for the specific collection
+                if collection_id and collection_id in self.column_map:
+                    for column in self.column_map[collection_id]:
+                        search_filters.append(getattr(DBImageMetadata, column).ilike(f'%{search_string}%'))
 
             if search_filters:
                 query = query.filter(or_(*search_filters))
 
             # Apply additional filters
-            if filter_params:
+            if filter_params and collection_id and collection_id in self.column_map:
                 for column, value in filter_params.items():
-                    if value == "None":
-                        query = query.filter(getattr(DBImageMetadata, column).is_(None))
-                    elif value:
-                        query = query.filter(getattr(DBImageMetadata, column).ilike(f'%{value}%'))
+                    if column in self.column_map[collection_id] or hasattr(DBImageMetadata, column):
+                        if value == "None":
+                            query = query.filter(getattr(DBImageMetadata, column).is_(None))
+                        elif value:
+                            query = query.filter(getattr(DBImageMetadata, column).ilike(f'%{value}%'))
 
             # Count total results
             total_count = query.count()
@@ -559,20 +673,23 @@ class Database:
             }
 
 
-    def get_unique_values(self, column_name) -> Dict[str,int]:
+    def get_unique_values(self, collection_name, column_name) -> Dict[str,int]:
         """ Return a map of unique values to their counts from a column.
 
             Args:
+                collection_name (str): The name of the collection.
                 column_name (str): The name of the column to get unique values from.
 
             Returns:
                 dict: A dictionary of unique values to their counts.
         """
         with self.sessionmaker() as session:
+            collection_id = self.collection_map[collection_name].id
             column = getattr(DBImageMetadata, column_name)
             results = (
                 # pylint: disable=not-callable
                 session.query(column, func.count().label('count'))
+                .filter(DBImageMetadata.collection_id == collection_id)
                 .group_by(column)
                 .all()
             )
@@ -587,21 +704,23 @@ class Database:
             return value_counts
 
 
-    def get_unique_comma_delimited_values(self, column_name) -> Dict[str,int]:
+    def get_unique_comma_delimited_values(self, collection_name, column_name) -> Dict[str,int]:
         """ Return a map of unique values to their counts from a column whose values 
             are comma delimited lists.
 
             Args:
+                collection_name (str): The name of the collection.
                 column_name (str): The name of the column to get unique values from.
 
             Returns:
                 dict: A dictionary of unique values to their counts.
         """
         with self.sessionmaker() as session:
+            collection_id = self.collection_map[collection_name].id
             column = getattr(DBImageMetadata, column_name)
 
             # Retrieve all comma-delimited values from the column
-            values = session.query(column).all()
+            values = session.query(column).filter(DBImageMetadata.collection_id == collection_id).all()
 
             # Count unique items from comma-delimited lists
             value_counts = defaultdict(int)

@@ -28,41 +28,45 @@ This diagram shows the Python API for the database schema. These classes are map
 classDiagram
 
 class DBCollection {
-    int id
-    String name
-    String label
-    String data_url
+    id: int
+    name: str
+    settings_path: str
+    metadata_columns: List[DBMetadataColumn]
 }
 
 class DBMetadataColumn {
-    int id
-    String db_name
-    String original_name
+    id: int
+    db_name: str
+    original_name: str
+    collection: DBCollection
 }
 
 class DBImageMetadata {
-    int id
-    String collection
-    String path
-    String aux_image_path
-    String thumbnail_path
-    String YOUR_ANNOTATION_NAME_1
-    String YOUR_ANNOTATION_NAME_2
-    String YOUR_ANNOTATION_NAME_3
+    id: int
+    path: str
+    aux_image_path: str
+    thumbnail_path: str
+    YOUR_ANNOTATION_NAME_1: str
+    YOUR_ANNOTATION_NAME_2: str
+    YOUR_ANNOTATION_NAME_3: str
+    collection: DBCollection
 }
 
 class DBImage {
-    int id
-    String collection
-    String image_path
-    String path
-    String group_path
-    String image_info
-    int image_metadata_id
+    id: int
+    image_metadata_id: int
+    image_path: str
+    path: str
+    group_path: str
+    image_info: str
+    collection: DBCollection
+    image_metadata: DBImageMetadata
 }
 
 DBImageMetadata "1" --> "0..*" DBImage : contains
 DBImage "1" --> "0..1" DBImageMetadata : references
+DBCollection "1" --> "0..*" DBImage : contains
+DBCollection "1" --> "0..*" DBImageMetadata : contains
 DBCollection "1" --> "0..*" DBImage : contains
 ```
 
@@ -75,19 +79,19 @@ erDiagram
 DBCollection {
     id int
     name str
-    label str
-    data_url str
+    settings_path str
 }
 
 DBMetadataColumn {
     id int
     db_name str
     original_name str
+    collection_id int
 }
 
 DBImageMetadata {
     id int
-    collection str
+    collection_id int
     path str
     aux_image_path str
     thumbnail_path str
@@ -98,7 +102,7 @@ DBImageMetadata {
 
 DBImage {
     id int
-    collection str
+    collection_id int
     image_path str
     path str
     group_path str
@@ -106,8 +110,14 @@ DBImage {
     image_metadata_id int
 }
 
+DBCollection ||--o{ DBMetadataColumn : contains
 DBCollection ||--o{ DBImageMetadata : contains
+DBCollection ||--o{ DBImage : contains
+DBMetadataColumn ||--o| DBCollection : references
+DBImageMetadata ||--o| DBCollection : references
+DBImage ||--o| DBCollection : references
 DBImageMetadata ||--o{ DBImage : contains
 DBImage ||--o| DBImageMetadata : references
+
 
 ```
