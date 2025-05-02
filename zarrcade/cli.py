@@ -200,3 +200,50 @@ def delete_collection(id, force):
         click.echo(f"Collection[id={id}] has been deleted.")
     except Exception as e:
         click.echo(f"Error deleting collection: {str(e)}")
+
+
+@collection.command(name="clear-aux")
+@click.option('--id', type=int, required=True, help='ID of the collection to clear auxiliary images for.')
+@click.option('--force', is_flag=True, default=False, help='Force clearing without confirmation.')
+def clear_aux_images(id, force):
+    """Clear all thumbnails and auxiliary images for a collection."""
+    db = get_db()
+    
+    # Check if collection exists
+    collection = db.get_collection(id)
+    
+    if not collection:
+        click.echo(f"Collection[id={id}] does not exist.")
+        return
+    
+    if not force:
+        confirm = click.confirm(f"Are you sure you want to clear all thumbnails and auxiliary images for collection '{collection.name}'? This cannot be undone.")
+        if not confirm:
+            click.echo("Operation cancelled.")
+            return
+    
+    try:
+        from zarrcade.database import DBImageMetadata
+        with db.sessionmaker() as session:
+            # Get all image metadata for the collection
+            metadata_records = session.query(DBImageMetadata).filter(DBImageMetadata.collection_id == collection.id).all()
+            count = 0
+            
+            for metadata in metadata_records:
+                updated = False
+                
+                if metadata.thumbnail_path:
+                    metadata.thumbnail_path = None
+                    updated = True
+                
+                if metadata.aux_image_path:
+                    metadata.aux_image_path = None
+                    updated = True
+                
+                if updated:
+                    count += 1
+            
+            session.commit()
+            click.echo(f"Cleared auxiliary images for {count} records in collection '{collection.name}'.")
+    except Exception as e:
+        click.echo(f"Error clearing auxiliary images: {str(e)}")

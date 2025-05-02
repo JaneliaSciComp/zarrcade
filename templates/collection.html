@@ -4,6 +4,14 @@
 <body>
 {% include "topbar.html" %}
 
+<section class="collection-header">   
+    <h1>Searching for images in collection: {{ collection_settings.label }}</h1>
+    <p>
+        <a class="" href="{{ collection_name }}/data.csv">Download metadata</a> as CSV.
+        <a class="" href="{{ get_bff_url(collection_name) }}" target="_blank" rel="noopener noreferrer">View collection in BioFile Finder</a>
+    </p>
+</section>
+
 <section>
 {% include "form.html" %}
 </section>
@@ -14,9 +22,6 @@
 <div class="result-details">
     Showing {{ pagination.start_num }} - {{ pagination.end_num }} 
     of {{ pagination.total_count }} images matching selected criteria.
-
-    <a class="" href="?{{ get_query_string(download='true') }}">Download</a> metadata as CSV.
-
 </div>
 
 {% include "pagination.html" %}
