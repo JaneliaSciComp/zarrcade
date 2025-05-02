@@ -280,16 +280,15 @@ async def index(request: Request):
     )
 
 
-@app.get("/{collection}")
-async def collection(request: Request, collection: str = '', search_string: str = '', page: int = 1, page_size: int=50):
+@app.get("/{collection_name}")
+async def collection(request: Request, collection_name: str = '', search_string: str = '', page: int = 1, page_size: int=50):
 
-    if collection not in app.db.collection_map:
+    if collection_name not in app.db.collection_map:
         return Response(status_code=404)
 
     if request.query_params.get('download'):
-        return await download_csv(request, collection, search_string)
+        return await download_csv(request, collection_name, search_string)
 
-    collection_name = collection
     collection_settings = app.collections[collection_name]
     
     # Did the user select any filters?
@@ -345,10 +344,9 @@ async def details(request: Request, collection_name: str, image_id: str):
     )
 
 
-@app.head("/data/{collection}/{file_path:path}")
-async def data_proxy_head(collection: str, file_path: str):
+@app.head("/data/{collection_name}/{file_path:path}")
+async def data_proxy_head(collection_name: str, file_path: str):
     try:
-        collection_name = collection
         fs = get_collection_filestore(collection_name)
         size = fs.get_size(file_path)
         headers = {}
@@ -359,10 +357,9 @@ async def data_proxy_head(collection: str, file_path: str):
         return Response(status_code=404)
 
 
-@app.get("/data/{collection}/{file_path:path}")
-async def data_proxy_get(collection: str, file_path: str):
+@app.get("/data/{collection_name}/{file_path:path}")
+async def data_proxy_get(collection_name: str, file_path: str):
     try:
-        collection_name = collection
         fs = get_collection_filestore(collection_name)
         with fs.open(file_path) as f:
             data = f.read()
@@ -373,11 +370,10 @@ async def data_proxy_get(collection: str, file_path: str):
         return Response(status_code=404)
 
 
-@app.get("/neuroglancer/{collection}/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
-async def neuroglancer_state(collection: str, image_id: str):
+@app.get("/neuroglancer/{collection_name}/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
+async def neuroglancer_state(collection_name: str, image_id: str):
 
     from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
-    collection_name = collection
     dbimage = app.db.get_dbimage(collection_name, image_id)
     if not dbimage:
         return Response(status_code=404)
