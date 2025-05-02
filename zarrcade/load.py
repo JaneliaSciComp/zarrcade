@@ -160,14 +160,23 @@ def load(settings_path, args):
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
         def get_aux_path(image_path, filename):
+            if collection_settings.discovery:
+                zarr_name, _ = os.path.splitext(image_path)
+                # If we have a discovery URL, use it to find the auxiliary image
+                data_url = str(collection_settings.discovery.data_url)
+                aux_path = os.path.join(data_url, args.aux_path, zarr_name, filename)
+                return aux_path
+
             # If image_path is a URI, extract just the hostname and path components
             if '://' in image_path:
                 parsed = urlparse(image_path)
-                # Combine hostname and path, removing any double slashes
-                image_path = os.path.join(parsed.netloc, parsed.path.lstrip('/'))
+            # Combine hostname and path, removing any double slashes
+            image_path = os.path.join(parsed.netloc, parsed.path.lstrip('/'))
             zarr_name, _ = os.path.splitext(image_path)
             aux_path = os.path.join(args.aux_path, zarr_name, filename)
             return aux_path
+
+        thumb_fs = fs if collection_settings.aux_image_mode == 'absolute' else local_fs
 
         for dbimage in get_all_images(db, collection_name):
             logger.info(f"Processing {dbimage.path}")
@@ -178,15 +187,15 @@ def load(settings_path, args):
 
             if args.aux_image_name and (not metadata or not metadata.aux_image_path):
                 aux_path = get_aux_path(dbimage.path, args.aux_image_name)
-                logger.debug(f"Auxiliary path: {aux_path}")
+                logger.info(f"Checking for auxiliary path: {aux_path}")
 
-                if local_fs.exists(aux_path):
-                    logger.trace(f"Found auxiliary file: {aux_path}")
+                if thumb_fs.exists(aux_path):
+                    logger.info(f"Found auxiliary file: {aux_path}")
                     updated_obj['aux_image_path'] = aux_path
                 elif args.skip_thumbnail_creation:
-                    logger.trace(f"Skipping auxiliary file creation: {aux_path}")
-                else:
-                    logger.trace(f"Creating auxiliary file: {aux_path}")
+                    logger.info(f"Skipping auxiliary file creation: {aux_path}")
+                elif not aux_path.startswith('s3://'):
+                    logger.info(f"Creating auxiliary file: {aux_path}")
                     create_parent_dirs(aux_path)
                     store = fs.get_store(dbimage.image_path)
                     colors = []
@@ -203,7 +212,7 @@ def load(settings_path, args):
             if args.thumbnail_name and (not metadata or not metadata.thumbnail_path):
                 tb_path = get_aux_path(dbimage.path, args.thumbnail_name)
 
-                if local_fs.exists(tb_path):
+                if thumb_fs.exists(tb_path):
                     logger.trace(f"Found thumbnail: {tb_path}")
                     updated_obj['thumbnail_path'] = tb_path
                 elif args.skip_thumbnail_creation:

@@ -33,7 +33,7 @@ class DBCollection(Base):
 class DBMetadataColumn(Base):
     __tablename__ = 'metadata_columns'
     id = Column(Integer, primary_key=True, autoincrement=True)
-    db_name = Column(String, nullable=False, unique=True)
+    db_name = Column(String, nullable=False)
     original_name = Column(String, nullable=False)
     collection_id = Column(Integer, ForeignKey('collections.id'), nullable=False)
     collection = relationship('DBCollection', back_populates='metadata_columns')
