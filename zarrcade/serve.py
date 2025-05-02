@@ -188,6 +188,43 @@ def get_viewer_url(dbimage: DBImage, viewer: Viewer):
     return viewer.get_viewer_url(url)
 
 
+def get_bff_url(collection_name: str):
+    """ Returns a web-accessible URL to the given collection.
+    """
+    bff_base_url = "https://bff.allencell.org/app"
+    column_widths = "File Name:0.5"
+    # Get the first 3 column names from the collection metadata
+    collection_settings = app.collections.get(collection_name)
+    column_map = app.db.get_column_map(collection_name)
+    hide_columns = collection_settings.hide_columns
+    column_names = [k for k in column_map.values() if k not in hide_columns]
+    
+    if collection_settings and collection_settings.filters:
+        # Extract column names from the filters
+        column_widths += "," + ",".join(column_names[:3])
+    source = {
+        "name":f"{collection_name}-data",
+        "type":"csv",
+        "uri":os.path.join(app.base_url, collection_name, "data.csv")
+    }
+    source_metadata = {
+        "name":f"{collection_name}-cols",
+        "type":"csv",
+        "uri":os.path.join(app.base_url, collection_name, "columns.csv")
+    }
+    import json
+    encoded_params = {
+        "c": column_widths,
+        "v": "3",
+        "source": json.dumps(source),
+        "sourceMetadata": json.dumps(source_metadata)
+    }
+    
+    # Now encode the entire query string
+    query_string = urlencode(encoded_params, safe='=+/')
+    return bff_base_url + "?" + query_string
+
+
 def get_title(dbimage: DBImage):
     """ Returns the title to display underneath the given image.
     """
@@ -214,59 +251,6 @@ def get_query_string(query_params, **new_params):
         and return a formatted query string.
     """
     return urlencode(dict(query_params) | new_params)
-
-
-async def download_csv(request: Request, collection: str, search_string: str = ''):
-
-    collection_name = collection
-    collection_settings = app.collections[collection_name]
-
-    # Did the user select any filters?
-    filter_params = {}
-    for s in collection_settings.filters:
-        param_value = request.query_params.get(s.db_name)
-        if param_value:
-            filter_params[s.db_name] = param_value
-
-    result = app.db.get_dbimages(collection_name, search_string, filter_params)
-    column_map = app.db.get_column_map(collection_name)
-    hide_columns = collection_settings.hide_columns
-
-    # Header names are chosen for compatibility with BioFile Finder
-    headers = ['File Path','File Name','Collection','Thumbnail'] + [k for k in column_map.values() if k not in hide_columns]
-    data = []
-
-    for dbimage in result['images']:
-        row = {
-            'File Path': get_data_url(dbimage),
-            'File Name': dbimage.image_path,
-            'Collection': dbimage.collection.name,
-            'Thumbnail': get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request)
-        }
-        metadata = dbimage.image_metadata
-        if metadata:
-            for column in metadata.__table__.columns:
-                if column.name not in hide_columns and column.name in column_map:
-                    row[column_map[column.name]] = getattr(metadata, column.name)
-        data.append(row)
-
-    df = pd.DataFrame(data, columns=headers)
-
-    csv_buffer = StringIO()
-    df.to_csv(csv_buffer, index=False)
-    csv_buffer.seek(0)  # Go to the start of the buffer
-    content = csv_buffer.getvalue()
-    response = Response(
-        content=content,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=data.csv",
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
-    )
-    return response
 
 
 @app.get("/")
@@ -303,6 +287,7 @@ async def collection(request: Request, collection_name: str = '', search_string:
     return templates.TemplateResponse(
         request=request, name="collection.html", context={
             "settings": app.settings,
+            "collection_name": collection_name,
             "collection_settings": collection_settings,
             "dbimages": result['images'],
             "get_viewer_url": get_viewer_url,
@@ -310,6 +295,7 @@ async def collection(request: Request, collection_name: str = '', search_string:
             "get_aux_path_url": get_aux_path_url,
             "get_data_url": get_data_url,
             "get_title": get_title,
+            "get_bff_url": get_bff_url,
             "get_query_string": partial(get_query_string, request.query_params),
             "search_string": search_string,
             "pagination": result['pagination'],
@@ -319,6 +305,116 @@ async def collection(request: Request, collection_name: str = '', search_string:
             "max": max
         }
     )
+
+
+def get_csv_response(df: pd.DataFrame, filename: str):
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)  # Go to the start of the buffer
+    content = csv_buffer.getvalue()
+    return Response(
+        content=content,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@app.head("/{collection_name}/data.csv")
+async def download_data_csv_head(collection_name: str):
+    if collection_name not in app.db.collection_map:
+        return Response(status_code=404)
+    return Response(status_code=200)
+
+
+@app.head("/{collection_name}/columns.csv")
+async def download_columns_csv_head(collection_name: str):
+    if collection_name not in app.db.collection_map:
+        return Response(status_code=404)
+    return Response(status_code=200)
+
+
+@app.get("/{collection_name}/data.csv")
+async def download_data_csv(request: Request, collection_name: str, search_string: str = ''):
+
+    if collection_name not in app.db.collection_map:
+        return Response(status_code=404)
+
+    collection_settings = app.collections[collection_name]
+
+    # Did the user select any filters?
+    filter_params = {}
+    for s in collection_settings.filters:
+        param_value = request.query_params.get(s.db_name)
+        if param_value:
+            filter_params[s.db_name] = param_value
+
+    result = app.db.get_dbimages(collection_name, search_string, filter_params)
+    column_map = app.db.get_column_map(collection_name)
+    hide_columns = collection_settings.hide_columns
+
+    # Header names are chosen for compatibility with BioFile Finder
+    column_names = [k for k in column_map.values() if k not in hide_columns]
+    headers = ['File Path','File Name','Collection','Thumbnail','Neuroglancer'] + column_names
+    data = []
+
+    def strip_html(html_text):
+        if html_text is None:
+            return None
+        return re.sub(r'<[^>]*>', '', html_text)
+
+    for dbimage in result['images']:
+
+        # Get thumbnail URL only if thumbnail path exists
+        thumbnail_path = None
+        if dbimage.image_metadata:
+            thumbnail_path = get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request)
+
+        row = {
+            'File Path': get_data_url(dbimage),
+            'File Name': strip_html(get_title(dbimage)),
+            'Collection': dbimage.collection.name,
+            'Thumbnail': thumbnail_path,
+            'Neuroglancer': get_viewer_url(dbimage, Neuroglancer)
+        }
+        metadata = dbimage.image_metadata
+        if metadata:
+            for column in metadata.__table__.columns:
+                if column.name not in hide_columns and column.name in column_map:
+                    row[column_map[column.name]] = strip_html(getattr(metadata, column.name))
+        data.append(row)
+
+    df = pd.DataFrame(data, columns=headers)
+    return get_csv_response(df, f"{collection_name}_images.csv")
+
+
+
+@app.get("/{collection_name}/columns.csv")
+async def download_columns_csv(request: Request, collection_name: str):
+
+    if collection_name not in app.db.collection_map:
+        return Response(status_code=404)
+
+    collection_settings = app.collections[collection_name]
+    column_map = app.db.get_column_map(collection_name)
+    hide_columns = collection_settings.hide_columns
+    data = []
+    data.append(['File Path','Full URL to the image file',''])
+    data.append(['File Name','Name of the image file',''])
+    data.append(['Collection','Name of the collection',''])
+    data.append(['Thumbnail','URL to the thumbnail image',''])
+    data.append(['Neuroglancer','URL to the Neuroglancer view','Open file link'])
+    for k in column_map.values():
+        if k not in hide_columns:
+            data.append([k, f"{k} value", ''])
+
+
+    df = pd.DataFrame(data, columns=["Column Name", "Description", "Type"])
+    return get_csv_response(df, f"{collection_name}_columns.csv")
 
 
 @app.get("/details/{collection_name}/{image_id:path}", response_class=HTMLResponse, include_in_schema=False)
@@ -433,7 +529,7 @@ async def neuroglancer_state(collection_name: str, image_id: str):
             )
 
         start = channel['contrast_limit_start'] or dtype_min
-        end = channel['contrast_limit_end'] or dtype_max * 0.75
+        end = (channel['contrast_limit_end'] or dtype_max) * 0.50
 
         # TODO: temporary hack to make Fly-eFISH data brighter
         #end = min(end, 4000)

@@ -164,7 +164,7 @@ def load(settings_path, args):
                 zarr_name, _ = os.path.splitext(image_path)
                 # If we have a discovery URL, use it to find the auxiliary image
                 data_url = str(collection_settings.discovery.data_url)
-                aux_path = os.path.join(data_url, args.aux_path, zarr_name, filename)
+                aux_path = os.path.join(args.aux_path, zarr_name, filename)
                 return aux_path
 
             # If image_path is a URI, extract just the hostname and path components
@@ -176,7 +176,10 @@ def load(settings_path, args):
             aux_path = os.path.join(args.aux_path, zarr_name, filename)
             return aux_path
 
-        thumb_fs = fs if collection_settings.aux_image_mode == 'absolute' else local_fs
+        thumb_fs = local_fs
+        if collection_settings.discovery:
+            data_url = str(collection_settings.discovery.data_url)
+            thumb_fs = get_filestore(data_url)
 
         for dbimage in get_all_images(db, collection_name):
             logger.info(f"Processing {dbimage.path}")

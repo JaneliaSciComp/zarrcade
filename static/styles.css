@@ -94,6 +94,21 @@ form .filters select {
     padding: 5px;
 }
 
+.collection-header {
+    margin: 0 0 1.2rem;
+    text-align: center;
+}
+
+.collection-header h1 {
+    font-size: 1.3em;
+    margin-bottom: 0em;
+}
+
+.collection-header p {
+    font-size: 1em;
+    margin-bottom: 0em;
+}
+
 .result-details {
     margin: 0 0 1.2rem;
     text-align: center;
