@@ -529,10 +529,7 @@ async def neuroglancer_state(collection_name: str, image_id: str):
             )
 
         start = channel['contrast_limit_start'] or dtype_min
-        end = (channel['contrast_limit_end'] or dtype_max) * 0.50
-
-        # TODO: temporary hack to make Fly-eFISH data brighter
-        #end = min(end, 4000)
+        end = (channel['contrast_limit_end'] or dtype_max) * 0.25
 
         if start and end:
             layer.shaderControls={
