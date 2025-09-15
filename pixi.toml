@@ -7,6 +7,7 @@ channels = ["conda-forge", "ome"]
 platforms = ["linux-64", "osx-arm64"]
 
 [tasks]
+zarrcade = "python -m zarrcade.cli"
 
 [dependencies]
 bioformats2raw = "*"
