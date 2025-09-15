@@ -29,7 +29,6 @@ class Axis:
 class Image:
     """ Information about an OME-Zarr image.
     """
-    relative_path: str = None
     group_path: str = None
     num_channels: int = None
     num_timepoints: int = None
@@ -37,6 +36,7 @@ class Image:
     dimensions_voxels: str = None
     chunk_size: str = None
     voxel_sizes: str = None
+    dtype: str = None
     compression: str = None
     channels: list[Channel] = field(default_factory=lambda: [])
     axes: dict[str, Axis] = field(default_factory=lambda: [])
@@ -45,9 +45,3 @@ class Image:
     def get_compatible_viewers(self):
         for viewer in viewers:
             yield viewer
-
-    def get_id(self):
-        return self.relative_path
-    
-    def get_path(self):
-        return f"{self.relative_path}{self.group_path}"

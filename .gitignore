@@ -2,6 +2,7 @@
 *.pyc
 __pycache__
 .coverage
+*.egg-info
 
 # Junk
 .nfs*
@@ -10,7 +11,7 @@ __pycache__
 
 # Data
 data
-*.csv
+.zarrcade
 
 # Zarrcade databases
 *.db

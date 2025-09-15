@@ -7,13 +7,13 @@
     </div>
 
     <div class="filters">
-    {% for filter in settings.filters %}
+    {% for filter in collection_settings.filters %}
         <div class="filter-item">
             <label for="{{ filter.db_name }}">{{ filter.column_name }}</label>
         {% if filter.filter_type == FilterType.dropdown %}
             <select name="{{ filter.db_name }}" onchange="submitForm()">
                 <option value="">Select...</option>
-                {% for key, value in filter_values | dictsort %}
+                {% for key, value in filter._values | dictsort %}
                 <option value="{{ key }}" {% if filter_params.get(filter.db_name) == key %}selected{% endif %}>
                     {{ key }} <!--({{ value }})-->
                 </option>
@@ -30,6 +30,6 @@
         document.getElementById('filter-form').submit();
     }
     function resetForm() {
-        window.location.href = "{{ url_for('index') }}";
+        window.location.href = window.location.pathname;
     }
 </script>

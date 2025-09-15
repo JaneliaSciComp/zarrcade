@@ -1,7 +1,4 @@
 import sys
-from pathlib import Path
-from enum import Enum
-from typing import List, Set, Dict
 from functools import cache
 
 from loguru import logger
@@ -19,32 +16,6 @@ class Database(BaseModel):
     debug_sql: bool = False
 
 
-class FileProxy(BaseModel):
-    """ File proxy settings """
-    collection: str
-    url: HttpUrl
-
-
-class DataType(str, Enum):
-    """ Possible filter data types """
-    string = 'string'
-    csv = 'csv'
-
-
-class FilterType(str, Enum):
-    """ Possible filter widget types """
-    dropdown = 'dropdown'
-
-
-class Filter(BaseModel):
-    """ Filter settings """
-    db_name: str = None
-    column_name: str
-    data_type: DataType = DataType.string
-    filter_type: FilterType = FilterType.dropdown
-    _values: Dict[str,str] = {}
-
-
 class Settings(BaseSettings):
     """ Zarrcade settings can be read from a settings.yaml file, 
         or from the environment, with environment variables prepended 
@@ -55,11 +26,7 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     database: Database = Database()
-    proxies: List[FileProxy] = []
-    exclude_paths: List[str] = []
-    filters: List[Filter] = []
-    title_column_name: str | None = None
-    hide_columns: Set[str] = set()
+    title: str = 'Zarrcade'
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

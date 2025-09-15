@@ -4,6 +4,14 @@
 <body>
 {% include "topbar.html" %}
 
+<section class="collection-header">   
+    <h1>Searching for images in collection: {{ collection_settings.label }}</h1>
+    <p>
+        <a class="" href="{{ collection_name }}/data.csv">Download metadata</a> as CSV.
+        <a class="" href="{{ get_bff_url(collection_name) }}" target="_blank" rel="noopener noreferrer">View collection in BioFile Finder</a>
+    </p>
+</section>
+
 <section>
 {% include "form.html" %}
 </section>
@@ -14,9 +22,6 @@
 <div class="result-details">
     Showing {{ pagination.start_num }} - {{ pagination.end_num }} 
     of {{ pagination.total_count }} images matching selected criteria.
-
-    <a class="" href="?{{ get_query_string(download='true') }}">Download</a> metadata as CSV.
-
 </div>
 
 {% include "pagination.html" %}
@@ -27,12 +32,12 @@
         {% if not dbimage.image_metadata.thumbnail_path %}
             <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
         {% else %}
-            <img src="{{ get_relative_path_url(dbimage, dbimage.image_metadata.thumbnail_path) }}" alt="Image thumbnail" class="thumbnail" />
+            <img src="{{ get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request) }}" alt="Image thumbnail" class="thumbnail" />
         {% endif %}
             <div class="overlay">
 
                 <div class="buttons">
-                    <a href="{{ url_for('details', collection=dbimage.collection, image_id=dbimage.image_path) }}" class="icon">
+                    <a href="{{ url_for('details', collection_name=dbimage.collection.name, image_id=dbimage.image_path) }}" class="icon">
                         <div class="tooltip">
                             <img src="{{ url_for('static', path='view-details-64.png') }}" alt="View details icon">
                             <span class="tooltiptext">View details</span>

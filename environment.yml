@@ -3,29 +3,31 @@ channels:
   - conda-forge
   - ome
 dependencies:
+  - python>=3.11
   - bioformats2raw
+  - click
   - fastapi
   - fsspec
   - jinja2
   - loguru
-  - python=3.10
   - s3fs
   - uvicorn
   - zarr<3
+  - numcodecs>=0.14
   - tornado
   - pillow
   - pathspec
   - pandas
   - sqlalchemy
   - sqlite
-  - ipykernel
   - pydantic
   - pydantic-settings
-  - ray-default
   - pytest
   - pytest-cov
+  - setuptools
   - pip
   - pip:
     - microfilm
     - neuroglancer
+    - -e .
 

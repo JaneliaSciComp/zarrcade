@@ -2,84 +2,104 @@
 
 ![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
 
-![Python CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml/badge.svg)
+[![Python CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml/badge.svg)](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml)
 
 Zarrcade is a web application for easily browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
 
 * Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
-* Web gallery with convenient viewing links to NGFF-compliant viewers
 * MIP/thumbnail generation
-* Searchable/filterable metadata
+* Web-based MIP gallery with convenient viewing links to NGFF-compliant viewers
+* Searchable/filterable metadata and annotations
 * Neuroglancer state generation for multichannel images
 * Build-in file proxy for non-public storage backends
-
+* Integration with external file proxies (e.g. [x2s3](https://github.com/JaneliaSciComp/x2s3))
+ 
 ![screenshot](https://github.com/user-attachments/assets/15ff03b4-2c90-4307-9771-fb6041676588)
 
 
-## Getting Started
+## Prerequisites
 
 ### 1. Install miniforge
 
-[Install miniforge](https://docs.conda.io/en/latest/miniforge.html) if you don't already have it.
+[Install miniforge](https://conda-forge.org/download/) if you don't already have it.
 
-### 2. Initialize the conda environment
+### 2. Clone this repo
+
+```bash
+git clone https://github.com/JaneliaSciComp/zarrcade.git
+cd zarrcade
+```
+
+### 3. Initialize the conda environment
 
 ```bash
 conda env create -f environment.yml
 conda activate zarrcade
 ```
 
-### 3. Create OME-Zarr images
+Now you can run the `zarrcade` executable.
 
-If necessary, convert your image(s) to OME-Zarr format, e.g. using bioformats2raw:
+
+## Examples
+
+To try a simple example, use one of following commands to import the example data before starting the server.
+
+### Example 1: Discover all OME-Zarr images stored within a given location
+
+This example runs Zarr discovery on an S3 bucket. The metadata file adds textual annotations for each image. 
+
+```bash
+zarrcade load examples/flyefish.yaml
+zarrcade start
+```
+
+### Example 2: Import OME-Zarr images specified in a spreadsheet
+
+In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the metadata file, along with absolute thumbnail paths.
+
+```bash
+zarrcade load examples/openorganelle.yaml 
+zarrcade start
+```
+
+## Loading your own data
+
+### 1. Create OME-Zarr images
+
+If your images are not already in OME-Zarr format, you will need to convert them, e.g. using bioformats2raw:
 
 ```bash
 bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/zarr
 ```
 
-If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to  your available compute resources (cluster, cloud, etc).
+If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
 
-### 4. Import images and metadata into Zarrcade
+### 2. Create YAML configuration for your data collection
+
+There is [documentation](docs/Configuration.md) on creating collection settings files, or you can follow one of the [examples below](#examples).
+
+
+### 3. Import images and metadata into Zarrcade
 
 You can import images into Zarrcade using the provided command line script:
 
 ```bash
-bin/import.py -d /root/data/dir -c mycollection
+zarrcade load path/to/mycollection.yaml
 ```
 
-This will automatically create a local Sqlite database containing an image collection named "mycollection" and populate it with information about the images in the specified directory. 
+This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. By default, this will also create MIPs and thumbnails for each image in `./static/.zarrcade` (unless your metadata file already contains thumbnail paths). 
 
-By default, this will also create MIPs and thumbnails for each image in a folder named `.zarrcade` within the root data directory. You can change this location by setting the `--aux-path` parameter. You can disable the creation of MIPs and thumbnails by setting the `--no-aux` flag. The brightness of the MIPs can be adjusted using the `--p-lower` and `--p-upper` parameters.
+Read more about the import options in the [Data Import](./docs/DataImport.md) section of the documentation.
 
-To add extra metadata about the images, you can provide a CSV file with the `-i` flag:
-
-```bash
-bin/import.py -d /root/data/dir -c collection_name -i input.csv
-```
-
-The CSV file's first column must be a relative path to the OME-Zarr image within the root data directory. The remaining columns can be any metadata to be searched and displayed within the gallery, e.g.:
-
-```csv
-Path,Line,Marker
-relative/path/to/ome1.zarr,JKF6363,Blu
-relative/path/to/ome2.zarr,JDH3562,Blu
-```
-
-To try an example, use the following command:
-
-```bash
-bin/import.py -d s3://janelia-data-examples/fly-efish -c flyefish -i flyefish-example.csv
-```
-
-### 5. Run the Zarrcade web application
+### 4. Run the Zarrcade web application
 
 Start the development server, pointing it to your OME-Zarr data:
 
 ```bash
-uvicorn zarrcade.serve:app --host 0.0.0.0 --reload
+zarrcade start --host 0.0.0.0 --port 8000 --reload
 ```
 
-Your images and annotations will be indexed and browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
+Your images and annotations will be browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
 
 
 ## Documentation
@@ -92,7 +112,6 @@ Your images and annotations will be indexed and browseable at [http://0.0.0.0:80
 
 ## Known Limitations
 
-* Zarrcade has so far only been tested with OME-Zarr images generated by the [bioformats2raw](https://github.com/ome/bioformats2raw) tool.
 * The `OmeZarrAgent` does not currently support the full OME-Zarr specification, and may fail with certain types of images. If you encounter an error with your data, please open an issue on the [Github repository](https://github.com/JaneliaSciComp/zarrcade/issues).
 
 

@@ -3,6 +3,7 @@ import itertools
 from typing import Iterator, Any
 
 import zarr
+import numpy as np
 from loguru import logger
 
 from zarrcade.filestore import Filestore
@@ -22,7 +23,7 @@ def _yield_color() -> Iterator[str]:
         yield c
 
 
-def _encode_image(path: str, image_group: zarr.Group) -> Image:
+def _encode_image(image_group: zarr.Group) -> Image:
     """ Encode an image from an OME-Zarr group.
     """
     if 'multiscales' not in image_group.attrs:
@@ -39,7 +40,7 @@ def _encode_image(path: str, image_group: zarr.Group) -> Image:
     multiscale = multiscales[0]
     version = get(multiscale, 'version')
     if version != '0.4':
-        raise ValueError(f"Unsupported multiscales version {version}")
+        raise ValueError(f"Unsupported OME-Zarr version: {version}")
     
     # Use highest resolution
     fullres = multiscale['datasets'][0]
@@ -118,8 +119,11 @@ def _encode_image(path: str, image_group: zarr.Group) -> Image:
             color = next(color_generator)
             channels.append(Channel(name, color))
 
+    # If there is only one channel, make it white
+    if len(channels) == 1:
+        channels[0].color = 'white'
+
     return Image(
-        relative_path = path,
         group_path = group_path,
         num_channels = num_channels,
         num_timepoints = num_timepoints,
@@ -127,6 +131,7 @@ def _encode_image(path: str, image_group: zarr.Group) -> Image:
         dimensions = ' ✕ '.join(dimensions),
         dimensions_voxels = ' ✕ '.join(dimensions_voxels),
         chunk_size = ' ✕ '.join(chunks),
+        dtype = str(array.dtype),
         compression = str(array.compressor),
         channels = channels,
         axes_order = ''.join(axes_names),
@@ -196,4 +201,15 @@ class OmeZarrAgent():
 
         with logger.catch(message=f"Failed to process {absolute_path}"):
             for image_group in _yield_image_groups(fs, path):
-                yield _encode_image(path, image_group)
+                t = (path, _encode_image(image_group))
+                yield t
+
+
+    def get_image(self, fs: Filestore, zarr_path: str, group_path: str) -> Image:
+        """ Get the image from the given group path.
+        """
+        logger.info(f"Opening zarr store at {zarr_path}")
+        store = fs.get_store(zarr_path)
+        z = zarr.open(store, mode='r')
+        image_group = z[group_path]
+        return _encode_image(image_group)

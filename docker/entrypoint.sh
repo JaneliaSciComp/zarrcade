@@ -8,7 +8,8 @@ HOST="${HOST:=0.0.0.0}"
 PORT="${PORT:=8000}"
 
 # Export variables for zarrcade
-export DATA_URL="${DATA_URL:=/data}"
+export ZARRCADE_DATABASE__URL=$DB_URL
+export ZARRCADE_BASE_URL=$BASE_URL
 
 set -x
 uvicorn zarrcade.serve:app --access-log \

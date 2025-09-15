@@ -16,7 +16,7 @@ span.data {
 /* Top bar */
 
 .top-bar {
-    background-color: #353459; /* Dark background color */
+    background-color: #1d1c3f; /* Dark background color */
     color: white;
     display: flex;
     justify-content: space-between;
@@ -92,6 +92,21 @@ form .filters label {
 
 form .filters select {
     padding: 5px;
+}
+
+.collection-header {
+    margin: 0 0 1.2rem;
+    text-align: center;
+}
+
+.collection-header h1 {
+    font-size: 1.3em;
+    margin-bottom: 0em;
+}
+
+.collection-header p {
+    font-size: 1em;
+    margin-bottom: 0em;
 }
 
 .result-details {
@@ -217,7 +232,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 }
 
 .gallery .buttons {
-    margin: 20px auto 0 auto;
+    margin: 10px auto 0 auto;
     opacity: 1;
 }
 
@@ -227,7 +242,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 }
 
 .gallery .buttons a img {
-    padding: 2px;
+    padding: 0px;
     background-color: white;
     border-radius: 4px;
 }

@@ -1,0 +1,13 @@
+label: "Open Organelle"
+
+metadata_file: ./openorganelle.tsv
+
+aux_image_mode: absolute
+
+title_column_name: "name"
+
+filters:
+  - column_name: "organism"
+  - column_name: "cell_type"
+  - column_name: "cell_subtype"
+  - column_name: "treatment"
