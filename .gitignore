@@ -25,3 +25,7 @@ settings*.yaml
 # pixi environments
 .pixi
 *.egg-info
+
+# AI assistants
+CLAUDE.md
+.claude
