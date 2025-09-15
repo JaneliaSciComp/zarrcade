@@ -1,4 +1,4 @@
-name: zarrcade
+name: zarrcade3
 channels:
   - conda-forge
   - ome

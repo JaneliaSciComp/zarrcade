@@ -247,3 +247,7 @@ def clear_aux_images(id, force):
             click.echo(f"Cleared auxiliary images for {count} records in collection '{collection.name}'.")
     except Exception as e:
         click.echo(f"Error clearing auxiliary images: {str(e)}")
+
+
+if __name__ == "__main__":
+    cli()

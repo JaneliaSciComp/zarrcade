@@ -1,0 +1,37 @@
+[project]
+name = "zarrcade"
+version = "1.0.0"
+description = " Create web-based OME-Zarr galleries"
+authors = ["Konrad Rokicki <rokickik@janelia.hhmi.org>"]
+channels = ["conda-forge", "ome"]
+platforms = ["linux-64", "osx-arm64"]
+
+[tasks]
+zarrcade = "python -m zarrcade.cli"
+
+[dependencies]
+bioformats2raw = "*"
+loguru = "0.7.*"
+fastapi = "0.115.*"
+jinja2 = "3.1.*"
+fsspec = "2024.*"
+s3fs = "2024.*"
+python = "3.10.*"
+uvicorn = "*"
+zarr = "<3"
+pillow = "11.*"
+pathspec = "*"
+pandas = "2.2.*"
+sqlalchemy = "2.0.*"
+sqlite = "3.47.*"
+pydantic = "2.9.*"
+pydantic-settings = "2.6.*"
+pytest = "8.3.*"
+pytest-cov = "6.0.*"
+ipykernel = "*"
+ray-default = "*"
+pip = "*"
+
+[pypi-dependencies]
+microfilm = "*"
+neuroglancer = "*"

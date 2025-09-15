@@ -37,7 +37,7 @@ conda env create -f environment.yml
 conda activate zarrcade
 ```
 
-Now you can run the `zarrcade` executable.
+Now you can run the `pixi run zarrcade` command.
 
 
 ## Examples
@@ -49,8 +49,8 @@ To try a simple example, use one of following commands to import the example dat
 This example runs Zarr discovery on an S3 bucket. The metadata file adds textual annotations for each image. 
 
 ```bash
-zarrcade load examples/flyefish.yaml
-zarrcade start
+pixi run zarrcade load examples/flyefish.yaml
+pixi run zarrcade start
 ```
 
 ### Example 2: Import OME-Zarr images specified in a spreadsheet
@@ -58,8 +58,8 @@ zarrcade start
 In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the metadata file, along with absolute thumbnail paths.
 
 ```bash
-zarrcade load examples/openorganelle.yaml 
-zarrcade start
+pixi run zarrcade load examples/openorganelle.yaml
+pixi run zarrcade start
 ```
 
 ## Loading your own data
@@ -84,7 +84,7 @@ There is [documentation](docs/Configuration.md) on creating collection settings 
 You can import images into Zarrcade using the provided command line script:
 
 ```bash
-zarrcade load path/to/mycollection.yaml
+pixi run zarrcade load path/to/mycollection.yaml
 ```
 
 This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. By default, this will also create MIPs and thumbnails for each image in `./static/.zarrcade` (unless your metadata file already contains thumbnail paths). 
@@ -96,7 +96,7 @@ Read more about the import options in the [Data Import](./docs/DataImport.md) se
 Start the development server, pointing it to your OME-Zarr data:
 
 ```bash
-zarrcade start --host 0.0.0.0 --port 8000 --reload
+pixi run zarrcade start --host 0.0.0.0 --port 8000 --reload
 ```
 
 Your images and annotations will be browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
