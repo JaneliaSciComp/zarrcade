@@ -3,7 +3,7 @@
 You can load images into Zarrcade using the provided command line script:
 
 ```bash
-zarrcade load path/to/mycollection.yaml
+pixi run zarrcade load path/to/mycollection.yaml
 ```
 
 This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. Note that if you already have a database existing, this command will add images to it. 

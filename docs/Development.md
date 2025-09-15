@@ -3,7 +3,7 @@
 ## Testing
 
 ```bash
-zarrcade test
+pixi run zarrcade test
 ```
 
 ## Building the Docker container
