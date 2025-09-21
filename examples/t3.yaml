@@ -1,0 +1,4 @@
+label: "Dye Bioavailability"
+
+discovery:
+    data_url: https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
