@@ -4,6 +4,7 @@ from typing import Protocol
 from urllib.parse import urlparse
 
 import fsspec
+from s3fs.core import S3FileSystem
 from loguru import logger
 
 
@@ -35,6 +36,14 @@ class FilestoreResolver:
             self.fs = fsspec.filesystem('s3')
             self.fsroot = 's3://' + pu.netloc.split('.')[0] + pu.path
             self.web_url = uri
+            logger.info(f"Resolved S3 bucket {uri} to {self.fsroot} and {self.web_url}")
+        elif pu.scheme in ['http','https'] and pu.netloc.startswith('s3.'):
+            # Detect S3-compatible servers
+            # TODO: this should be explicitly configured somewhere
+            self.fs = S3FileSystem(anon=True, client_kwargs={'endpoint_url': f"{pu.scheme}://{pu.netloc}"})
+            self.fsroot = pu.path
+            self.web_url = uri
+            logger.info(f"Resolved S3-compatible URL {uri} to {self.fsroot} and {self.web_url}")
         else:
             self.fs = fsspec.filesystem(pu.scheme)
             self.fsroot = pu.netloc + pu.path
@@ -42,6 +51,7 @@ class FilestoreResolver:
                 self.web_url = f"https://{pu.netloc}.s3.amazonaws.com{pu.path}"
             else:
                 self.web_url = None
+            logger.info(f"Resolved {pu.scheme} server {pu.netloc} to {self.fsroot} and {self.web_url}")
 
 
 @cache
@@ -131,6 +141,8 @@ class RelativeFilestore(Filestore):
         children = []
         for child in self.resolver.fs.ls(path, detail=True):
             abspath = child['name']
+            if not abspath.startswith('/'):
+                abspath = '/' + abspath
             relpath = os.path.relpath(abspath, self.resolver.fsroot)
             children.append({
                 'path': relpath,
