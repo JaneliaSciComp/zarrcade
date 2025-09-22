@@ -49,7 +49,33 @@ def adjust_file_brightness(src_path, dst_path):
     ski.io.imsave(dst_path, img_rescale)
 
 
-def _make_mip(root, colors=None) -> Image:
+def _select_dataset(root, min_dim_size=1000):
+    """ Walk backwards through datasets to find one with 
+        the min dimension size in at least one direction.
+    """
+    multiscale = root['/'].attrs['multiscales'][0]
+    selected_dataset = None
+    for i in range(len(multiscale['datasets']) - 1, -1, -1):
+        dataset_candidate = multiscale['datasets'][i]
+        path_candidate = dataset_candidate['path']
+        time_series_candidate = root[path_candidate]
+        # assumes TCZYX
+        image_data_candidate = time_series_candidate[0]
+        
+        if any(dim >= min_dim_size for dim in image_data_candidate.shape):
+            selected_dataset = dataset_candidate
+            logger.trace(f"Selected dataset at index {i} with shape: {image_data_candidate.shape}")
+            break
+
+    if selected_dataset is None:
+        # If no dataset has the min dimension size, use the last one as fallback
+        selected_dataset = multiscale['datasets'][-1]
+        logger.trace(f"No dataset with shape >= {min_dim_size} found, using fallback dataset with shape: {root[selected_dataset['path']][0].shape}")
+
+    return selected_dataset
+
+
+def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
     if not colors:
@@ -64,10 +90,7 @@ def _make_mip(root, colors=None) -> Image:
         colors = [translate_color(color) for color in colors]
 
     multiscale = root['/'].attrs['multiscales'][0]
-    datasets = multiscale['datasets']
-
-    # get lowest res image
-    dataset = datasets[-1]
+    dataset = _select_dataset(root, min_dim_size=min_dim_size)
     path = dataset['path']
     time_series = root[path]
     image_data = time_series[0] # TCZYX
