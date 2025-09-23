@@ -243,6 +243,11 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 .gallery .buttons {
     margin: 10px auto 0 auto;
     opacity: 1;
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: inline-block;
 }
 
 .gallery .buttons a {
