@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 from zarrcade.filestore import get_filestore
 from zarrcade.database import Database, DBImage
-from zarrcade.viewers import Viewer, Neuroglancer
+from zarrcade.viewers import Viewer, get_viewers, get_viewer
 from zarrcade.settings import get_settings
 from zarrcade.collection import DataType, FilterType, AuxImageMode, load_collection_settings
 
@@ -175,13 +175,24 @@ def get_aux_path_url(dbimage: DBImage, relative_path: str, request: Request):
         raise ValueError(f"Unknown aux image mode: {collection_settings.aux_image_mode}")
 
 
+def get_viewers(dbimage: DBImage):
+    """ Return a list of viewers that are configured for the current collection.
+    """
+    collection_name = dbimage.collection.name
+    collection_settings = app.collections[collection_name]
+    viewers = collection_settings.viewers
+    if not viewers:
+        return get_viewers()
+    return [get_viewer(viewer) for viewer in viewers]
+    
+
 def get_viewer_url(dbimage: DBImage, viewer: Viewer):
     """ Returns a web-accessible URL that opens the given image 
         in the specified viewer.
     """
     collection_name = dbimage.collection.name
     url = get_data_url(dbimage)
-    if viewer==Neuroglancer:
+    if viewer==Viewer.NEUROGLANCER:
         # Generate a multichannel config on-the-fly
         url = os.path.join(app.base_url, "neuroglancer", collection_name, dbimage.image_path)
 
@@ -291,6 +302,7 @@ async def collection(request: Request, collection_name: str = '', search_string:
             "collection_settings": collection_settings,
             "dbimages": result['images'],
             "get_viewer_url": get_viewer_url,
+            "get_viewers": get_viewers,
             "get_relative_path_url": get_relative_path_url,
             "get_aux_path_url": get_aux_path_url,
             "get_data_url": get_data_url,
@@ -379,7 +391,7 @@ async def download_data_csv(request: Request, collection_name: str, search_strin
             'File Name': strip_html(get_title(dbimage)),
             'Collection': dbimage.collection.name,
             'Thumbnail': thumbnail_path,
-            'Neuroglancer': get_viewer_url(dbimage, Neuroglancer)
+            'Neuroglancer': get_viewer_url(dbimage, Viewer.NEUROGLANCER)
         }
         metadata = dbimage.image_metadata
         if metadata:
@@ -431,6 +443,7 @@ async def details(request: Request, collection_name: str, image_id: str):
             "dbimage": dbimage,
             "column_map": app.db.get_column_map(collection_name),
             "get_viewer_url": get_viewer_url,
+            "get_viewers": get_viewers,
             "get_relative_path_url": get_relative_path_url,
             "get_aux_path_url": get_aux_path_url,
             "get_title": get_title,

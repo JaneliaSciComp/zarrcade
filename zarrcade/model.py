@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .viewers import viewers
-
 @dataclass
 class Channel:
     """ Information about a single channel in the image. 
@@ -41,7 +39,3 @@ class Image:
     channels: list[Channel] = field(default_factory=lambda: [])
     axes: dict[str, Axis] = field(default_factory=lambda: [])
     axes_order: str = None
-
-    def get_compatible_viewers(self):
-        for viewer in viewers:
-            yield viewer

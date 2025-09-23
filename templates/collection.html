@@ -49,7 +49,7 @@
                             <span class="tooltiptext">Copy image data URL</span>
                         </div>
                     </a>
-                    {% for viewer in dbimage.get_image().get_compatible_viewers() %}
+                    {% for viewer in get_viewers(dbimage) %}
                     <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
                         <div class="tooltip">
                             <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">

@@ -78,6 +78,9 @@ class CollectionSettings(BaseSettings):
     hide_columns: Set[str] = set()
     """ The columns to hide from the UI """
 
+    viewers: List[str] = []
+    """ List of viewer names to enable for this collection. If empty, all viewers are available. """
+
 
 def load_collection_settings(settings_file: str) -> CollectionSettings:
     """ Load the collection settings from a file """
