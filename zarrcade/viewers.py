@@ -47,9 +47,6 @@ class Viewer(Enum):
 
     @property
     def name(self) -> str:
-        print(self)
-        print(self.value)
-        print(type(self.value))
         return self.value.name
 
     @property
