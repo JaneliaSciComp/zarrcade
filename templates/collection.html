@@ -29,20 +29,17 @@
     <div class="gallery">
     {% for dbimage in dbimages %}
         <div class="container">
-        {% if not dbimage.image_metadata.thumbnail_path %}
-            <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
-        {% else %}
-            <img src="{{ get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request) }}" alt="Image thumbnail" class="thumbnail" />
-        {% endif %}
+            <a href="{{ url_for('details', collection_name=dbimage.collection.name, image_id=dbimage.image_path) }}" class="image-link">
+            {% if not dbimage.image_metadata.thumbnail_path %}
+                <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="thumbnail" />
+            {% else %}
+                <img src="{{ get_aux_path_url(dbimage, dbimage.image_metadata.thumbnail_path, request) }}" alt="Image thumbnail" class="thumbnail" />
+            {% endif %}
+                <div class="label">{{ get_title(dbimage) | safe }}</div>
+            </a>
             <div class="overlay">
 
                 <div class="buttons">
-                    <a href="{{ url_for('details', collection_name=dbimage.collection.name, image_id=dbimage.image_path) }}" class="icon">
-                        <div class="tooltip">
-                            <img src="{{ url_for('static', path='view-details-64.png') }}" alt="View details icon">
-                            <span class="tooltiptext">View details</span>
-                        </div>
-                    </a>
                     <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon" >
                         <div class="tooltip">
                             <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
@@ -60,7 +57,6 @@
                 </div>
 
             </div>
-            <div class="label">{{ get_title(dbimage) | safe }}</div>
         </div>
     {% endfor %}
     </div>
