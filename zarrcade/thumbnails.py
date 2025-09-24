@@ -118,10 +118,8 @@ def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
 
     mip = microshow(
         images=mip_images[:,0,:,:],
-        fig_scaling=5,
+        fig_scaling=20,
         cmaps=colors)
-    
-    #mip.savefig('mip.png')
 
     # We need to jump through some hoops to save the figure to a buffer 
     # in memory (instead of a file) and convert it to a numpy array, 
