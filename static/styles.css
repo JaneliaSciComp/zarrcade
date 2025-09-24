@@ -325,7 +325,7 @@ div.detail_button a:active {
 }
 
 .image {
-    max-width: 100%;
+    max-width: min(100%, 500px);
     flex: 0 0 auto; /* Prevents the image from growing beyond its natural size */
     height: auto; /* Keeps the image aspect ratio intact */
 }
