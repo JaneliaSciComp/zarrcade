@@ -37,7 +37,7 @@ class FilestoreResolver:
             self.fsroot = 's3://' + pu.netloc.split('.')[0] + pu.path
             self.web_url = uri
             logger.info(f"Resolved S3 bucket {uri} to {self.fsroot} and {self.web_url}")
-        elif pu.scheme in ['http','https'] and (pu.netloc.startswith('s3.') or True):
+        elif pu.scheme in ['http','https'] and pu.netloc.startswith('s3.'):
             # Detect S3-compatible servers
             # TODO: this should be explicitly configured somewhere
             self.fs = S3FileSystem(anon=True, client_kwargs={'endpoint_url': f"{pu.scheme}://{pu.netloc}"})
@@ -140,25 +140,15 @@ class RelativeFilestore(Filestore):
         path = self.get_absolute_path(relative_path)
         children = []
         for child in self.resolver.fs.ls(path, detail=True):
-            # URL decode the child name if it contains encoded characters
-            if 'name' in child and isinstance(child['name'], str):
-                import urllib.parse
-                child['name'] = urllib.parse.unquote(child['name'])
-
-            logger.trace(f"Found child: {child}")
-
             abspath = child['name']
             if not abspath.startswith('/'):
                 abspath = '/' + abspath
-            
-            logger.trace(f"  abspath: {abspath}, fsroot: {self.resolver.fsroot}")
             relpath = os.path.relpath(abspath, self.resolver.fsroot)
             child = {
                 'path': relpath,
                 'name': os.path.basename(relpath),
                 'type': child['type']
             }
-            logger.trace(f"Returning child: {child}")
             children.append(child)
         return children
     
