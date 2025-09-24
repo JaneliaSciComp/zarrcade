@@ -40,6 +40,27 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+def custom_sort_filter(items):
+    """Custom filter to sort items with None values first, then alphabetically."""
+    if not isinstance(items, dict):
+        return items
+
+    # Convert to list of (key, value) tuples for sorting
+    item_list = list(items.items())
+
+    def sort_key(item):
+        key = item[0]
+        # None values get priority 0, others get priority 1
+        # Then sort alphabetically within each group
+        if key is None or key == "None":
+            return (0, "")
+        else:
+            return (1, str(key).lower())
+
+    return sorted(item_list, key=sort_key)
+
+templates.env.filters["custom_sort"] = custom_sort_filter
+
 
 @app.on_event("startup")
 async def startup_event():
