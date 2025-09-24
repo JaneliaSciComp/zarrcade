@@ -6,6 +6,12 @@
 {% include "topbar.html" %}
 {% set image = dbimage.get_image() %}
 
+<section class="breadcrumbs">
+    <a href="{{ url_for('collection', collection_name=dbimage.collection.name) }}">{{ collection_settings.label }}</a>
+    <span class="separator"> &gt; </span>
+    <span class="current">{{ get_title(dbimage) | safe }}</span>
+</section>
+
 <section>
     <h2>{{ get_title(dbimage) | safe }}</h2>
 </section>
