@@ -11,7 +11,7 @@ __pycache__
 
 # Data
 data
-.zarrcade
+.zarrcade*
 
 # Zarrcade databases
 *.db
