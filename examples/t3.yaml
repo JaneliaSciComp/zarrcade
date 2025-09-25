@@ -1,13 +1,12 @@
 label: "Dye Bioavailability"
 
 discovery:
-  #data_url: https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
-  data_url: /groups/lavis/lavislab/data_external/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
+  data_url: https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
+    #data_url: /groups/lavis/lavislab/data_external/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
 
-#aux_image_mode: relative
+aux_image_mode: relative
 
 metadata_file: ./t3.csv
-
 filters:
   - column_name: "Tissue"
   - column_name: "Pulse Dye"

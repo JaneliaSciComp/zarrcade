@@ -30,14 +30,14 @@ class Filter(BaseModel):
 class AuxImageMode(str, Enum):
     """ How to find auxiliary images """
     
+    static = 'static'
+    """ Use the local filesystem to find auxiliary images in the static folder """
+
     absolute = 'absolute'
     """ Use an absolute URL to the auxiliary image """
 
     relative = 'relative'
     """ Use the filestore to find auxiliary images, with paths relative to the data URL """
-
-    local = 'local'
-    """ Use the local filesystem to find auxiliary images """
 
 
 class DiscoverySettings(BaseModel):
@@ -66,7 +66,7 @@ class CollectionSettings(BaseSettings):
     metadata_file: str | None = None
     """ The path to the metadata file used during the loading process. """
 
-    aux_image_mode: AuxImageMode = AuxImageMode.local
+    aux_image_mode: AuxImageMode = AuxImageMode.static
     """ How to find auxiliary images (thumbnails, etc.) """
 
     title_column_name: str | None = None

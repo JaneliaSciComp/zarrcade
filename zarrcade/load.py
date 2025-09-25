@@ -160,20 +160,13 @@ def load(settings_path, args):
             os.makedirs(os.path.dirname(path), exist_ok=True)
 
         def get_aux_path(image_path, filename):
-            if collection_settings.discovery:
-                zarr_name, _ = os.path.splitext(image_path)
-                # If we have a discovery URL, use it to find the auxiliary image
-                data_url = str(collection_settings.discovery.data_url)
-                aux_path = os.path.join(args.aux_path, zarr_name, filename)
-                return aux_path
-
             # If image_path is a URI, extract just the hostname and path components
             if '://' in image_path:
                 parsed = urlparse(image_path)
-            # Combine hostname and path, removing any double slashes
-            image_path = os.path.join(parsed.netloc, parsed.path.lstrip('/'))
+                # Combine hostname and path, removing any double slashes
+                image_path = os.path.join(parsed.netloc, parsed.path.lstrip('/'))
             zarr_name, _ = os.path.splitext(image_path)
-            aux_path = os.path.join(args.aux_path, zarr_name, filename)
+            aux_path = os.path.join('static', args.aux_path, zarr_name, filename)
             return aux_path
 
         thumb_fs = local_fs
@@ -194,7 +187,7 @@ def load(settings_path, args):
 
                 if thumb_fs.exists(aux_path):
                     logger.info(f"Found auxiliary file: {aux_path}")
-                    updated_obj['aux_image_path'] = aux_path
+                    updated_obj['aux_image_path'] = aux_path.replace('static/', '')
                 elif args.skip_thumbnail_creation:
                     logger.info(f"Skipping auxiliary file creation: {aux_path}")
                 elif not aux_path.startswith('s3://'):
@@ -207,7 +200,7 @@ def load(settings_path, args):
                     try:
                         make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper, colors=colors)
                         logger.info(f"Wrote {aux_path}")
-                        updated_obj['aux_image_path'] = aux_path
+                        updated_obj['aux_image_path'] = aux_path.replace('static/', '')
                     except Exception as e:
                         logger.exception(f"Error making auxiliary image at {aux_path}: {e}")
                         aux_path = None
@@ -217,7 +210,7 @@ def load(settings_path, args):
 
                 if thumb_fs.exists(tb_path):
                     logger.trace(f"Found thumbnail: {tb_path}")
-                    updated_obj['thumbnail_path'] = tb_path
+                    updated_obj['thumbnail_path'] = tb_path.replace('static/', '')
                 elif args.skip_thumbnail_creation:
                     logger.trace(f"Skipping thumbnail creation: {tb_path}")
                 elif aux_path:
@@ -225,7 +218,7 @@ def load(settings_path, args):
                     create_parent_dirs(tb_path)
                     make_thumbnail(aux_path, tb_path)
                     logger.info(f"Wrote {tb_path}")
-                    updated_obj['thumbnail_path'] = tb_path
+                    updated_obj['thumbnail_path'] = tb_path.replace('static/', '')
                 else:
                     logger.trace(f"Cannot make thumbnail for {path} without aux image")
 

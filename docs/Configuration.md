@@ -15,9 +15,9 @@ All of the possible collection settings are listed below.
   * `proxy_url`: The URL of the proxy server. If provided, the relative image paths will be fetched via the proxy server. 
 `metadata_file`: Path to a CSV or TSV file which provides metadata about images. See the [Metadata File](#metadata) section below for more information.
 `aux_image_mode`: This setting controls how auxiliary images (e.g. thumbnails) are found, with these possible values:
+  * `static` - treat paths as relative to the `./static` folder
   * `absolute` - treat paths as absolute 
   * `relative` - uses paths relative to the `data_url`
-  * `local` - treat paths as relative to the `./static` folder
 `title_column_name`: The name of the column in the annotations table that contains the title of the image. This is used to display the title of the image in the image gallery and other places. It may contain HTML markup, such as colors and links.
 `filters`: A list of filters to apply to the images. Filters are used to select a subset of the images in the service. Each filter is a dictionary with the following keys:
   * `column_name`: The name of the column in the image annotation table.

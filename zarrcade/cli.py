@@ -27,8 +27,8 @@ def cli():
               help="Only load images for which metadata is provided?")
 @click.option('-x', '--no-aux', is_flag=True, default=False,
               help="Don't create auxiliary images or thumbnails.")
-@click.option('-a', '--aux-path', type=str, default="static/.zarrcade",
-              help='Local path to the folder for auxiliary images.')
+@click.option('-a', '--aux-path', type=str, default=".zarrcade",
+              help='A path relative to the ./static folder for generation of auxiliary images.')
 @click.option('--aux-image-name', type=str, default='thumbnail.png',
               help='Filename of the main auxiliary image in the auxiliary image folder.')
 @click.option('--thumbnail-name', type=str, default='thumbnail.jpg',

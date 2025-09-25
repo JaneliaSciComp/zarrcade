@@ -190,8 +190,8 @@ def get_aux_path_url(dbimage: DBImage, relative_path: str, request: Request):
         return relative_path
     elif collection_settings.aux_image_mode == AuxImageMode.relative:
         return get_relative_path_url(dbimage, relative_path)
-    elif collection_settings.aux_image_mode == AuxImageMode.local:
-        return request.url_for('static', path=relative_path.replace('static/',''))
+    elif collection_settings.aux_image_mode == AuxImageMode.static:
+        return request.url_for('static', path=relative_path)
     else:
         raise ValueError(f"Unknown aux image mode: {collection_settings.aux_image_mode}")
 
