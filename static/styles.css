@@ -43,6 +43,32 @@ span.data {
     color: #ccc; /* Lighter grey on hover */
 }
 
+/* Breadcrumbs */
+
+.breadcrumbs {
+    margin: 15pt 15pt 5pt 15pt;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.breadcrumbs a {
+    color: #1d1c3f;
+    text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumbs .separator {
+    margin: 0 8px;
+    color: #999;
+}
+
+.breadcrumbs .current {
+    color: #333;
+    font-weight: 500;
+}
 
 /* Search form */
 
@@ -204,14 +230,35 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 
 .gallery .container {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-bottom: 10px;
 }
 
 .gallery .container img.thumbnail {
     opacity: 1;
     display: block;
-    width: 300px;
-    height: 300px;
+    max-width: 300px;
+    max-height: 300px;
+    width: auto;
+    height: auto;
     backface-visibility: hidden;
+}
+
+.gallery .container .image-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: inherit;
+    width: 100%;
+}
+
+.gallery .container .image-link:hover {
+    text-decoration: none;
+    color: inherit;
 }
 
 .gallery .container .label {
@@ -220,6 +267,8 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     text-overflow: ellipsis;
     width: 100%;
     text-align: center;
+    margin-top: auto;
+    padding: 10px 5px 0px 5px;
 }
 
 .gallery .container .overlay {
@@ -229,11 +278,18 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     height: 100%;
     text-align: center;
     opacity: 0;
+    pointer-events: none;
 }
 
 .gallery .buttons {
     margin: 10px auto 0 auto;
     opacity: 1;
+    background-color: white;
+    border: 1px solid black;
+    border-radius: 8px;
+    pointer-events: auto;
+    padding: 8px 12px;
+    display: inline-block;
 }
 
 .gallery .buttons a {
@@ -311,8 +367,8 @@ div.detail_button a:active {
 }
 
 .image {
-    max-width: 600px;
-    flex: 1 1 auto; /* Allows the image to grow and shrink as needed */
+    max-width: min(100%, 500px);
+    flex: 0 0 auto; /* Prevents the image from growing beyond its natural size */
     height: auto; /* Keeps the image aspect ratio intact */
 }
 
@@ -412,5 +468,9 @@ a.icon img:active {
     display: flex;
     justify-content: center;
     margin-top: 1em;
-    margin-bottom: 2em;
+    margin-bottom: 3em;
+}
+
+body {
+    padding-bottom: 2em;
 }

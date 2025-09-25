@@ -8,6 +8,8 @@ platforms = ["linux-64", "osx-arm64"]
 
 [tasks]
 zarrcade = "python -m zarrcade.cli"
+dev-launch = "pixi run uvicorn zarrcade.serve:app --port 8000 --reload"
+dev-launch-remote = "pixi run uvicorn zarrcade.serve:app --host 0.0.0.0 --port 8000 --reload --ssl-keyfile /opt/certs/cert.key --ssl-certfile /opt/certs/cert.crt"
 
 [dependencies]
 bioformats2raw = "*"
