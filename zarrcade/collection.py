@@ -2,9 +2,9 @@ import yaml
 from enum import Enum
 from typing import Dict, List, Set
 
-from pydantic import BaseModel, AnyUrl, HttpUrl
+from pydantic import BaseModel, AnyUrl, HttpUrl, field_validator
 from pydantic.types import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DataType(str, Enum):
