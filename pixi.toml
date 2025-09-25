@@ -1,6 +1,6 @@
 [project]
 name = "zarrcade"
-version = "1.4.0"
+version = "1.5.0"
 description = " Create web-based OME-Zarr galleries"
 authors = ["Konrad Rokicki <rokickik@janelia.hhmi.org>"]
 channels = ["conda-forge", "ome"]
