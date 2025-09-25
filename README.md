@@ -19,9 +19,9 @@ Zarrcade is a web application for easily browsing, searching, and visualizing co
 
 ## Prerequisites
 
-### 1. Install miniforge
+### 1. Install pixi
 
-[Install miniforge](https://conda-forge.org/download/) if you don't already have it.
+[Install pixi](https://pixi.sh/latest/) if you don't already have it.
 
 ### 2. Clone this repo
 
@@ -30,11 +30,10 @@ git clone https://github.com/JaneliaSciComp/zarrcade.git
 cd zarrcade
 ```
 
-### 3. Initialize the conda environment
+### 3. Initialize the pixi environment
 
 ```bash
-conda env create -f environment.yml
-conda activate zarrcade
+pixi install
 ```
 
 Now you can run the `pixi run zarrcade` command.
@@ -55,7 +54,7 @@ pixi run zarrcade start
 
 ### Example 2: Import OME-Zarr images specified in a spreadsheet
 
-In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the metadata file, along with absolute thumbnail paths.
+In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the [metadata file](examples/openorganelle.tsv), along with absolute thumbnail paths.
 
 ```bash
 pixi run zarrcade load examples/openorganelle.yaml
