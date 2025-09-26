@@ -8,6 +8,7 @@ from skimage import exposure
 from loguru import logger
 from PIL import Image
 from microfilm.microplot import microshow
+import matplotlib
 
 SIMPLE_HEX_COLOR_MAP = {
     'FF0000': 'pure_red',
@@ -16,6 +17,7 @@ SIMPLE_HEX_COLOR_MAP = {
     'FF00FF': 'pure_magenta',
     '00FFFF': 'pure_cyan',
     'FFFF00': 'pure_yellow',
+    'FF8000': 'copper',
     'FFFFFF': 'gray',
     'red': 'pure_red',
     'green': 'pure_green',
@@ -126,6 +128,7 @@ def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
     # so that it can be processed further (e.g. for brightness adjustment).
     buf = io.BytesIO()
     mip.savefig(buf, format='png')
+    matplotlib.pyplot.close() # Close the figure to free up memory
     buf.seek(0)
     with Image.open(buf) as img:
         arr = np.array(img)
