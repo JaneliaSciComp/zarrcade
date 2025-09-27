@@ -503,7 +503,6 @@ async def data_proxy_get(collection_name: str, file_path: str):
 @app.get("/neuroglancer/{collection_name}/{image_id:path}", response_class=JSONResponse, include_in_schema=False)
 async def neuroglancer_state(collection_name: str, image_id: str):
 
-    from neuroglancer.viewer_state import ViewerState, CoordinateSpace, ImageLayer
     dbimage = app.db.get_dbimage(collection_name, image_id)
     if not dbimage:
         return Response(status_code=404)
@@ -515,64 +514,21 @@ async def neuroglancer_state(collection_name: str, image_id: str):
     #     logger.error("Neuroglancer states can currently only be generated for TCZYX images")
     #     return Response(status_code=400)
 
-    state = ViewerState()
-    # TODO: dataclasses don't dsupport nested deserialization which makes this strange. Should switch to Pydantic.
+    layer = '4panel-alt'
+    if 'z' in image.axes_order:
+        z_index = image.axes_order.index('z')
+        if image.dimensions_voxels.split(' ✕ ')[z_index]=='1':
+            layer = 'xy'
 
-    names = ['x','y','z','t']
-    scales = []
-    units = []
-    position = []
-    for name in names:
-        if name in image.axes:
-            axis = image.axes[name]
-            scales.append(axis['scale'])
-            units.append(axis['unit'])
-            position.append(int(axis['extent'] / 2))
+    state = {
+        "layout": layer,
+        "layers": [
+            {
+                "name": "", # must be provided
+                "type": "auto",
+                "source": "zarr://"+url
+            }
+        ],
+    }
 
-    state.dimensions = CoordinateSpace(names=names, scales=scales, units=units)
-    state.position = position
-
-    # TODO: how do we determine the best zoom from the metadata?
-    state.crossSectionScale = 4.5
-    state.projectionScale = 2048
-
-    dtype_info = np.iinfo(image.dtype)
-    dtype_min = dtype_info.min
-    dtype_max = dtype_info.max
-
-    for i, channel in enumerate(image.channels):
-
-        min_value = channel['pixel_intensity_min'] or dtype_min
-        max_value = channel['pixel_intensity_max'] or dtype_max
-
-        color = channel['color']
-        if re.match(r'^([\dA-F]){6}$', color):
-            # bare hex color, add leading hash for rendering
-            color = '#' + color
-
-        layer = ImageLayer(
-                source='zarr://'+url,
-                layerDimensions=CoordinateSpace(names=["c'"], scales=[1], units=['']),
-                localPosition=[i],
-                tab='rendering',
-                opacity=1,
-                blend='additive',
-                shader=(f"#uicontrol vec3 hue color(default=\"{color}\")\n"
-                        f"#uicontrol invlerp normalized(range=[{min_value},{max_value}])\n"
-                        f"void main(){{emitRGBA(vec4(hue*normalized(),1));}}")
-            )
-
-        start = channel['contrast_limit_start'] or dtype_min
-        end = (channel['contrast_limit_end'] or dtype_max) * 0.25
-
-        if start and end:
-            layer.shaderControls={
-                    'normalized': {
-                        'range': [start, end]
-                    }
-                }
-
-        state.layers.append(name=channel['name'], layer=layer)
-
-    state.layout = '4panel'
-    return JSONResponse(state.to_json())
+    return JSONResponse(state)
