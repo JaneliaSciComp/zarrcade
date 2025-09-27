@@ -52,6 +52,13 @@ Open with:
             <col style="width: 12em;">
             <col style="width: auto;">
         </colgroup>
+        {% if dbimage.image_metadata %}
+            {% for attr in column_map.keys() %}
+                {% if column_map[attr] not in collection_settings.hide_columns %}
+                <tr><td>{{ column_map[attr] }}:</td><td><span class="data">{{ getattr(dbimage.image_metadata, attr) | safe }}</span></td></tr>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
         <tr><td>Path:</td><td><span class="data">{{ dbimage.path }}</span></td></tr>
         <tr><td>Axes:</td><td><span class="data">{{ image.axes_order.upper() }}</span></td></tr>
         <tr><td>Chunk size:</td><td><span class="data">{{ image.chunk_size }}</span></td></tr>
@@ -59,14 +66,6 @@ Open with:
         <tr><td>Dimensions:</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
         <tr><td>Voxel sizes:</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
         <tr><td>Compression:</td><td><span class="data">{{ image.compression }}</span></td></tr>
-        {% if dbimage.image_metadata %}
-            {% for attr in column_map.keys() %}
-                {% if attr not in collection_settings.hide_columns %}
-                <tr><td>{{ column_map[attr] }}:</td><td><span class="data">{{ getattr(dbimage.image_metadata, attr) | safe }}</span></td></tr>
-                {% endif %}
-            {% endfor %}
-        {% endif %}
-
     </table>
 </div>
 
