@@ -12,30 +12,15 @@ from microfilm import colorify
 import matplotlib
 
 SIMPLE_HEX_COLOR_MAP = {
-    'FF0000': 'pure_red',
-    '00FF00': 'pure_green',
-    '0000FF': 'pure_blue',
-    'FF00FF': 'pure_magenta',
-    '00FFFF': 'pure_cyan',
-    'FFFF00': 'pure_yellow',
-    'FF8000': 'copper',
-    'FFFFFF': 'gray',
-    'red': 'pure_red',
-    'green': 'pure_green',
-    'blue': 'pure_blue',
-    'magenta': 'pure_magenta',
-    'cyan': 'pure_cyan',
-    'yellow': 'pure_yellow',
-    'white': 'gray',
+    'red': '#FF0000',
+    'green': '#00FF00',
+    'blue': '#0000FF',
+    'magenta': '#FF00FF',
+    'cyan': '#00FFFF',
+    'yellow': '#FFFF00',
+    'orange': '#FF8000',
+    'white': '#FFFFFF',
 }
-
-def translate_color(color: str) -> str:
-    """ Attempt to translate a color from a hex string to a microfilm color name.
-        If we can't then return the original color.
-        See https://guiwitz.github.io/microfilm/docs/source/microfilm.html#microfilm.colorify.cmaps_def
-    """
-    return SIMPLE_HEX_COLOR_MAP.get(color, color)
-
 
 def adjust_brightness(img: np.ndarray, p_lower=0, p_upper=90) -> np.ndarray:
     """ Adjust the brightness of an image by stretching the histogram 
@@ -82,7 +67,7 @@ def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
     if not colors:
-        colors = ['#00FF00', '#FF0000', '#FF00FF', '#00FFFF']  # Default hex colors
+        colors = SIMPLE_HEX_COLOR_MAP.values()
     else:
         # Ensure colors are in hex format, add # if missing
         processed_colors = []
@@ -93,17 +78,12 @@ def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
                 processed_colors.append(f'#{color}')
             else:
                 # If it's a named color, try to convert to hex
-                hex_color = None
-                for hex_key, _ in SIMPLE_HEX_COLOR_MAP.items():
-                    if color.lower() == hex_key.lower() or color == SIMPLE_HEX_COLOR_MAP[hex_key]:
-                        if len(hex_key) == 6 and all(c in '0123456789ABCDEFabcdef' for c in hex_key):
-                            hex_color = f'#{hex_key}'
-                            break
+                hex_color = SIMPLE_HEX_COLOR_MAP.get(color, None)
                 if hex_color:
                     processed_colors.append(hex_color)
                 else:
-                    logger.warning(f"Could not convert color '{color}' to hex format, using default green")
-                    processed_colors.append('#00FF00')
+                    logger.warning(f"Could not convert color '{color}' to hex format, using default white")
+                    processed_colors.append(SIMPLE_HEX_COLOR_MAP['white'])
         colors = processed_colors
 
     multiscale = root['/'].attrs['multiscales'][0]
@@ -113,6 +93,7 @@ def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
     image_data = time_series[0] # TCZYX
 
     # Assuming image_data is of shape (C, Z, Y, X) where C is the number of channels
+    # TODO: fix this assumption
     num_channels = image_data.shape[0]
     num_slices = image_data.shape[1]  # This is the Z-axis size
     height = image_data.shape[2]      # Y dimension
@@ -187,6 +168,6 @@ def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95
 if __name__ == "__main__":
     zarr_path = '/nearline/flynp/EASI-FISH_NP_SS_OMEZarr/NP51_R1_20240522/NP51_R1_4_1_SS75253_Tk_546_Mip_647_036x_CentralDapi.zarr/0'
     store = zarr.DirectoryStore(zarr_path)
-    make_mip_from_zarr(store, 'mip_adjusted.png', colors=['00FFFF'])
+    make_mip_from_zarr(store, 'mip_adjusted.png', colors=['cyan'])
     make_thumbnail('mip_adjusted.png', 'mip_adjusted_thumbnail.jpg')
 
