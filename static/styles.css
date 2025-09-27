@@ -46,7 +46,7 @@ span.data {
 /* Breadcrumbs */
 
 .breadcrumbs {
-    margin: 15pt 15pt 5pt 15pt;
+    margin: 15pt 15pt 20pt 15pt;
     font-size: 0.9em;
     color: #666;
 }
@@ -378,6 +378,14 @@ div.detail_button a:active {
     table-layout: fixed; /* Enables more control over column widths */
     width: 100%; /* Ensures table uses the maximum width available */
 }
+
+.attrs td {
+    padding: 5px;
+}
+
+.attrs td:first-child {
+    font-weight: bold;
+}   
 
 .attrs tbody tr:nth-child(odd) {
     background-color: #eef1f6;
