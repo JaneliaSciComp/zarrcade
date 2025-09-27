@@ -8,6 +8,7 @@ from skimage import exposure
 from loguru import logger
 from PIL import Image
 from microfilm.microplot import microshow
+from microfilm import colorify
 import matplotlib
 
 SIMPLE_HEX_COLOR_MAP = {
@@ -81,54 +82,78 @@ def _make_mip(root, colors=None, min_dim_size=1000) -> Image:
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
     if not colors:
-        colors = ['pure_green','pure_red', 'pure_magenta', 'pure_cyan']
+        colors = ['#00FF00', '#FF0000', '#FF00FF', '#00FFFF']  # Default hex colors
     else:
+        # Ensure colors are in hex format, add # if missing
+        processed_colors = []
         for color in colors:
-            if color not in SIMPLE_HEX_COLOR_MAP:
-                logger.warning(f"Unknown color: {color}")
+            if color.startswith('#'):
+                processed_colors.append(color)
+            elif len(color) == 6 and all(c in '0123456789ABCDEFabcdef' for c in color):
+                processed_colors.append(f'#{color}')
             else:
-                translated_color = translate_color(color)
-                logger.trace(f"Translated color: {color} -> {translated_color}")
-        colors = [translate_color(color) for color in colors]
+                # If it's a named color, try to convert to hex
+                hex_color = None
+                for hex_key, _ in SIMPLE_HEX_COLOR_MAP.items():
+                    if color.lower() == hex_key.lower() or color == SIMPLE_HEX_COLOR_MAP[hex_key]:
+                        if len(hex_key) == 6 and all(c in '0123456789ABCDEFabcdef' for c in hex_key):
+                            hex_color = f'#{hex_key}'
+                            break
+                if hex_color:
+                    processed_colors.append(hex_color)
+                else:
+                    logger.warning(f"Could not convert color '{color}' to hex format, using default green")
+                    processed_colors.append('#00FF00')
+        colors = processed_colors
 
     multiscale = root['/'].attrs['multiscales'][0]
     dataset = _select_dataset(root, min_dim_size=min_dim_size)
     path = dataset['path']
     time_series = root[path]
     image_data = time_series[0] # TCZYX
-    #print(f"Using path {path} with shape {image_data.shape}")
 
     # Assuming image_data is of shape (C, Z, Y, X) where C is the number of channels
-    # TODO: fix this assumption
     num_channels = image_data.shape[0]
     num_slices = image_data.shape[1]  # This is the Z-axis size
     height = image_data.shape[2]      # Y dimension
     width = image_data.shape[3]       # X dimension
 
-    # Initialize an array to hold the MIP images with shape (C, T, X, Y)
-    # For this context, T is equivalent to the number of channels
-    mip_images = np.empty((num_channels, 1, height, width), dtype=image_data.dtype)
+    # Create MIP for each channel
     mip_image_list = []
-
     for c in range(num_channels):
         channel_data = image_data[c, :, :, :]  # Extract the data for channel c
         mip_image = np.max(channel_data, axis=0)  # Perform the MIP across Z-axis
         mip_image_list.append(mip_image)
-        mip_images[c, 0, :, :] = mip_image 
 
-    #print(f"MIP shape: {mip_images.shape}")
+    # Use colorify_by_hex to create colored versions of each channel
+    colored_images = []
+    for i, mip_image in enumerate(mip_image_list):
+        # Get the color for this channel, cycling through available colors
+        color_hex = colors[i % len(colors)]
 
-    mip = microshow(
-        images=mip_images[:,0,:,:],
-        fig_scaling=20,
-        cmaps=colors)
+        # Colorify the image using the hex color
+        colored_image, _, _ = colorify.colorify_by_hex(mip_image, cmap_hex=color_hex)
+        colored_images.append(colored_image)
+        logger.trace(f"Channel {i} colored with {color_hex}")
 
-    # We need to jump through some hoops to save the figure to a buffer 
-    # in memory (instead of a file) and convert it to a numpy array, 
+    # Combine all colored images into a single multi-color image
+    if len(colored_images) == 1:
+        combined_image = colored_images[0]
+    else:
+        combined_image = colorify.combine_image(colored_images)
+
+    # Create a matplotlib figure to display the combined image
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.imshow(combined_image)
+    ax.axis('off')
+
+    # We need to jump through some hoops to save the figure to a buffer
+    # in memory (instead of a file) and convert it to a numpy array,
     # so that it can be processed further (e.g. for brightness adjustment).
     buf = io.BytesIO()
-    mip.savefig(buf, format='png')
-    matplotlib.pyplot.close() # Close the figure to free up memory
+    fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)
+    plt.close(fig)  # Close the figure to free up memory
     buf.seek(0)
     with Image.open(buf) as img:
         arr = np.array(img)
