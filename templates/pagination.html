@@ -1,3 +1,4 @@
+{% if pagination.total_pages > 1 %}
 <ul class="pager">
     {% if pagination.page > 1 %}
     <li class="pager__item pager__item--prev"><a class="pager__link" href="?{{ get_query_string(page=pagination.page-1) }}">
@@ -37,7 +38,7 @@
         {% if pagination.page < pagination.total_pages - 3 %}
             <li class="pager__item"><span class="pager__text">...</span></li>
         {% endif %}
-        
+
         {% if pagination.page < pagination.total_pages - 2 %}
             <li class="pager__item"><a class="pager__link" href="?{{ get_query_string(page=pagination.total_pages) }}">{{ pagination.total_pages }}</a></li>
         {% endif %}
@@ -53,3 +54,4 @@
     {% else %}
     {% endif %}
 </ul>
+{% endif %}
