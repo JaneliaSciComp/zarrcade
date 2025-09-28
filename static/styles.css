@@ -9,6 +9,10 @@ section {
     margin: 5pt 15pt 10pt 15pt;
 }
 
+h1 {
+    font-size: 1.5em;
+}
+
 span.data {
     font-family: Verdana, Geneva, Tahoma, sans-serif;
 }

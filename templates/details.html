@@ -7,6 +7,8 @@
 {% set image = dbimage.get_image() %}
 
 <section class="breadcrumbs">
+    <a href="{{ url_for('index') }}">Index</a>
+    <span class="separator"> &gt; </span>
     <a href="{{ url_for('collection', collection_name=dbimage.collection.name) }}">{{ collection_settings.label }}</a>
     <span class="separator"> &gt; </span>
     <span class="current">{{ get_title(dbimage) | safe }}</span>

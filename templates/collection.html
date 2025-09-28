@@ -4,6 +4,12 @@
 <body>
 {% include "topbar.html" %}
 
+<section class="breadcrumbs">
+    <a href="{{ url_for('index') }}">Index</a>
+    <span class="separator"> &gt; </span>
+    <span class="current">{{ collection_settings.label }}</span>
+</section>
+
 <section class="collection-header">   
     <h1>Searching for images in collection: {{ collection_settings.label }}</h1>
     <p>
