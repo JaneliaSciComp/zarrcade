@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 from loguru import logger
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -81,6 +81,7 @@ async def startup_event():
     logger.info(f"  base_url: {app.settings.base_url}")
     logger.info(f"  database.url: {app.settings.database.url}")
     logger.info(f"  title: {app.settings.title}")
+    logger.info(f"  collection: {app.settings.collection}")
     app.base_url = str(app.settings.base_url)
 
     db_url = str(app.settings.database.url)
@@ -287,6 +288,13 @@ def get_query_string(query_params, **new_params):
 
 @app.get("/")
 async def index(request: Request):
+    # If collection is configured, redirect directly to that collection
+    if app.settings.collection:
+        if app.settings.collection in app.db.collection_map:
+            return RedirectResponse(url=f"/{app.settings.collection}", status_code=302)
+        else:
+            logger.warning(f"Configured collection '{app.settings.collection}' not found in database")
+
     return templates.TemplateResponse(
         request=request, name="index.html", context={
             "settings": app.settings,

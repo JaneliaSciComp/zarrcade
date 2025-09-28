@@ -8,6 +8,8 @@ The following configuration options are available:
 
 `title`: The site title displayed at the top of the page.
 
+`collection`: Single collection mode. If this collection name is specified, the index page will redirect directly to this collection, and no other collection may be selected.
+
 `log_level`: The logging level to use for the Zarrcade service. This can be `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. Default: `INFO`
 
 `base_url`: The base URL for the Zarrcade service. This is used to generate URLs for the images and other resources in the service. It's required when using the build-in file proxy. Default: `http://127.0.0.1:8000/`
