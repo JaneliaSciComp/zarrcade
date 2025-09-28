@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     base_url: HttpUrl = 'http://127.0.0.1:8000/'
     database: Database = Database()
     title: str = 'Zarrcade'
+    collection: str | None = None
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

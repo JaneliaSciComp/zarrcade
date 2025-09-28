@@ -5,6 +5,10 @@
 {% include "topbar.html" %}
 
 <section>
+    <h1>Image Collections</h1>
+</section>
+
+<section>
 {% if collection_map %}
 
 <ul>
@@ -14,6 +18,12 @@
     </li>
     {% endfor %}
 </ul>
+
+{% else %}
+<div class="result-details">
+    No collections found.
+</div>
+
 {% endif %}
 
 </body>
