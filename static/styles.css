@@ -105,6 +105,7 @@ nav.top-bar {
     background-color: black;
     color: white;
     padding: 0.5rem 1rem;
+    position: relative;
 }
 
 nav.top-bar ul {
@@ -123,8 +124,13 @@ nav.top-bar .logo img {
 
 nav.top-bar .title {
     font-size: 1.6em;
-    text-align: center;
     color: white;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
 }
 
 nav.top-bar .icons img {
