@@ -22,10 +22,14 @@ span.data {
 .top-bar {
     background-color: black; /* Dark background color */
     color: white;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 10px 20px;
+}
+
+.top-bar .logo {
+    justify-self: start;
 }
 
 .top-bar .logo img {
@@ -34,6 +38,12 @@ span.data {
 
 .top-bar .title {
     font-size: 1.6em;
+    justify-self: center;
+    text-align: center;
+}
+
+.top-bar .icons {
+    justify-self: end;
 }
 
 .top-bar .icons a {
