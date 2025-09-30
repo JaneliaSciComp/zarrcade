@@ -104,8 +104,9 @@ span.data {
 nav.top-bar {
     background-color: black;
     color: white;
-    padding: 0.5rem 1rem;
+    padding: 0.25rem 1rem;
     position: relative;
+    min-height: auto;
 }
 
 nav.top-bar ul {
