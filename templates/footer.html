@@ -3,9 +3,16 @@
         <a href="https://www.hhmi.org/privacy-policy" target="_blank" rel="noopener noreferrer">Privacy Policy & Cookie Notice</a>
     </div>
     <div class="footer-center">
-        <a href="https://github.com/JaneliaSciComp/zarrcade" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+        <div class="theme-toggle">
+            <span class="theme-toggle-label">Dark Mode</span>
+            <label class="theme-switch">
+                <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+                <span class="slider"></span>
+            </label>
+        </div>
     </div>
     <div class="footer-right">
-        © {{ current_year }} Howard Hughes Medical Institute
+        <a href="https://github.com/JaneliaSciComp/zarrcade" target="_blank" rel="noopener noreferrer"><i class="fab fa-github"></i></a>
+        <span style="margin-left: 15px;">© {{ current_year }} Howard Hughes Medical Institute</span>
     </div>
 </div>

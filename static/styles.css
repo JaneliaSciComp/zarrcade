@@ -1,8 +1,37 @@
+:root {
+    --bg-color: #ffffff;
+    --text-color: #000000;
+    --secondary-text-color: #333;
+    --tertiary-text-color: #666;
+    --link-color: #1d1c3f;
+    --border-color: #000000;
+    --table-stripe-color: #eef1f6;
+    --button-bg-color: #ffffff;
+    --separator-color: #999;
+    --pager-hover-bg: #524c84;
+}
+
+[data-theme="dark"] {
+    --bg-color: #000000;
+    --text-color: #e0e0e0;
+    --secondary-text-color: #cccccc;
+    --tertiary-text-color: #999999;
+    --link-color: #8b89c7;
+    --border-color: #444444;
+    --table-stripe-color: #1a1a1a;
+    --button-bg-color: #1a1a1a;
+    --separator-color: #666666;
+    --pager-hover-bg: #7b78b8;
+}
+
 body, html {
     margin: 0;
     padding: 0;
     height: 100%;
     font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 section {
@@ -65,16 +94,74 @@ span.data {
     color: #ccc; /* Lighter grey on hover */
 }
 
+/* Dark mode toggle */
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.theme-toggle-label {
+    color: white;
+    font-size: 14px;
+}
+
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #524c84;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
 /* Breadcrumbs */
 
 .breadcrumbs {
     margin: 15pt 15pt 20pt 15pt;
     font-size: 1.0em;
-    color: #666;
+    color: var(--tertiary-text-color);
 }
 
 .breadcrumbs a {
-    color: #1d1c3f;
+    color: var(--link-color);
     text-decoration: none;
 }
 
@@ -82,13 +169,21 @@ span.data {
     text-decoration: underline;
 }
 
+a {
+    color: var(--link-color);
+}
+
+a:visited {
+    color: var(--link-color);
+}
+
 .breadcrumbs .separator {
     margin: 0 8px;
-    color: #999;
+    color: var(--separator-color);
 }
 
 .breadcrumbs .current {
-    color: #333;
+    color: var(--secondary-text-color);
     font-weight: 500;
 }
 
@@ -210,12 +305,12 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     height: 2.625rem;
     line-height: 2.625rem;
     margin-left: -1px;
-    color: #2f3640;
+    color: var(--text-color);
     text-decoration: none;
     transition: 0.3s;
   }
   .pager__link:hover, .pager__link:focus, .pager__link:active {
-    background-color: #524c84;
+    background-color: var(--pager-hover-bg);
     color: #fff;
     text-decoration: none;
   }
@@ -306,8 +401,8 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 .gallery .buttons {
     margin: 10px auto 0 auto;
     opacity: 1;
-    background-color: white;
-    border: 1px solid black;
+    background-color: var(--button-bg-color);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     pointer-events: auto;
     padding: 8px 12px;
@@ -321,7 +416,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 
 .gallery .buttons a img {
     padding: 0px;
-    background-color: white;
+    background-color: var(--button-bg-color);
     border-radius: 4px;
 }
 
@@ -410,7 +505,7 @@ div.detail_button a:active {
 }   
 
 .attrs tbody tr:nth-child(odd) {
-    background-color: #eef1f6;
+    background-color: var(--table-stripe-color);
 }
 
 /* Media Query for smaller screens */
@@ -461,11 +556,11 @@ a.icon img:active {
 }
 
 .tooltip .tooltiptext {
-    border: 1px solid black;
+    border: 1px solid var(--border-color);
     visibility: hidden;
     width: 120px;
-    background-color: white;
-    color: black;
+    background-color: var(--button-bg-color);
+    color: var(--text-color);
     text-align: center;
     border-radius: 6px;
     padding: 5px 0;
@@ -486,7 +581,7 @@ a.icon img:active {
     margin-left: -5px;
     border-width: 8px;
     border-style: solid;
-    border-color: white transparent transparent transparent;
+    border-color: var(--button-bg-color) transparent transparent transparent;
 }
 
 .tooltip:hover .tooltiptext {
@@ -533,6 +628,16 @@ body {
 }
 
 .footer-center a:hover {
+    color: #ccc;
+}
+
+.footer-right a {
+    color: white;
+    text-decoration: none;
+    font-size: 28px;
+}
+
+.footer-right a:hover {
     color: #ccc;
 }
 
