@@ -20,7 +20,7 @@ span.data {
 /* Top bar */
 
 .top-bar {
-    background-color: #1d1c3f; /* Dark background color */
+    background-color: black; /* Dark background color */
     color: white;
     display: flex;
     justify-content: space-between;
@@ -490,7 +490,7 @@ body {
 /* Footer */
 
 .footer {
-    background-color: #1d1c3f; /* Same as top-bar */
+    background-color: black; /* Same as top-bar */
     color: white;
     display: flex;
     justify-content: space-between;
@@ -506,6 +506,16 @@ body {
 
 .footer-left a:hover {
     text-decoration: underline;
+}
+
+.footer-center a {
+    color: white;
+    text-decoration: none;
+    font-size: 24px;
+}
+
+.footer-center a:hover {
+    color: #ccc;
 }
 
 .footer-right {
