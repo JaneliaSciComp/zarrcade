@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     database: Database = Database()
     title: str = 'Zarrcade'
     collection: str | None = None
-    header_logo_url: str = '/static/HHMI_Janelia_Logo_Black_Background.png'
+    header_left_logo_url: str = '/static/zarrcade.png'
+    header_right_logo_url: str = '/static/HHMI_Janelia_Logo_Black_Background.png'
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",
