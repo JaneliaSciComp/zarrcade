@@ -605,42 +605,33 @@ body {
 .footer {
     background-color: black; /* Same as top-bar */
     color: white;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     align-items: center;
     padding: 15px 20px;
     margin-top: 2em;
 }
 
-.footer-left a {
+.footer-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.footer-section a {
     color: white;
     text-decoration: none;
 }
 
-.footer-left a:hover {
+.footer-section a:hover {
     text-decoration: underline;
 }
 
-.footer-center a {
-    color: white;
-    text-decoration: none;
-    font-size: 24px;
-}
-
-.footer-center a:hover {
-    color: #ccc;
-}
-
-.footer-right a {
-    color: white;
-    text-decoration: none;
+.footer-section a i {
     font-size: 28px;
 }
 
-.footer-right a:hover {
+.footer-section a i:hover {
     color: #ccc;
-}
-
-.footer-right {
-    color: white;
 }
