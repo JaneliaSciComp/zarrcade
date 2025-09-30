@@ -270,21 +270,20 @@ def get_title(dbimage: DBImage):
         template = collection_settings.title_template
         metadata = dbimage.image_metadata
         if metadata:
-            try:
-                # Build a dictionary of column values for template substitution
-                template_values = {}
-                for column_name, db_column_name in reverse_column_map.items():
-                    if db_column_name:
+            # Build a dictionary of column values for template substitution
+            # Use empty string for missing/None values to avoid KeyError
+            template_values = {}
+            for column_name, db_column_name in reverse_column_map.items():
+                if db_column_name:
+                    value = None
+                    try:
                         value = getattr(metadata, db_column_name, None)
-                        if value is not None:
-                            template_values[column_name] = value
+                    except (AttributeError) as e:
+                        logger.warning(f"Error getting attribute at {db_column_name} from title_template: {e}")
+                    template_values[column_name] = value if value is not None else ""
 
-                # Perform template substitution
-                title = template.format(**template_values)
-                if title:
-                    return title
-            except (KeyError, AttributeError) as e:
-                logger.warning(f"Error applying title_template: {e}")
+            # Perform template substitution
+            return template.format(**template_values)
 
     # Fall back to title_column_name (deprecated)
     if collection_settings.title_column_name in reverse_column_map:
