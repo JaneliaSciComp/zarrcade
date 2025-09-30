@@ -464,46 +464,6 @@ a.icon img:active {
     transform: scale(0.9);
 }
 
-/* Tooltips */
-
-.tooltip {
-    position: relative;
-    display: inline-block;
-}
-
-.tooltip .tooltiptext {
-    border: 1px solid var(--pico-muted-border-color);
-    visibility: hidden;
-    width: 120px;
-    background-color: var(--pico-card-background-color);
-    color: var(--pico-color);
-    text-align: center;
-    border-radius: var(--pico-border-radius);
-    padding: 5px 0;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -60px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-.tooltip .tooltiptext::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 8px;
-    border-style: solid;
-    border-color: var(--pico-card-background-color) transparent transparent transparent;
-}
-
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
 
 /* Footer */
 
