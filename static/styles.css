@@ -92,7 +92,7 @@ body {
 }
 
 main.container {
-    flex: 1;
+    flex: 1 0 auto;
 }
 
 span.data {
@@ -512,10 +512,11 @@ a.icon img:active {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     align-items: center;
-    padding: 1rem 1.5rem;
-    margin-top: 5rem;
+    padding: 1rem 0 2rem 0;
+    margin-top: auto;
     width: 100vw;
     margin-left: calc(-50vw + 50%);
+    flex-shrink: 0;
 }
 
 .footer-section {
