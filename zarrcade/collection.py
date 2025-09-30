@@ -70,7 +70,10 @@ class CollectionSettings(BaseSettings):
     """ How to find auxiliary images (thumbnails, etc.) """
 
     title_column_name: str | None = None
-    """ The name of the column that contains the title of the image. """
+    """ The name of the column that contains the title of the image. DEPRECATED: Use title_template instead. """
+
+    title_template: str | None = None
+    """ String template for building titles. Can contain column references (e.g., '{column_name}') and HTML markup. """
 
     filters: List[Filter] = []
     """ The data filters to show in the UI """

@@ -264,6 +264,29 @@ def get_title(dbimage: DBImage):
     collection_name = dbimage.collection.name
     collection_settings = app.collections[collection_name]
     reverse_column_map = app.db.get_reverse_column_map(collection_name)
+
+    # Prefer title_template if it exists
+    if collection_settings.title_template:
+        template = collection_settings.title_template
+        metadata = dbimage.image_metadata
+        if metadata:
+            try:
+                # Build a dictionary of column values for template substitution
+                template_values = {}
+                for column_name, db_column_name in reverse_column_map.items():
+                    if db_column_name:
+                        value = getattr(metadata, db_column_name, None)
+                        if value is not None:
+                            template_values[column_name] = value
+
+                # Perform template substitution
+                title = template.format(**template_values)
+                if title:
+                    return title
+            except (KeyError, AttributeError) as e:
+                logger.warning(f"Error applying title_template: {e}")
+
+    # Fall back to title_column_name (deprecated)
     if collection_settings.title_column_name in reverse_column_map:
         col_name = reverse_column_map[collection_settings.title_column_name]
         if col_name:

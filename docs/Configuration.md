@@ -18,7 +18,8 @@ All of the possible collection settings are listed below.
   * `static` - treat paths as relative to the `./static` folder
   * `absolute` - treat paths as absolute 
   * `relative` - uses paths relative to the `data_url`
-`title_column_name`: The name of the column in the annotations table that contains the title of the image. This is used to display the title of the image in the image gallery and other places. It may contain HTML markup, such as colors and links.
+`title_column_name`: *(DEPRECATED: Use `title_template` instead)* The name of the column in the annotations table that contains the title of the image. This is used to display the title of the image in the image gallery and other places. It may contain HTML markup, such as colors and links.
+`title_template`: String template for building image titles. Can contain references to any column name using curly braces (e.g., `{column_name}`) and can include HTML markup such as `<font>` tags. For example: `<font color="red">{Line}</font> - {Marker}`. If both `title_template` and `title_column_name` are provided, `title_template` takes precedence.
 `filters`: A list of filters to apply to the images. Filters are used to select a subset of the images in the service. Each filter is a dictionary with the following keys:
   * `column_name`: The name of the column in the image annotation table.
   * `data_type`: The type of the data in the column. This can be `string` or `csv`. When `csv`, the filter will be a dropdown with one option per unique value in each CSV value. Default: `string`.
