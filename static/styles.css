@@ -33,7 +33,9 @@ span.data {
 }
 
 .top-bar .logo img {
-    height: 50px; /* Adjust size as needed */
+    max-height: 60px;
+    height: auto;
+    max-width: 100%;
 }
 
 .top-bar .title {
@@ -44,6 +46,12 @@ span.data {
 
 .top-bar .icons {
     justify-self: end;
+}
+
+.top-bar .icons img {
+    max-height: 60px;
+    height: auto;
+    max-width: 100%;
 }
 
 .top-bar .icons a {
