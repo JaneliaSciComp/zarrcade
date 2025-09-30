@@ -5,6 +5,7 @@ import signal
 from io import StringIO
 from functools import partial
 from urllib.parse import urlencode
+from datetime import datetime
 
 from loguru import logger
 from fastapi import FastAPI, Request, Response
@@ -321,7 +322,8 @@ async def index(request: Request):
         request=request, name="index.html", context={
             "settings": app.settings,
             "collections": app.collections,
-            "collection_map": app.db.collection_map
+            "collection_map": app.db.collection_map,
+            "current_year": datetime.now().year
         }
     )
 
@@ -365,7 +367,8 @@ async def collection(request: Request, collection_name: str = '', search_string:
             "filter_params": filter_params,
             "FilterType": FilterType,
             "min": min,
-            "max": max
+            "max": max,
+            "current_year": datetime.now().year
         }
     )
 
@@ -499,7 +502,8 @@ async def details(request: Request, collection_name: str, image_id: str):
             "get_aux_path_url": get_aux_path_url,
             "get_title": get_title,
             "get_data_url": get_data_url,
-            "getattr": getattr
+            "getattr": getattr,
+            "current_year": datetime.now().year
         }
     )
 

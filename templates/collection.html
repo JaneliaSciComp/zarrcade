@@ -12,8 +12,10 @@
 </section>
 {% endif %}
 
-<section class="collection-header">   
+<section class="collection-header">
+    {% if not settings.collection %}
     <h1>Searching for images in collection: {{ collection_settings.label }}</h1>
+    {% endif %}
     <p>
         <a class="" href="{{ collection_name }}/data.csv">Download metadata</a> as CSV.
         <a class="" href="{{ get_bff_url(collection_name) }}" target="_blank" rel="noopener noreferrer">View collection in BioFile Finder</a>
@@ -76,6 +78,8 @@
 </div>
 {% endif %}
 </section>
+
+{% include "footer.html" %}
 
 </body>
 </html>

@@ -486,3 +486,28 @@ a.icon img:active {
 body {
     padding-bottom: 2em;
 }
+
+/* Footer */
+
+.footer {
+    background-color: #1d1c3f; /* Same as top-bar */
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    margin-top: 2em;
+}
+
+.footer-left a {
+    color: white;
+    text-decoration: none;
+}
+
+.footer-left a:hover {
+    text-decoration: underline;
+}
+
+.footer-right {
+    color: white;
+}
