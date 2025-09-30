@@ -6,7 +6,8 @@
 {% include "topbar.html" %}
 {% set image = dbimage.get_image() %}
 
-<section class="breadcrumbs">
+<main class="container">
+<nav aria-label="breadcrumb" class="breadcrumbs">
     {% if not settings.collection %}
     <a href="{{ url_for('index') }}">Index</a>
     <span class="separator"> &gt; </span>
@@ -14,7 +15,7 @@
     <a href="{{ url_for('collection', collection_name=dbimage.collection.name) }}">{{ collection_settings.label }}</a>
     <span class="separator"> &gt; </span>
     <span class="current">{{ get_title(dbimage) | safe }}</span>
-</section>
+</nav>
 
 <section style="display: flex; align-items: center; gap: 10px;">
 Copy data link:
@@ -47,11 +48,12 @@ Open with:
     <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="image" />
     {% endif %}
 
-    <table class="attrs">
+    <table class="striped">
         <colgroup>
             <col style="width: 12em;">
             <col style="width: auto;">
         </colgroup>
+        <tbody>
         {% if dbimage.image_metadata %}
             {% for attr in column_map.keys() %}
                 {% if column_map[attr] not in collection_settings.hide_columns %}
@@ -66,12 +68,14 @@ Open with:
         <tr><td>Physical dimensions</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
         <tr><td>Voxel sizes</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
         <tr><td>Compression</td><td><span class="data">{{ image.compression }}</span></td></tr>
+        </tbody>
     </table>
 </div>
 
 </section>
 
 {% include "footer.html" %}
+</main>
 
 </body>
 </html>

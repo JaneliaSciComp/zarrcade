@@ -4,23 +4,24 @@
 <body>
 {% include "topbar.html" %}
 
+<main class="container">
 {% if not settings.collection %}
-<section class="breadcrumbs">
+<nav aria-label="breadcrumb" class="breadcrumbs">
     <a href="{{ url_for('index') }}">Index</a>
     <span class="separator"> &gt; </span>
     <span class="current">{{ collection_settings.label }}</span>
-</section>
+</nav>
 {% endif %}
 
-<section class="collection-header">
+<header class="collection-header">
     {% if not settings.collection %}
     <h1>Searching for images in collection: {{ collection_settings.label }}</h1>
     {% endif %}
     <p>
-        <a class="" href="{{ collection_name }}/data.csv">Download metadata</a> as CSV.
-        <a class="" href="{{ get_bff_url(collection_name) }}" target="_blank" rel="noopener noreferrer">View collection in BioFile Finder</a>
+        <a href="{{ collection_name }}/data.csv">Download metadata</a> as CSV.
+        <a href="{{ get_bff_url(collection_name) }}" target="_blank" rel="noopener noreferrer">View collection in BioFile Finder</a>
     </p>
-</section>
+</header>
 
 <section>
 {% include "form.html" %}
@@ -80,6 +81,7 @@
 </section>
 
 {% include "footer.html" %}
+</main>
 
 </body>
 </html>

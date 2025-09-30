@@ -1,100 +1,148 @@
+/* Pico CSS provides most base styles, these are custom overrides 
+    https://github.com/picocss/pico/discussions/482
+*/
+
 :root {
-    --bg-color: #ffffff;
-    --text-color: #000000;
-    --secondary-text-color: #333;
-    --tertiary-text-color: #666;
-    --link-color: #1d1c3f;
-    --border-color: #000000;
-    --table-stripe-color: #eef1f6;
-    --button-bg-color: #ffffff;
+
+    --pico-primary: #524c84;
+    --pico-primary-hover: #7b78b8;
     --separator-color: #999;
-    --pager-hover-bg: #524c84;
+
+    --pico-font-family-sans-serif: Inter, system-ui, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, Helvetica, Arial, "Helvetica Neue", sans-serif, var(--pico-font-family-emoji);
+    --pico-font-size: 87.5%;
+    /* Original: 100% */
+    --pico-line-height: 1.25;
+    /* Original: 1.5 */
+    --pico-form-element-spacing-vertical: 0.5rem;
+    /* Original: 1rem */
+    --pico-form-element-spacing-horizontal: 1.0rem;
+    /* Original: 1.25rem */
+    --pico-border-radius: 0.375rem;
+    /* Original: 0.25rem */
 }
+
+@media (min-width: 576px) {
+    :root {
+        --pico-font-size: 87.5%;
+        /* Original: 106.25% */
+    }
+}
+
+@media (min-width: 768px) {
+    :root {
+        --pico-font-size: 87.5%;
+        /* Original: 112.5% */
+    }
+}
+
+@media (min-width: 1024px) {
+    :root {
+        --pico-font-size: 87.5%;
+        /* Original: 118.75% */
+    }
+}
+
+@media (min-width: 1280px) {
+    :root {
+        --pico-font-size: 87.5%;
+        /* Original: 125% */
+    }
+}
+
+@media (min-width: 1536px) {
+    :root {
+        --pico-font-size: 87.5%;
+        /* Original: 131.25% */
+    }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    --pico-font-weight: 600;
+    /* Original: 700 */
+}
+
+article {
+    border: 1px solid var(--pico-muted-border-color);
+    /* Original doesn't have a border */
+    border-radius: calc(var(--pico-border-radius) * 2);
+    /* Original: var(--pico-border-radius) */
+}
+
+article>footer {
+    border-radius: calc(var(--pico-border-radius) * 2);
+    /* Original: var(--pico-border-radius) */
+}
+
+
 
 [data-theme="dark"] {
-    --bg-color: #000000;
-    --text-color: #e0e0e0;
-    --secondary-text-color: #cccccc;
-    --tertiary-text-color: #999999;
-    --link-color: #8b89c7;
-    --border-color: #444444;
-    --table-stripe-color: #1a1a1a;
-    --button-bg-color: #1a1a1a;
     --separator-color: #666666;
-    --pager-hover-bg: #7b78b8;
+    --pico-background-color: #000000;
 }
 
-body, html {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    transition: background-color 0.3s ease, color 0.3s ease;
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
-section {
-    margin: 5pt 15pt 10pt 15pt;
-}
-
-h1 {
-    font-size: 1.5em;
+main.container {
+    flex: 1;
 }
 
 span.data {
     font-family: Verdana, Geneva, Tahoma, sans-serif;
 }
 
-/* Top bar */
+/* Top bar - Pico nav styling with customizations */
 
-.top-bar {
-    background-color: black; /* Dark background color */
+nav.top-bar {
+    background-color: black;
     color: white;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    padding: 10px 20px;
+    padding: 0.5rem 1rem;
 }
 
-.top-bar .logo {
-    justify-self: start;
+nav.top-bar ul {
+    margin: 0;
 }
 
-.top-bar .logo img {
+nav.top-bar li {
+    list-style: none;
+}
+
+nav.top-bar .logo img {
     max-height: 60px;
     height: auto;
     max-width: 100%;
 }
 
-.top-bar .title {
+nav.top-bar .title {
     font-size: 1.6em;
-    justify-self: center;
     text-align: center;
+    color: white;
 }
 
-.top-bar .icons {
-    justify-self: end;
-}
-
-.top-bar .icons img {
+nav.top-bar .icons img {
     max-height: 60px;
     height: auto;
     max-width: 100%;
 }
 
-.top-bar .icons a {
+nav.top-bar a {
     color: white;
     text-decoration: none;
-    padding: 0 10px;
-    font-size: 24px; /* Adjust size as needed */
 }
 
-.top-bar .icons a:hover {
-    color: #ccc; /* Lighter grey on hover */
+nav.top-bar a:hover {
+    color: #ccc;
 }
 
-/* Dark mode toggle */
+/* Dark mode toggle - Pico switch styling */
 
 .theme-toggle {
     display: flex;
@@ -102,247 +150,186 @@ span.data {
     gap: 10px;
 }
 
-.theme-toggle-label {
+.theme-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     color: white;
-    font-size: 14px;
 }
 
-.theme-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-}
-
-.theme-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.3s;
-    border-radius: 24px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: #524c84;
-}
-
-input:checked + .slider:before {
-    transform: translateX(26px);
+.theme-toggle input[type="checkbox"][role="switch"] {
+    margin: 0;
 }
 
 /* Breadcrumbs */
 
 .breadcrumbs {
-    margin: 15pt 15pt 20pt 15pt;
+    margin-bottom: 1rem;
     font-size: 1.0em;
-    color: var(--tertiary-text-color);
-}
-
-.breadcrumbs a {
-    color: var(--link-color);
-    text-decoration: none;
-}
-
-.breadcrumbs a:hover {
-    text-decoration: underline;
-}
-
-a {
-    color: var(--link-color);
-}
-
-a:visited {
-    color: var(--link-color);
+    opacity: 0.8;
 }
 
 .breadcrumbs .separator {
-    margin: 0 8px;
+    margin: 0 0.5rem;
     color: var(--separator-color);
 }
 
 .breadcrumbs .current {
-    color: var(--secondary-text-color);
     font-weight: 500;
 }
 
 /* Search form */
 
-form {
-    margin: 2em;
+.search-row {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-form .search-box {
-    display: flex;
+    gap: 0.5rem;
     justify-content: center;
-    width: 100%;
-    margin-bottom: 1em;
+    align-items: center;
+    margin-bottom: 1rem;
 }
 
-form input[type="text"] {
-    width: 500px;
-    min-width: 200px;
-    padding: 8px;
-    margin-right: 5px;
+.search-row input[type="text"] {
+    flex: 1;
+    max-width: 500px;
 }
 
-form button {
-    padding: 8px;
-    margin-left: 5px;
+.search-row button {
+    width: auto;
+    flex-shrink: 0;
 }
 
-form .filters {
+.filters-row {
     display: flex;
+    gap: 1rem;
     justify-content: center;
     flex-wrap: wrap;
-    width: 100%;
-    gap: 10px;
-    margin-bottom: 1em;
+    margin-bottom: 1rem;
 }
 
-form .filters .filter-item {
-    display: flex;
-    align-items: center;
-}
-
-form .filters label {
-    margin-right: 5px;
-}
-
-form .filters select {
-    padding: 5px;
+.filters-row label {
+    width: auto;
+    min-width: 200px;
 }
 
 .collection-header {
-    margin: 0 0 1.2rem;
+    margin-bottom: 1.5rem;
     text-align: center;
-}
-
-.collection-header h1 {
-    font-size: 1.3em;
-    margin-bottom: 0em;
-}
-
-.collection-header p {
-    font-size: 1em;
-    margin-bottom: 0em;
 }
 
 .result-details {
-    margin: 0 0 1.2rem;
+    margin: 1rem 0;
     text-align: center;
-  }
+}
 
-/* 
-Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
-*/
+/* Pagination */
 
 .pager {
-    margin: 0 0 1.2rem;
+    margin: 1rem 0;
     text-align: center;
-  }
-  .pager__item {
+}
+
+.pager__item {
     display: inline-block;
     vertical-align: top;
     font-size: 1rem;
     margin: 0 2px;
-  }
-  .pager__item.active .pager__link {
-    background-color: #524c84;
+}
+
+.pager__item.active .pager__link {
+    background-color: var(--pico-primary);
     color: #fff;
     text-decoration: none;
-  }
-  .pager__item--prev svg, .pager__item--next svg {
+}
+
+.pager__item--prev svg, .pager__item--next svg {
     width: 8px;
     height: 12px;
-  }
-  .pager__item--next .pager__link svg {
+}
+
+.pager__item--next .pager__link svg {
     transform: rotate(180deg);
     transform-origin: center center;
-  }
-  .pager__text {
+}
+
+.pager__text {
     position: relative;
-    border-radius: 4px;
+    border-radius: var(--pico-border-radius);
     display: block;
     text-align: center;
     width: 2.625rem;
     height: 2.625rem;
     line-height: 2.625rem;
     margin-left: -1px;
-    color: #2f3640;
     text-decoration: none;
-  }
-  .pager__link {
+}
+
+.pager__link {
     position: relative;
-    border-radius: 4px;
+    border-radius: var(--pico-border-radius);
     display: block;
     text-align: center;
     width: 2.625rem;
     height: 2.625rem;
     line-height: 2.625rem;
     margin-left: -1px;
-    color: var(--text-color);
     text-decoration: none;
     transition: 0.3s;
-  }
-  .pager__link:hover, .pager__link:focus, .pager__link:active {
-    background-color: var(--pager-hover-bg);
+}
+
+.pager__link:hover, .pager__link:focus, .pager__link:active {
+    background-color: var(--pico-primary-hover);
     color: #fff;
     text-decoration: none;
-  }
-  .pager__link:hover svg path, .pager__link:focus svg path, .pager__link:active svg path {
+}
+
+.pager__link:hover svg path, .pager__link:focus svg path, .pager__link:active svg path {
     fill: #fff;
-  }
-  
-  @media screen and (max-width: 576px) {
+}
+
+@media screen and (max-width: 576px) {
     .pager__item {
-      position: absolute;
-      top: -9999px;
-      left: -9999px;
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
     }
-    .pager__item.active, .pager__item:first-of-type, .pager__item:last-of-type, .pager__item:nth-of-type(2), .pager__item:nth-last-of-type(2) {
-      position: initial;
-      top: initial;
-      left: initial;
+    .pager__item.active, .pager__item:first-of-type, .pager__item:last-of-type,
+    .pager__item:nth-of-type(2), .pager__item:nth-last-of-type(2) {
+        position: initial;
+        top: initial;
+        left: initial;
     }
     .pager__item.active + li {
-      position: initial;
-      top: initial;
-      left: initial;
+        position: initial;
+        top: initial;
+        left: initial;
     }
-  }
+}
 
 /* Gallery */
 
 .gallery {
     display: grid;
-    grid-template-columns: repeat(auto-fill, 300px);
-    gap: 10pt;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
     justify-content: center;
+}
+
+@media (max-width: 1200px) {
+    .gallery {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .gallery {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .gallery {
+        grid-template-columns: 1fr;
+    }
 }
 
 .gallery .container {
@@ -362,6 +349,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     width: auto;
     height: auto;
     backface-visibility: hidden;
+    border-radius: var(--pico-border-radius);
 }
 
 .gallery .container .image-link {
@@ -369,13 +357,7 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     flex-direction: column;
     align-items: center;
     text-decoration: none;
-    color: inherit;
     width: 100%;
-}
-
-.gallery .container .image-link:hover {
-    text-decoration: none;
-    color: inherit;
 }
 
 .gallery .container .label {
@@ -401,9 +383,9 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 .gallery .buttons {
     margin: 10px auto 0 auto;
     opacity: 1;
-    background-color: var(--button-bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    background-color: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: var(--pico-border-radius);
     pointer-events: auto;
     padding: 8px 12px;
     display: inline-block;
@@ -416,13 +398,13 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
 
 .gallery .buttons a img {
     padding: 0px;
-    background-color: var(--button-bg-color);
+    background-color: transparent;
     border-radius: 4px;
 }
 
 .gallery .container .overlay .title {
     margin: 5px auto 0 auto;
-    padding: 0px 10px 0px 10px;
+    padding: 0px 10px;
     white-space: wrap;
     overflow-wrap: anywhere;
     font-size: 1.2em;
@@ -436,82 +418,38 @@ Pagination style from https://codepen.io/ElmiraMukhamedjanova/pen/XGazrK
     opacity: 1;
 }
 
-/* View Details button */
-
-div.detail_button {
-    margin: 1em;
-}
-
-/* From https://getcssscan.com/css-buttons-examples */
-div.detail_button a {
-    background-color: aqua;
-    font-family: "Open Sans", sans-serif;
-    font-size: 16px;
-    letter-spacing: 2px;
-    text-decoration: none;
-    text-transform: uppercase;
-    color: #000;
-    cursor: pointer;
-    border: 3px solid;
-    padding: 0.25em 0.5em;
-    box-shadow: 1px 1px 0px 0px, 2px 2px 0px 0px, 3px 3px 0px 0px, 4px 4px 0px 0px,
-        5px 5px 0px 0px;
-    position: relative;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: manipulation;
-}
-
-div.detail_button a:active {
-    box-shadow: 0px 0px 0px 0px;
-    top: 5px;
-    left: 5px;
-}
-
-@media (min-width: 768px) {
-    div.detail_button a {
-        padding: 0.25em 0.75em;
-    }
-}
+/* Removed - using Pico button styles */
 
 /* Detail view */
 
 .content {
     display: flex;
-    flex-wrap: wrap; /* This allows the items to wrap onto the next line as needed */
-    align-items: flex-start; /* Align items at the start of the flex container */
-    gap: 30px; /* Space between the image and the table */
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 2rem;
 }
 
 .image {
     max-width: min(100%, 500px);
-    flex: 0 0 auto; /* Prevents the image from growing beyond its natural size */
-    height: auto; /* Keeps the image aspect ratio intact */
+    flex: 0 0 auto;
+    height: auto;
+    border-radius: var(--pico-border-radius);
 }
 
-.attrs {
-    flex: 1 1 300px; /* Basis at 300px but allows shrinking */
-    max-width: 100%; /* Ensures the table is not wider than its container */
-    table-layout: fixed; /* Enables more control over column widths */
-    width: 100%; /* Ensures table uses the maximum width available */
+table.striped {
+    flex: 1 1 300px;
+    max-width: 100%;
+    table-layout: fixed;
+    width: 100%;
 }
 
-.attrs td {
-    padding: 5px;
-}
-
-.attrs td:first-child {
+table.striped td:first-child {
     font-weight: bold;
-}   
-
-.attrs tbody tr:nth-child(odd) {
-    background-color: var(--table-stripe-color);
 }
 
-/* Media Query for smaller screens */
 @media (max-width: 1400px) {
     .content {
-        flex-direction: column; /* Stack flex items vertically on smaller screens */
+        flex-direction: column;
     }
 }
 
@@ -519,23 +457,7 @@ div.detail_button a:active {
 
 a.icon {
     display: inline;
-    margin-right: 5px;
-    margin-left: 5px;
-}
-
-a.icon:link {
-    text-decoration: none;
-}
-
-a.icon:visited {
-    text-decoration: none;
-}
-
-a.icon:hover {
-    text-decoration: none;
-}
-
-a.icon:active {
+    margin: 0 0.25rem;
     text-decoration: none;
 }
 
@@ -545,10 +467,10 @@ a.icon img {
 }
 
 a.icon img:active {
-    transform: scale(0.9); /* Shrink when pressing */
+    transform: scale(0.9);
 }
 
-/* Tool tips */
+/* Tooltips */
 
 .tooltip {
     position: relative;
@@ -556,13 +478,13 @@ a.icon img:active {
 }
 
 .tooltip .tooltiptext {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--pico-muted-border-color);
     visibility: hidden;
     width: 120px;
-    background-color: var(--button-bg-color);
-    color: var(--text-color);
+    background-color: var(--pico-card-background-color);
+    color: var(--pico-color);
     text-align: center;
-    border-radius: 6px;
+    border-radius: var(--pico-border-radius);
     padding: 5px 0;
     position: absolute;
     z-index: 1;
@@ -581,7 +503,7 @@ a.icon img:active {
     margin-left: -5px;
     border-width: 8px;
     border-style: solid;
-    border-color: var(--button-bg-color) transparent transparent transparent;
+    border-color: var(--pico-card-background-color) transparent transparent transparent;
 }
 
 .tooltip:hover .tooltiptext {
@@ -589,27 +511,18 @@ a.icon img:active {
     opacity: 1;
 }
 
-.pagination {
-    display: flex;
-    justify-content: center;
-    margin-top: 1em;
-    margin-bottom: 3em;
-}
-
-body {
-    padding-bottom: 2em;
-}
-
 /* Footer */
 
 .footer {
-    background-color: black; /* Same as top-bar */
+    background-color: black;
     color: white;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     align-items: center;
-    padding: 15px 20px;
-    margin-top: 2em;
+    padding: 1rem 1.5rem;
+    margin-top: 5rem;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
 }
 
 .footer-section {
