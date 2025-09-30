@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     collection: str | None = None
     header_left_logo_url: str = '/static/zarrcade.png'
     header_right_logo_url: str = '/static/HHMI_Janelia_Logo_Black_Background.png'
+    copyright_holder: str = 'Howard Hughes Medical Institute'
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",
