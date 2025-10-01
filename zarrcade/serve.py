@@ -5,6 +5,7 @@ import signal
 from io import StringIO
 from functools import partial
 from urllib.parse import urlencode
+from datetime import datetime
 
 from loguru import logger
 from fastapi import FastAPI, Request, Response
@@ -264,6 +265,28 @@ def get_title(dbimage: DBImage):
     collection_name = dbimage.collection.name
     collection_settings = app.collections[collection_name]
     reverse_column_map = app.db.get_reverse_column_map(collection_name)
+
+    # Prefer title_template if it exists
+    if collection_settings.title_template:
+        template = collection_settings.title_template
+        metadata = dbimage.image_metadata
+        if metadata:
+            # Build a dictionary of column values for template substitution
+            # Use empty string for missing/None values to avoid KeyError
+            template_values = {}
+            for column_name, db_column_name in reverse_column_map.items():
+                if db_column_name:
+                    value = None
+                    try:
+                        value = getattr(metadata, db_column_name, None)
+                    except (AttributeError) as e:
+                        logger.warning(f"Error getting attribute at {db_column_name} from title_template: {e}")
+                    template_values[column_name] = value if value is not None else ""
+
+            # Perform template substitution
+            return template.format(**template_values)
+
+    # Fall back to title_column_name (deprecated)
     if collection_settings.title_column_name in reverse_column_map:
         col_name = reverse_column_map[collection_settings.title_column_name]
         if col_name:
@@ -299,7 +322,8 @@ async def index(request: Request):
         request=request, name="index.html", context={
             "settings": app.settings,
             "collections": app.collections,
-            "collection_map": app.db.collection_map
+            "collection_map": app.db.collection_map,
+            "current_year": datetime.now().year
         }
     )
 
@@ -343,7 +367,8 @@ async def collection(request: Request, collection_name: str = '', search_string:
             "filter_params": filter_params,
             "FilterType": FilterType,
             "min": min,
-            "max": max
+            "max": max,
+            "current_year": datetime.now().year
         }
     )
 
@@ -477,7 +502,8 @@ async def details(request: Request, collection_name: str, image_id: str):
             "get_aux_path_url": get_aux_path_url,
             "get_title": get_title,
             "get_data_url": get_data_url,
-            "getattr": getattr
+            "getattr": getattr,
+            "current_year": datetime.now().year
         }
     )
 

@@ -1,26 +1,26 @@
 <form id="filter-form" method="get">
-    
-    <div class="search-box">
-        <input type="text" name="search_string" value="{{ search_string }}"/>
+
+    <div class="search-row">
+        <input type="text" name="search_string" value="{{ search_string }}" placeholder="Search..." aria-label="Search"/>
         <button type="submit" name="search">Search</button>
-        <button type="button" onclick="resetForm()">Reset</button>
+        <button type="button" onclick="resetForm()" class="secondary">Reset</button>
     </div>
 
-    <div class="filters">
+    <div class="filters-row">
     {% for filter in collection_settings.filters %}
-        <div class="filter-item">
-            <label for="{{ filter.db_name }}">{{ filter.column_name }}</label>
         {% if filter.filter_type == FilterType.dropdown %}
-            <select name="{{ filter.db_name }}" onchange="submitForm()">
-                <option value="">Select...</option>
+        <label>
+            {{ filter.column_name }}
+            <select name="{{ filter.db_name }}" onchange="submitForm()" aria-label="{{ filter.column_name }}">
+                <option value="">All</option>
                 {% for key, value in filter._values | custom_sort %}
                 <option value="{{ key }}" {% if filter_params.get(filter.db_name) == key %}selected{% endif %}>
-                    {{ key }} <!--({{ value }})-->
+                    {{ key }}
                 </option>
                 {% endfor %}
             </select>
+        </label>
         {% endif %}
-        </div>
     {% endfor %}
     </div>
 </form>

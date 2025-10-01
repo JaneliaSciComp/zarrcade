@@ -17,10 +17,10 @@ class Database(BaseModel):
 
 
 class Settings(BaseSettings):
-    """ Zarrcade settings can be read from a settings.yaml file, 
-        or from the environment, with environment variables prepended 
+    """ Zarrcade settings can be read from a settings.yaml file,
+        or from the environment, with environment variables prepended
         with "zarrcade_" (case insensitive). The environment variables can
-        be passed in the environment or in a .env file. 
+        be passed in the environment or in a .env file.
     """
 
     log_level: str = 'INFO'
@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     database: Database = Database()
     title: str = 'Zarrcade'
     collection: str | None = None
+    header_left_logo_url: str = '/static/zarrcade.png'
+    header_right_logo_url: str = '/static/HHMI_Janelia_Logo_Black_Background.png'
+    copyright_holder: str = 'Howard Hughes Medical Institute'
 
     model_config = SettingsConfigDict(
         yaml_file="settings.yaml",

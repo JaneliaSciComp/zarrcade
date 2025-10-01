@@ -36,7 +36,7 @@ class Viewer(Enum):
     AVIVATOR = ViewerInfo(
         'Avivator',
         'vizarr_logo.png',
-        'https://avivator.gehlenborglab.org/?image_url={URL}'
+        'https://janeliascicomp.github.io/viv/?image_url={URL}'
     )
 
     BIONGFF = ViewerInfo(

@@ -6,7 +6,8 @@
 {% include "topbar.html" %}
 {% set image = dbimage.get_image() %}
 
-<section class="breadcrumbs">
+<main class="container">
+<nav aria-label="breadcrumb" class="breadcrumbs">
     {% if not settings.collection %}
     <a href="{{ url_for('index') }}">Index</a>
     <span class="separator"> &gt; </span>
@@ -14,26 +15,20 @@
     <a href="{{ url_for('collection', collection_name=dbimage.collection.name) }}">{{ collection_settings.label }}</a>
     <span class="separator"> &gt; </span>
     <span class="current">{{ get_title(dbimage) | safe }}</span>
-</section>
+</nav>
 
 <section style="display: flex; align-items: center; gap: 10px;">
 Copy data link:
-<a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon">
-    <div class="tooltip">
-        <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
-        <span class="tooltiptext">Copy image data URL</span>
-    </div>
+<a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon" data-tooltip="Copy image data URL">
+    <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
 </a>
 </section>
 
 <section style="display: flex; align-items: center; gap: 10px;">
-Open with: 
+Open with:
 {% for viewer in get_viewers(dbimage) %}
-    <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
-        <div class="tooltip">
-            <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
-            <span class="tooltiptext">View in {{ viewer.name }}</span>
-        </div>
+    <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer" data-tooltip="View in {{ viewer.name }}">
+        <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
     </a>
 {% endfor %}
 </section>
@@ -47,11 +42,12 @@ Open with:
     <img src="{{  url_for('static', path='zarr.jpg') }}" alt="Default thumbnail" class="image" />
     {% endif %}
 
-    <table class="attrs">
+    <table class="striped">
         <colgroup>
             <col style="width: 12em;">
             <col style="width: auto;">
         </colgroup>
+        <tbody>
         {% if dbimage.image_metadata %}
             {% for attr in column_map.keys() %}
                 {% if column_map[attr] not in collection_settings.hide_columns %}
@@ -66,10 +62,15 @@ Open with:
         <tr><td>Physical dimensions</td><td><span class="data">{{ image.dimensions }}</span></td></tr>
         <tr><td>Voxel sizes</td><td><span class="data">{{ image.voxel_sizes }}</span></td></tr>
         <tr><td>Compression</td><td><span class="data">{{ image.compression }}</span></td></tr>
+        </tbody>
     </table>
 </div>
 
 </section>
+
+</main>
+
+{% include "footer.html" %}
 
 </body>
 </html>

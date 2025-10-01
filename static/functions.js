@@ -1,11 +1,49 @@
+// Dark mode functionality
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+
+    document.documentElement.setAttribute('data-theme', theme);
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) {
+        toggle.checked = theme === 'dark';
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+}
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            toggle.checked = e.matches;
+        }
+    }
+});
+
+// Initialize theme on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+} else {
+    initTheme();
+}
+
 function showCopied(node) {
     const copied = "Copied!"
-    let tooltip = node.querySelector(".tooltiptext")
-    let curr = tooltip.textContent
-    tooltip.textContent = copied
+    let curr = node.getAttribute("data-tooltip")
+    node.setAttribute("data-tooltip", copied)
     if (curr != copied) {
         setTimeout(function() {
-            tooltip.textContent = curr
+            node.setAttribute("data-tooltip", curr)
         }, 1000)
     }
 }

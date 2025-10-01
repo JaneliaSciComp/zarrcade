@@ -1,9 +1,15 @@
-<div class="top-bar">
-    <div class="logo">
-        <a href="/"><img src="{{ url_for('static', path='/zarrcade.png') }}" alt="Zarrcade Logo"></a>
-    </div>
-    <div class="title">{{ settings.title }}</div>
-    <div class="icons">
-        <a href="https://github.com/JaneliaSciComp/zarrcade" target="_blank"><i class="fab fa-github"></i></a>
-    </div>
-</div>
+<nav class="top-bar container-fluid">
+    <ul>
+        <li class="logo">
+            <a href="/"><img src="{{ settings.header_left_logo_url }}" alt="Logo"></a>
+        </li>
+    </ul>
+    <ul>
+        <li class="title"><strong>{{ settings.title }}</strong></li>
+    </ul>
+    <ul>
+        <li class="icons">
+            <img src="{{ settings.header_right_logo_url }}" alt="Logo">
+        </li>
+    </ul>
+</nav>
