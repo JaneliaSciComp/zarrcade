@@ -26,7 +26,7 @@ class DBCollection(Base):
     __tablename__ = 'collections'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
-    settings_path = Column(String, nullable=True)
+    settings_content = Column(String, nullable=False)
     metadata_columns = relationship('DBMetadataColumn', back_populates='collection')
 
 
@@ -179,26 +179,25 @@ class Database:
         return Table(table_name, self.metadata, autoload_with=self.engine)
 
 
-    def add_collection(self, name, settings_path) -> DBCollection:
+    def add_collection(self, name, settings_content) -> DBCollection:
         """ Add a new collection to the database.
 
             Args:
                 name (str): The name of the collection.
-                label (str): The human-readable label for the collection.
-                data_url (str): The URL of the collection.
+                settings_content (str): The YAML content of the settings file.
         """
         if name in self.collection_map:
-
-            if self.collection_map[name].settings_path != settings_path:
-                raise ValueError(f"Collection {name} already exists with a different settings path: {self.collection_map[name].settings_path}")
-                
             # Collection already exists
-            return
+            logger.info(f"Collection {name} already exists, skipping creation")
+            return self.collection_map[name]
 
         with self.engine.connect() as connection:
             # Insert into collections
             collections = self.get_table('collections')
-            insert_stmt = collections.insert().values(name=name, settings_path=settings_path)
+            insert_stmt = collections.insert().values(
+                name=name,
+                settings_content=settings_content
+            )
             connection.execute(insert_stmt)
             connection.commit()
 
@@ -208,7 +207,7 @@ class Database:
 
             # Update internal state
             self.collection_map[name] = result
-            logger.info(f"Added new collection: {name} (settings_path={settings_path})")
+            logger.info(f"Added new collection: {name}")
 
             return result
         
@@ -227,6 +226,51 @@ class Database:
             select_stmt = collections.select().where(collections.c.id == id)
             result = connection.execute(select_stmt).fetchone()
             return result
+
+
+    def get_collection_by_name(self, name: str) -> DBCollection:
+        """ Get a collection by its name.
+
+            Args:
+                name (str): The name of the collection.
+
+            Returns:
+                DBCollection: The collection with the specified name, or None if not found.
+        """
+        with self.engine.connect() as connection:
+            collections = self.get_table('collections')
+            select_stmt = collections.select().where(collections.c.name == name)
+            result = connection.execute(select_stmt).fetchone()
+            return result
+
+
+    def update_collection_settings(self, name: str, settings_content: str) -> bool:
+        """ Update a collection's settings.
+
+            Args:
+                name (str): The name of the collection.
+                settings_content (str): The YAML content of the settings file.
+
+            Returns:
+                bool: True if the collection was updated, False otherwise.
+        """
+        if name not in self.collection_map:
+            return False
+
+        with self.engine.connect() as connection:
+            collections = self.get_table('collections')
+            update_stmt = collections.update().where(
+                collections.c.name == name
+            ).values(
+                settings_content=settings_content
+            )
+            result = connection.execute(update_stmt)
+            connection.commit()
+
+            # Update internal state
+            self.load()
+
+            return result.rowcount > 0
 
 
     def delete_collection(self, collection_name: str) -> None:

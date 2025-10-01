@@ -16,9 +16,11 @@ Neuroglancer [does not currently support automatic loading of multichannel OME-Z
 
 ## Data Model
 
-Zarrcade uses a simple database schema to store the image metadata and annotations. A *DBCollection* is a named collection of images at a particular URL or filepath. Images found at that data URL are discovered by `import.py` and added to the *DBImage* table. 
+Zarrcade uses a simple database schema to store the image metadata and annotations. A *DBCollection* is a named collection of images with associated settings stored as YAML content. Images are discovered using the `zarrcade load` command and added to the *DBImage* table.
 
 Annotations optionally loaded from the user-provided CSV file are added to the *DBImageMetadata* table, and each *DBImage* may be linked to one *DBImageMetadata* record. Multiple images (e.g. in an image series) may be linked to the same *DBImageMetadata* record. Columns in the CSV file are added to the *DBMetadataColumn* table which maps the original column name to the internal database name.
+
+Collections can be updated using the `zarrcade update` command, which matches the collection by name (from the YAML file's name property or filename) and updates only the settings content without modifying images or metadata.
 
 ### Class diagram
 
@@ -30,7 +32,7 @@ classDiagram
 class DBCollection {
     id: int
     name: str
-    settings_path: str
+    settings_content: str
     metadata_columns: List[DBMetadataColumn]
 }
 
@@ -79,7 +81,7 @@ erDiagram
 DBCollection {
     id int
     name str
-    settings_path str
+    settings_content str
 }
 
 DBMetadataColumn {
