@@ -85,6 +85,7 @@ def load(settings_path, args):
         logger.info(f"Reading {metadata_path}")
 
         # Use sep=None to automatically detect the delimiter
+        # Sometimes we need to use encoding='ISO-8859-1' here to avoid UnicodeDecodeError
         df = pd.read_csv(metadata_path, sep=None, engine='python')
         logger.info(f"Parsed {df.shape[0]} rows from metadata CSV")
     
