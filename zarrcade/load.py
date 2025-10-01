@@ -63,11 +63,14 @@ def load(settings_path, args):
             for key, value in column_map.items():
                 logger.info(f"    {key}: {value}")
 
-    # extract the file name
-    collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
-
     # Read the collection settings
     collection_settings = load_collection_settings(settings_path)
+
+    # Use the name from settings if provided, otherwise extract from filename
+    if collection_settings.name:
+        collection_name = collection_settings.name
+    else:
+        collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
 
     # Set up the collection
     db.add_collection(collection_name, settings_path)

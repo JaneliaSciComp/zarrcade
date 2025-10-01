@@ -57,6 +57,9 @@ class DiscoverySettings(BaseModel):
 class CollectionSettings(BaseSettings):
     """ Configuration for an image collection """
 
+    name: str | None = None
+    """ The name of the collection in the database. If not provided, the filename will be used. """
+
     label: str
     """ The label shown in the UI for the collection. """
 
