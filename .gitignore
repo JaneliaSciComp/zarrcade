@@ -12,6 +12,7 @@ __pycache__
 # Data
 data
 .zarrcade*
+static/ext
 
 # Zarrcade databases
 *.db
