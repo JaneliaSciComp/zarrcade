@@ -48,7 +48,7 @@ def get_all_images(db, collection_name):
 def load(settings_path, args):
     settings = get_settings()
     local_fs = get_filestore()
-    
+
     # Connect to the database
     db_url = str(settings.database.url)
     logger.info(f"Database URL is {db_url}")
@@ -56,12 +56,19 @@ def load(settings_path, args):
 
     if db.collection_map:
         logger.info("Collections:")
-        for key, value in db.collection_map.items():
-            logger.info(f"  {key} ({value.settings_path})")
+        for key in db.collection_map.keys():
+            logger.info(f"  {key}")
             collection_name = key
             column_map = db.get_column_map(collection_name)
             for key, value in column_map.items():
                 logger.info(f"    {key}: {value}")
+
+    # Read the YAML file content
+    with open(settings_path, 'r') as f:
+        settings_content = f.read()
+
+    # extract the file name
+    collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
 
     # Read the collection settings
     collection_settings = load_collection_settings(settings_path)
@@ -73,7 +80,7 @@ def load(settings_path, args):
         collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
 
     # Set up the collection
-    db.add_collection(collection_name, settings_path)
+    db.add_collection(collection_name, settings_content=settings_content)
 
     thumbnail_column = None
     metadata_path = collection_settings.metadata_file
@@ -260,3 +267,52 @@ def load(settings_path, args):
                     logger.warning(f"No metadata found for {dbimage.path} or {dbimage.image_path}")
 
     logger.info("Database initialization complete.")
+
+
+def update(settings_path, args):
+    """Update an existing collection with new settings from a YAML file.
+
+    The collection is matched by name (either from the 'name' property in the YAML
+    or from the filename). Only the collection settings are updated - images and
+    metadata are not modified.
+    """
+    settings = get_settings()
+
+    # Connect to the database
+    db_url = str(settings.database.url)
+    logger.info(f"Database URL is {db_url}")
+    db = Database(db_url)
+
+    # Read the YAML file content
+    with open(settings_path, 'r') as f:
+        settings_content = f.read()
+
+    # Read the collection settings to potentially extract a name
+    collection_settings = load_collection_settings(settings_path)
+
+    # Try to determine collection name from settings or filename
+    collection_name = None
+    if hasattr(collection_settings, 'name') and collection_settings.name:
+        collection_name = slugify(collection_settings.name)
+    else:
+        # Extract from filename
+        collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
+
+    logger.info(f"Attempting to update collection: {collection_name}")
+
+    # Check if collection exists
+    if collection_name not in db.collection_map:
+        logger.error(f"Collection '{collection_name}' does not exist in the database")
+        logger.info("Available collections:")
+        for key in db.collection_map.keys():
+            logger.info(f"  - {key}")
+        raise ValueError(f"Collection '{collection_name}' not found")
+
+    # Update the collection settings
+    success = db.update_collection_settings(collection_name, settings_content)
+
+    if success:
+        logger.info(f"Successfully updated collection '{collection_name}'")
+    else:
+        logger.error(f"Failed to update collection '{collection_name}'")
+        raise ValueError(f"Failed to update collection '{collection_name}'")

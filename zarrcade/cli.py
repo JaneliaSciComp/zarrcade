@@ -39,9 +39,9 @@ def cli():
               help='Upper percentile for thumbnail brightness adjustment.')
 def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_metadata, no_aux, aux_path, aux_image_name, thumbnail_name, p_lower, p_upper):
     """Load data into a collection.
-    
+
     Walks a filesystem and discovers Zarrs, or loads images from a metadata file.
-    Optionally imports metadata and generates2d thumbnails."""
+    Optionally imports metadata and generates 2d thumbnails."""
     args = DotDict({
         'skip_image_load': skip_image_load,
         'skip_thumbnail_creation': skip_thumbnail_creation,
@@ -55,6 +55,19 @@ def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_meta
     })
     from zarrcade.load import load
     load(settings_path, args)
+
+
+@cli.command()
+@click.argument('settings_path', type=str, required=True)
+def update(settings_path):
+    """Update an existing collection's settings from a YAML file.
+
+    The collection to update is identified by the collection name, which is determined
+    from the 'name' property in the YAML file or from the filename. Only the collection
+    settings are updated - images and metadata are not modified."""
+    args = DotDict({})
+    from zarrcade.load import update
+    update(settings_path, args)
 
 
 @cli.command()
@@ -107,12 +120,11 @@ def list_collections():
     if not collections:
         click.echo("No collections found.")
         return
-    
+
     click.echo(f"Found {len(collections)} collection(s):")
     for collection in collections:
         click.echo(f"- id: {collection.id}")
         click.echo(f"  name: {collection.name}")
-        click.echo(f"  settings_path: {collection.settings_path}")
 
 
 @collection.command(name="get")
@@ -120,33 +132,28 @@ def list_collections():
 def get_collection(id):
     """Get details of a specific collection."""
     collection = get_db().get_collection(id)
-    
+
     if not collection:
         click.echo(f"Collection with id '{id}' does not exist.")
         return
-    
+
     click.echo(f"id: {collection.id}")
     click.echo(f"name: {collection.name}")
-    click.echo(f"settings_path: {collection.settings_path}")
+    click.echo(f"settings_content: {collection.settings_content[:100]}..." if len(collection.settings_content) > 100 else f"settings_content: {collection.settings_content}")
 
 
-@collection.command(name="update")
+@collection.command(name="rename")
 @click.option('--id', type=int, required=True, help='ID of the collection to update.')
-@click.option('--name', type=str, help='New name for the collection.')
-@click.option('--settings-path', type=str, help='New settings path for the collection.')
-def update_collection(id, name, settings_path):
-    """Update a collection's name or settings path."""
+@click.option('--name', type=str, required=True, help='New name for the collection.')
+def rename_collection(id, name):
+    """Rename a collection."""
     db = get_db()
     collection = db.get_collection(id)
-    
+
     if not collection:
         click.echo(f"Collection with id '{id}' does not exist.")
         return
-    
-    if not name and not settings_path:
-        click.echo("No changes specified. Use --name or --settings-path to specify changes.")
-        return
-    
+
     with db.sessionmaker() as session:
         # Attach the collection to the session to ensure it's tracked for updates
         from zarrcade.database import DBCollection
@@ -155,21 +162,16 @@ def update_collection(id, name, settings_path):
             click.echo(f"Collection with id '{id}' not found in database.")
             return
         try:
-            if name:
-                # Check if the new name already exists
-                if name != collection.name and any(c.name == name for c in db.get_collections()):
-                    click.echo(f"Collection with name '{name}' already exists.")
-                    return
-                
-                collection.name = name
-                click.echo(f"Collection[id={id}]: name updated to '{name}'")
-            
-            if settings_path:
-                collection.settings_path = settings_path
-                click.echo(f"Collection[id={id}]: settings_path updated to '{settings_path}'")
-            
+            # Check if the new name already exists
+            if name != collection.name and any(c.name == name for c in db.get_collections()):
+                click.echo(f"Collection with name '{name}' already exists.")
+                return
+
+            collection.name = name
+            click.echo(f"Collection[id={id}]: name updated to '{name}'")
+
             session.commit()
-            
+
         except Exception as e:
             session.rollback()
             click.echo(f"Error updating collection: {str(e)}")
