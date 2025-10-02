@@ -730,15 +730,15 @@ class Database:
         with self.sessionmaker() as session:
             collection_id = self.collection_map[collection_name].id
             column = getattr(DBImageMetadata, column_name)
-            results = (
-                # pylint: disable=not-callable
+            values = (
                 session.query(column, func.count().label('count'))
+                .join(DBImage, DBImage.image_metadata_id == DBImageMetadata.id)
                 .filter(DBImageMetadata.collection_id == collection_id)
                 .group_by(column)
                 .all()
             )
             # Build the result dictionary
-            value_counts = {str(row[0]): int(row[1]) for row in results}
+            value_counts = {str(row[0]): int(row[1]) for row in values}
 
             # Handle None values
             if None in value_counts:
@@ -764,7 +764,12 @@ class Database:
             column = getattr(DBImageMetadata, column_name)
 
             # Retrieve all comma-delimited values from the column
-            values = session.query(column).filter(DBImageMetadata.collection_id == collection_id).all()
+            values = (
+                session.query(column)
+                .join(DBImage, DBImage.image_metadata_id == DBImageMetadata.id)
+                .filter(DBImageMetadata.collection_id == collection_id)
+                .all()
+            )
 
             # Count unique items from comma-delimited lists
             value_counts = defaultdict(int)
