@@ -91,7 +91,7 @@ async def startup_event():
     # Load collection settings
     app.collections = {}
     for collection in app.db.get_collections():
-        collection_settings = load_collection_settings(collection.settings_path)
+        collection_settings = load_collection_settings(collection.settings_content)
         app.collections[collection.name] = collection_settings
 
         for s in collection_settings.filters:

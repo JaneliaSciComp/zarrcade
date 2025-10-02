@@ -88,15 +88,16 @@ class CollectionSettings(BaseSettings):
     """ List of viewer names to enable for this collection. If empty, all viewers are available. """
 
 
-def load_collection_settings(settings_file: str) -> CollectionSettings:
-    """ Load the collection settings from a file """
-    with open(settings_file) as f:
-        settings_dict = yaml.safe_load(f)
+def load_collection_settings(settings_content: str) -> CollectionSettings:
+    """ Load the collection settings from a string """
+    settings_dict = yaml.safe_load(settings_content)
     return CollectionSettings.model_validate(settings_dict)
 
 
 if __name__ == "__main__":
     import sys
     import pprint
-    settings = load_collection_settings(sys.argv[1])
+    with open(sys.argv[1], 'r') as f:
+        settings_content = f.read()
+    settings = load_collection_settings(settings_content)
     pprint.pprint(settings.model_dump())
