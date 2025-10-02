@@ -1,19 +1,14 @@
 services:
 
     zarrcade:
-        image: ghcr.io/janeliascicomp/zarrcade:1.6.0
+        image: ghcr.io/janeliascicomp/zarrcade:1.7.1
         container_name: zarrcade
         restart: unless-stopped
         ports:
           - 8000
         volumes:
           - ${CONFIG_FILE}:/app/zarrcade/settings.yaml
-          - ${CONFIGS_DIR}:${CONFIGS_DIR}:ro,shared
-          - ${DATA_DIR}:/data:ro,shared
           - ${DB_DIR}:/db:rw,shared
-        environment:
-          - BASE_URL=${BASE_URL}
-          - DB_URL=${DB_URL}
 
     nginx:
         image: nginx
