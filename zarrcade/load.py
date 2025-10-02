@@ -67,11 +67,8 @@ def load(settings_path, args):
     with open(settings_path, 'r') as f:
         settings_content = f.read()
 
-    # extract the file name
-    collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
-
     # Read the collection settings
-    collection_settings = load_collection_settings(settings_path)
+    collection_settings = load_collection_settings(settings_content)
 
     # Use the name from settings if provided, otherwise extract from filename
     if collection_settings.name:
