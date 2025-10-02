@@ -288,7 +288,7 @@ def update(settings_path, args):
         settings_content = f.read()
 
     # Read the collection settings to potentially extract a name
-    collection_settings = load_collection_settings(settings_path)
+    collection_settings = load_collection_settings(settings_content)
 
     # Try to determine collection name from settings or filename
     collection_name = None
@@ -298,7 +298,7 @@ def update(settings_path, args):
         # Extract from filename
         collection_name = slugify(os.path.splitext(os.path.basename(settings_path))[0])
 
-    logger.info(f"Attempting to update collection: {collection_name}")
+    logger.trace(f"Attempting to update settings for collection: {collection_name}")
 
     # Check if collection exists
     if collection_name not in db.collection_map:
@@ -312,7 +312,7 @@ def update(settings_path, args):
     success = db.update_collection_settings(collection_name, settings_content)
 
     if success:
-        logger.info(f"Successfully updated collection '{collection_name}'")
+        logger.info(f"Successfully updated settings forcollection '{collection_name}'")
     else:
-        logger.error(f"Failed to update collection '{collection_name}'")
-        raise ValueError(f"Failed to update collection '{collection_name}'")
+        logger.error(f"Failed to update settings for collection '{collection_name}'")
+        raise ValueError(f"Failed to update settings for collection '{collection_name}'")
