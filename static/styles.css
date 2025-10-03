@@ -474,11 +474,11 @@ a.icon img:active {
 }
 
 .tooltip .tooltiptext {
-    border: 1px solid var(--pico-muted-border-color);
+    border: 1px solid black;
     visibility: hidden;
     width: 120px;
-    background-color: var(--pico-card-background-color);
-    color: var(--pico-color);
+    background-color: black;
+    color: white;
     text-align: center;
     border-radius: var(--pico-border-radius);
     padding: 5px 0;
@@ -499,7 +499,7 @@ a.icon img:active {
     margin-left: -5px;
     border-width: 8px;
     border-style: solid;
-    border-color: var(--pico-card-background-color) transparent transparent transparent;
+    border-color: black transparent transparent transparent;
 }
 
 .tooltip:hover .tooltiptext {
