@@ -37,7 +37,9 @@ def cli():
               help='Lower percentile for thumbnail brightness adjustment.')
 @click.option('--p-upper', type=float, default=99.5,
               help='Upper percentile for thumbnail brightness adjustment.')
-def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_metadata, no_aux, aux_path, aux_image_name, thumbnail_name, p_lower, p_upper):
+@click.option('--clahe-limit', type=float, default=0.02,
+              help='Clip limit for CLAHE (Contrast Limited Adaptive Histogram Equalization).')
+def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_metadata, no_aux, aux_path, aux_image_name, thumbnail_name, p_lower, p_upper, clahe_limit):
     """Load data into a collection.
 
     Walks a filesystem and discovers Zarrs, or loads images from a metadata file.
@@ -52,6 +54,7 @@ def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_meta
         'thumbnail_name': thumbnail_name,
         'p_lower': p_lower,
         'p_upper': p_upper,
+        'clahe_limit': clahe_limit,
     })
     from zarrcade.load import load
     load(settings_path, args)

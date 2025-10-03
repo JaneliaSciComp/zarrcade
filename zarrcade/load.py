@@ -206,7 +206,7 @@ def load(settings_path, args):
                     for channel in image.channels:
                         colors.append(channel['color'])
                     try:
-                        make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper, colors=colors)
+                        make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper, colors=colors, clahe_limit=args.clahe_limit)
                         logger.info(f"Wrote {aux_path}")
                         updated_obj['aux_image_path'] = aux_path.replace('static/', '')
                     except Exception as e:

@@ -116,7 +116,7 @@ def _select_dataset(root, min_dim_size):
     return selected_dataset
 
 
-def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=True, p_lower=0, p_upper=99.5) -> Image:
+def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=True, p_lower=0, p_upper=99.5, clahe_limit=0.02) -> Image:
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
     if not colors:
@@ -162,7 +162,7 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
             # Stretch the contrast with a maximum gain to avoid blowing out the image
             mip_image = stretch_with_max_gain(mip_image, p_lower, p_upper)
             # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to improve contrast
-            mip_image = ski.exposure.equalize_adapthist(mip_image, clip_limit=0.02)
+            mip_image = ski.exposure.equalize_adapthist(mip_image, clip_limit=clahe_limit)
 
         mip_image_list.append(mip_image)
 
@@ -201,14 +201,15 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
         return arr
 
 
-def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=None, p_lower=0, p_upper=99.5):
+def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=None, p_lower=0, p_upper=99.5, clahe_limit=0.02):
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
     """
     root = zarr.open(store, mode='r')
-    mip = _make_mip(root, colors, 
-        adjust_channel_brightness=adjust_channel_brightness, 
-        p_lower=p_lower, 
-        p_upper=p_upper
+    mip = _make_mip(root, colors,
+        adjust_channel_brightness=adjust_channel_brightness,
+        p_lower=p_lower,
+        p_upper=p_upper,
+        clahe_limit=clahe_limit
     )
     if not adjust_channel_brightness:
         # If we didn't adjust the channel brightness, adjust the overall brightness of the MIP
