@@ -51,7 +51,7 @@
             <div class="overlay">
 
                 <div class="buttons">
-                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon" >
+                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}'); return false;" class="icon" >
                         <div class="tooltip">
                             <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
                             <span class="tooltiptext">Copy image data URL</span>
