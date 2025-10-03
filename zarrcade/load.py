@@ -309,7 +309,7 @@ def update(settings_path, args):
     success = db.update_collection_settings(collection_name, settings_content)
 
     if success:
-        logger.info(f"Successfully updated settings forcollection '{collection_name}'")
+        logger.info(f"Successfully updated settings for collection '{collection_name}'")
     else:
         logger.error(f"Failed to update settings for collection '{collection_name}'")
         raise ValueError(f"Failed to update settings for collection '{collection_name}'")
