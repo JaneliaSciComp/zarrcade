@@ -376,9 +376,8 @@ nav.top-bar a:hover {
 
 .gallery .buttons {
     margin: 10px auto 0 auto;
-    opacity: 1;
-    background-color: var(--pico-card-background-color);
-    border: 1px solid var(--pico-muted-border-color);
+    background-color: rgba(255, 255, 255, 1);
+    border: 1px solid rgba(0, 0, 0, 1);
     border-radius: var(--pico-border-radius);
     pointer-events: auto;
     padding: 8px 12px;
