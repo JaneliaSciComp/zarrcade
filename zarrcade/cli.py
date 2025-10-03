@@ -14,9 +14,10 @@ class DotDict:
         for key, value in dictionary.items():
             setattr(self, key, value)
             
-@click.group()
+@click.group(context_settings={'show_default': True})
 def cli():
     pass
+
 @cli.command()
 @click.argument('settings_path', type=str, required=True)
 @click.option('--skip-image-load', is_flag=True, default=False,
