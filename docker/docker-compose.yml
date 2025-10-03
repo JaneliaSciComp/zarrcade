@@ -8,7 +8,7 @@ services:
           - 8000
         volumes:
           - ${CONFIG_FILE}:/app/zarrcade/settings.yaml
-          - /opt/zarrcade/ext:/app/zarrcade/static/ext
+          - ${STATIC_EXT_DIR}:/app/zarrcade/static/ext
           - ${DB_DIR}:/db:rw,shared
 
     nginx:
