@@ -51,12 +51,18 @@
             <div class="overlay">
 
                 <div class="buttons">
-                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon" data-tooltip="Copy image data URL">
-                        <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
+                    <a href="#" onclick="copyTextToClipboard(this, '{{ get_data_url(dbimage) }}')" class="icon" >
+                        <div class="tooltip">
+                            <img src="{{ url_for('static', path='copy-link-64.png') }}" alt="Copy link icon">
+                            <span class="tooltiptext">Copy image data URL</span>
+                        </div>
                     </a>
                     {% for viewer in get_viewers(dbimage) %}
-                    <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer" data-tooltip="View in {{ viewer.name }}">
-                        <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
+                    <a href="{{ get_viewer_url(dbimage, viewer) }}" class="icon" target="_blank" rel="noopener noreferrer">
+                        <div class="tooltip">
+                            <img src="{{ url_for('static', path=viewer.icon) }}" alt="{{ viewer.name }} icon">
+                            <span class="tooltiptext">View in {{ viewer.name }}</span>
+                        </div>
                     </a>
                     {% endfor %}
                 </div>

@@ -39,11 +39,12 @@ if (document.readyState === 'loading') {
 
 function showCopied(node) {
     const copied = "Copied!"
-    let curr = node.getAttribute("data-tooltip")
-    node.setAttribute("data-tooltip", copied)
+    let tooltip = node.querySelector(".tooltiptext")
+    let curr = tooltip.textContent
+    tooltip.textContent = copied
     if (curr != copied) {
         setTimeout(function() {
-            node.setAttribute("data-tooltip", curr)
+            tooltip.textContent = curr
         }, 1000)
     }
 }
