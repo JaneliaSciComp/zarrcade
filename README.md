@@ -4,18 +4,17 @@
 
 [![Python CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml/badge.svg)](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml)
 
-Zarrcade is a web application for easily browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
+Zarrcade makes it easy to generate simple web applications for browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
 
 * Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
 * MIP/thumbnail generation
-* Web-based MIP gallery with convenient viewing links to NGFF-compliant viewers
+* Web-based MIP gallery with convenient viewing links to OME-Zarr-compatible viewers
 * Searchable/filterable metadata and annotations
-* Neuroglancer state generation for multichannel images
 * Build-in file proxy for non-public storage backends
+* Integration with the Allen Institute's [BioFile Finder](https://bff.allencell.org/)
 * Integration with external file proxies (e.g. [x2s3](https://github.com/JaneliaSciComp/x2s3))
- 
-![screenshot](https://github.com/user-attachments/assets/15ff03b4-2c90-4307-9771-fb6041676588)
 
+<img alt="Zarrcade screenshot" src="https://github.com/user-attachments/assets/57895e8f-b427-43d3-bd81-bae2acb449a7" />
 
 ## Prerequisites
 
@@ -71,11 +70,11 @@ If your images are not already in OME-Zarr format, you will need to convert them
 bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/zarr
 ```
 
-If you have many images to convert, we recommend using the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
+If you have many images to convert, use the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
 
 ### 2. Create YAML configuration for your data collection
 
-There is [documentation](docs/Configuration.md) on creating collection settings files, or you can follow one of the [examples below](#examples).
+There is [documentation](docs/Configuration.md) on creating collection settings files, or you can follow one of the [examples](examples/).
 
 
 ### 3. Import images and metadata into Zarrcade
@@ -95,7 +94,12 @@ Read more about the import options in the [Data Import](./docs/DataImport.md) se
 Start the development server, pointing it to your OME-Zarr data:
 
 ```bash
-pixi run zarrcade start --host 0.0.0.0 --port 8000 --reload
+pixi run dev-launch
+```
+
+This is equivalent to running Uvicorn like this:
+```bash
+pixi run uvicorn zarrcade.serve:app --port 8000 --reload
 ```
 
 Your images and annotations will be browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
