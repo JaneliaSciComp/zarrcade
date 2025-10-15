@@ -79,7 +79,7 @@ def _encode_image(image_group: zarr.Group) -> Image:
         scale = scales[i]
         unit = ''
         if axis['type']=='space':
-            unit = axis['unit']
+            unit = axis['unit'] if 'unit' in axis else ''
             # TODO: add better unit translation support
             if unit in ['micrometer','micron']: unit = 'um'
             if unit=='nanometer': unit = 'nm'
