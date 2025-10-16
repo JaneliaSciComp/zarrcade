@@ -1,14 +1,15 @@
 import io
 import os
 
-import numpy as np
 import zarr
+import matplotlib
+import numpy as np
 import skimage as ski
 from loguru import logger
 from PIL import Image
 from microfilm.microplot import microshow
 from microfilm import colorify
-import matplotlib
+from scipy.stats import median_abs_deviation as mad
 
 SIMPLE_HEX_COLOR_MAP = {
     'red': '#FF0000',
@@ -90,6 +91,68 @@ def stretch_with_max_gain(channel, p_lower=0.1, p_upper=99.9, max_gain=8, target
     return stretched.astype(np.uint16)
 
 
+
+def stretch_with_max_gain_bg_guard(
+    channel,
+    p_lower=0.1,
+    p_upper=99.9,
+    max_gain=8.0,
+    target_max=65535,
+    ignore_zeros=True,
+    k_bg=5.0,           # how many MADs above the black level we consider "background floor"
+    min_dynamic=1e-6
+):
+    ch = channel.astype(np.float32)
+
+    # Optionally ignore zeros which otherwise swamp the lower percentile
+    if ignore_zeros:
+        vals = ch[ch > 0]
+        if vals.size == 0:
+            return np.zeros_like(channel, dtype=np.uint16)
+    else:
+        vals = ch
+
+    logger.trace(f"Using {vals.size} non-zero values out of {ch.size} total values")
+
+    # Estimate black level from the dark tail (robust)
+    # Take the bottom 5% to get a dark subset, compute its median and MAD
+    dark_cut = np.percentile(vals, 5.0)
+    dark_vals = vals[vals <= dark_cut]
+    if dark_vals.size == 0:
+        dark_vals = vals  # fallback
+
+    black_med = np.median(dark_vals)
+    black_mad = mad(dark_vals, scale='normal')  # ~= sigma for Gaussian
+    black_floor = black_med + k_bg * (black_mad if np.isfinite(black_mad) else 0.0)
+    logger.trace(f"Black floor: {black_floor}")
+
+    # Compute percentiles on nonzero vals
+    lo_p = np.percentile(vals, p_lower)
+    hi_p = np.percentile(vals, p_upper)
+    logger.trace(f"Lower percentile: {lo_p}, Upper percentile: {hi_p}")
+
+    # Use the larger of the two for the lower bound so we don't raise dark background
+    lo = max(lo_p, black_floor)
+    hi = max(hi_p, lo + min_dynamic)
+    logger.trace(f"Lower bound: {lo}, Upper bound: {hi}")
+
+    dynamic_range = max(hi - lo, min_dynamic)
+    logger.trace(f"Dynamic range: {dynamic_range}")
+
+    # Calculate the stretch gain
+    gain = target_max / dynamic_range
+    logger.trace(f"Gain: {gain}")
+
+    # Cap the gain if it's too high
+    if gain>max_gain:
+        logger.trace(f"Gain is too high, capping at {max_gain}")
+        gain = max_gain
+
+    stretched = (ch - lo) * gain
+    stretched = np.clip(stretched, 0, target_max)
+    return stretched.astype(np.uint16)
+
+
 def _select_dataset(root, min_dim_size):
     """ Walk backwards through datasets to find one with 
         the min dimension size in at least one direction.
@@ -160,7 +223,7 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
         if adjust_channel_brightness:
             logger.trace(f"Adjusting channel brightness for channel {c} with p_lower={p_lower} and p_upper={p_upper}")
             # Stretch the contrast with a maximum gain to avoid blowing out the image
-            mip_image = stretch_with_max_gain(mip_image, p_lower, p_upper)
+            mip_image = stretch_with_max_gain_bg_guard(mip_image, p_lower, p_upper, max_gain=5)
             # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to improve contrast
             mip_image = ski.exposure.equalize_adapthist(mip_image, clip_limit=clahe_limit)
 

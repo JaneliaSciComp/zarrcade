@@ -34,11 +34,11 @@ def cli():
               help='Filename of the main auxiliary image in the auxiliary image folder.')
 @click.option('--thumbnail-name', type=str, default='thumbnail.jpg',
               help='Filename of the downsampled thumbnail image in the auxiliary image folder.')
-@click.option('--p-lower', type=float, default=0.0,
+@click.option('--p-lower', type=float, default=0.1,
               help='Lower percentile for thumbnail brightness adjustment.')
-@click.option('--p-upper', type=float, default=99.5,
+@click.option('--p-upper', type=float, default=99.9,
               help='Upper percentile for thumbnail brightness adjustment.')
-@click.option('--clahe-limit', type=float, default=0.02,
+@click.option('--clahe-limit', type=float, default=0.06,
               help='Clip limit for CLAHE (Contrast Limited Adaptive Histogram Equalization).')
 def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_metadata, no_aux, aux_path, aux_image_name, thumbnail_name, p_lower, p_upper, clahe_limit):
     """Load data into a collection.
