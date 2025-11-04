@@ -98,10 +98,37 @@ def stretch_with_max_gain_bg_guard(
     p_upper=99.9,
     max_gain=8.0,
     target_max=65535,
-    ignore_zeros=True,
-    k_bg=5.0,           # how many MADs above the black level we consider "background floor"
+    ignore_zeros=False,
+    k_bg=-np.inf,       # how many MADs above the black level we consider "background floor"
     min_dynamic=1e-6
 ):
+    """
+    Stretch a single image channel with background guarding.
+
+    Parameters
+    ----------
+    channel : np.ndarray
+        2D array for a single channel (e.g., one fluorescence color).
+    p_lower : float
+        Lower percentile for contrast stretching (default: 0.1).
+    p_upper : float
+        Upper percentile for contrast stretching (default: 99.9).
+    max_gain : float
+        Maximum allowed gain (e.g., 8-32). Limits how much a narrow range can be amplified.
+    target_max : int
+        Target maximum value (65535 for 16-bit output, 255 for 8-bit).
+    ignore_zeros : bool
+        If True, ignore zeros when computing percentiles (default: False).
+    k_bg : float
+        How many MADs above the black level we consider "background floor" (default: -np.inf, disabled).
+    min_dynamic : float
+        Minimum dynamic range to prevent division by zero (default: 1e-6).
+
+    Returns
+    -------
+    np.ndarray
+        Contrast-stretched channel with gain capped.
+    """
     ch = channel.astype(np.float32)
 
     # Optionally ignore zeros which otherwise swamp the lower percentile
@@ -123,7 +150,12 @@ def stretch_with_max_gain_bg_guard(
 
     black_med = np.median(dark_vals)
     black_mad = mad(dark_vals, scale='normal')  # ~= sigma for Gaussian
-    black_floor = black_med + k_bg * (black_mad if np.isfinite(black_mad) else 0.0)
+
+    # Calculate black floor, handling -inf case to avoid NaN warnings
+    if np.isneginf(k_bg):
+        black_floor = -np.inf
+    else:
+        black_floor = black_med + k_bg * (black_mad if np.isfinite(black_mad) else 0.0)
     logger.trace(f"Black floor: {black_floor}")
 
     # Compute percentiles on nonzero vals
@@ -179,8 +211,29 @@ def _select_dataset(root, min_dim_size):
     return selected_dataset
 
 
-def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=True, p_lower=0, p_upper=99.5, clahe_limit=0.02) -> Image:
+def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=True, clahe_limit=0.02, **stretch_kwargs) -> Image:
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
+
+    Parameters
+    ----------
+    root : zarr.Group
+        The root zarr group.
+    colors : list, optional
+        List of colors for each channel.
+    min_dim_size : int
+        Minimum dimension size for selecting the dataset.
+    adjust_channel_brightness : bool
+        Whether to adjust channel brightness.
+    clahe_limit : float
+        Clip limit for CLAHE (Contrast Limited Adaptive Histogram Equalization).
+    **stretch_kwargs : dict
+        Additional keyword arguments to pass to stretch_with_max_gain_bg_guard.
+        Supported parameters: p_lower, p_upper, max_gain, target_max, ignore_zeros, k_bg, min_dynamic
+
+    Returns
+    -------
+    np.ndarray
+        MIP image as numpy array.
     """
     if not colors:
         colors = SIMPLE_HEX_COLOR_MAP.values()
@@ -221,9 +274,9 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
         channel_data = image_data[c, :, :, :]  # Extract the data for channel c
         mip_image = np.max(channel_data, axis=0)  # Perform the MIP across Z-axis
         if adjust_channel_brightness:
-            logger.trace(f"Adjusting channel brightness for channel {c} with p_lower={p_lower} and p_upper={p_upper}")
+            logger.trace(f"Adjusting channel brightness for channel {c} with stretch_kwargs={stretch_kwargs}")
             # Stretch the contrast with a maximum gain to avoid blowing out the image
-            mip_image = stretch_with_max_gain_bg_guard(mip_image, p_lower, p_upper, max_gain=5)
+            mip_image = stretch_with_max_gain_bg_guard(mip_image, **stretch_kwargs)
             # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to improve contrast
             mip_image = ski.exposure.equalize_adapthist(mip_image, clip_limit=clahe_limit)
 
@@ -264,18 +317,35 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
         return arr
 
 
-def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=None, p_lower=0, p_upper=99.5, clahe_limit=0.02):
+def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=None, clahe_limit=0.02, **stretch_kwargs):
     """ Create a maximum intensity projection (MIP) from an OME-Zarr image.
+
+    Parameters
+    ----------
+    store : zarr.storage.Store
+        The zarr storage.
+    mip_path : str
+        Output path for the MIP image.
+    adjust_channel_brightness : bool
+        Whether to adjust channel brightness.
+    colors : list, optional
+        List of colors for each channel.
+    clahe_limit : float
+        Clip limit for CLAHE (Contrast Limited Adaptive Histogram Equalization).
+    **stretch_kwargs : dict
+        Additional keyword arguments to pass to stretch_with_max_gain_bg_guard.
+        Supported parameters: p_lower, p_upper, max_gain, target_max, ignore_zeros, k_bg, min_dynamic
     """
     root = zarr.open(store, mode='r')
     mip = _make_mip(root, colors,
         adjust_channel_brightness=adjust_channel_brightness,
-        p_lower=p_lower,
-        p_upper=p_upper,
-        clahe_limit=clahe_limit
+        clahe_limit=clahe_limit,
+        **stretch_kwargs
     )
     if not adjust_channel_brightness:
         # If we didn't adjust the channel brightness, adjust the overall brightness of the MIP
+        p_lower = stretch_kwargs.get('p_lower', 0.1)
+        p_upper = stretch_kwargs.get('p_upper', 99.9)
         logger.trace(f"Adjusting overall brightness of MIP with p_lower={p_lower} and p_upper={p_upper}")
         mip = adjust_brightness(mip, p_lower, p_upper)
     ski.io.imsave(mip_path, mip)
@@ -299,6 +369,7 @@ def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95
 if __name__ == "__main__":
     zarr_path = '/nearline/flynp/EASI-FISH_NP_SS_OMEZarr/NP51_R1_20240522/NP51_R1_4_1_SS75253_Tk_546_Mip_647_036x_CentralDapi.zarr/0'
     store = zarr.DirectoryStore(zarr_path)
-    make_mip_from_zarr(store, 'mip_adjusted.png', colors=['cyan'], adjust_channel_brightness=True, p_lower=0, p_upper=99.5)
+    make_mip_from_zarr(store, 'mip_adjusted.png', colors=['cyan'], adjust_channel_brightness=True,
+                       p_lower=0.1, p_upper=99.9, max_gain=8.0)
     make_thumbnail('mip_adjusted.png', 'mip_adjusted_thumbnail.jpg')
 

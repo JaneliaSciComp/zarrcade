@@ -9,11 +9,6 @@ def get_db():
     db = Database(db_url)
     return db
 
-class DotDict:
-    def __init__(self, dictionary):
-        for key, value in dictionary.items():
-            setattr(self, key, value)
-            
 @click.group(context_settings={'show_default': True})
 def cli():
     pass
@@ -34,18 +29,42 @@ def cli():
               help='Filename of the main auxiliary image in the auxiliary image folder.')
 @click.option('--thumbnail-name', type=str, default='thumbnail.jpg',
               help='Filename of the downsampled thumbnail image in the auxiliary image folder.')
-@click.option('--p-lower', type=float, default=0.1,
-              help='Lower percentile for thumbnail brightness adjustment.')
-@click.option('--p-upper', type=float, default=99.9,
-              help='Upper percentile for thumbnail brightness adjustment.')
-@click.option('--clahe-limit', type=float, default=0.06,
+@click.option('--clahe-limit', type=float, default=0.02,
               help='Clip limit for CLAHE (Contrast Limited Adaptive Histogram Equalization).')
-def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_metadata, no_aux, aux_path, aux_image_name, thumbnail_name, p_lower, p_upper, clahe_limit):
+@click.option('--p-lower', type=float, default=0.1,
+              help='Lower percentile for contrast stretching.')
+@click.option('--p-upper', type=float, default=99.5,
+              help='Upper percentile for contrast stretching.')
+@click.option('--max-gain', type=float, default=8.0,
+              help='Maximum allowed gain for contrast stretching.')
+@click.option('--target-max', type=int, default=65535,
+              help='Target maximum value (65535 for 16-bit, 255 for 8-bit).')
+@click.option('--ignore-zeros', is_flag=True, default=False,
+              help='Ignore zeros when computing percentiles.')
+@click.option('--k-bg', type=float, default=float('-inf'),
+              help='Background floor threshold (MADs above black level). Use -inf to disable (default).')
+@click.option('--min-dynamic', type=float, default=1e-6,
+              help='Minimum dynamic range to prevent division by zero.')
+def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_metadata, no_aux, aux_path,
+         aux_image_name, thumbnail_name, clahe_limit, p_lower, p_upper, max_gain, target_max,
+         ignore_zeros, k_bg, min_dynamic):
     """Load data into a collection.
 
     Walks a filesystem and discovers Zarrs, or loads images from a metadata file.
     Optionally imports metadata and generates 2d thumbnails."""
-    args = DotDict({
+
+    # Build stretch_kwargs from the stretch parameters
+    stretch_kwargs = {
+        'p_lower': p_lower,
+        'p_upper': p_upper,
+        'max_gain': max_gain,
+        'target_max': target_max,
+        'ignore_zeros': ignore_zeros,
+        'k_bg': k_bg,
+        'min_dynamic': min_dynamic,
+    }
+
+    args = {
         'skip_image_load': skip_image_load,
         'skip_thumbnail_creation': skip_thumbnail_creation,
         'only_with_metadata': only_with_metadata,
@@ -53,10 +72,9 @@ def load(settings_path, skip_image_load, skip_thumbnail_creation, only_with_meta
         'aux_path': aux_path,
         'aux_image_name': aux_image_name,
         'thumbnail_name': thumbnail_name,
-        'p_lower': p_lower,
-        'p_upper': p_upper,
         'clahe_limit': clahe_limit,
-    })
+        'stretch_kwargs': stretch_kwargs,
+    }
     from zarrcade.load import load
     load(settings_path, args)
 
@@ -69,7 +87,7 @@ def update(settings_path):
     The collection to update is identified by the collection name, which is determined
     from the 'name' property in the YAML file or from the filename. Only the collection
     settings are updated - images and metadata are not modified."""
-    args = DotDict({})
+    args = {}
     from zarrcade.load import update
     update(settings_path, args)
 
