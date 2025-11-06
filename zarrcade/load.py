@@ -132,19 +132,19 @@ def load(settings_path, args):
         logger.info(f"Updated {updated} rows of metadata")
 
     # Load the images
-    if not args.skip_image_load:
+    if not args['skip_image_load']:
         if collection_settings.discovery:
             data_url = str(collection_settings.discovery.data_url)
             fs = get_filestore(data_url)
             logger.info(f"Discovering images at URL: {data_url}")
             generator = partial(yield_images, fs, agents=[OmeZarrAgent()], exclude_paths=collection_settings.discovery.exclude_paths)
             db.persist_images(collection_name, generator,
-                only_with_metadata=args.only_with_metadata)
+                only_with_metadata=args['only_with_metadata'])
         else:
             logger.info(f"Loading images for collection {collection_name}")
 
             # Get all images from metadata
-            def generate_images():    
+            def generate_images():
                 for dbimage_metadata in db.get_all_image_metadata(collection_name):
                     # Split path into zarr path and any remaining path components
                     zarr_path = dbimage_metadata.path.split('.zarr')[0] + '.zarr'
@@ -156,11 +156,11 @@ def load(settings_path, args):
                         yield (zarr_path, image)
                     except Exception as e:
                         logger.exception(f"Error encoding image at {zarr_path}/{group_path}: {e}")
-                    
-            db.persist_images(collection_name, generate_images, 
-                            only_with_metadata=args.only_with_metadata)
 
-    if not args.no_aux and thumbnail_column is None:
+            db.persist_images(collection_name, generate_images,
+                            only_with_metadata=args['only_with_metadata'])
+
+    if not args['no_aux'] and thumbnail_column is None:
         # Load aux images and thumbnails
         logger.info("Loading thumbnails...")
 
@@ -174,7 +174,7 @@ def load(settings_path, args):
                 # Combine hostname and path, removing any double slashes
                 image_path = os.path.join(parsed.netloc, parsed.path.lstrip('/'))
             zarr_name, _ = os.path.splitext(image_path)
-            aux_path = os.path.join('static', args.aux_path, zarr_name, filename)
+            aux_path = os.path.join('static', args['aux_path'], zarr_name, filename)
             return aux_path
 
         thumb_fs = local_fs
@@ -189,37 +189,45 @@ def load(settings_path, args):
             updated_obj = {}
             aux_path = None
 
-            if args.aux_image_name and (not metadata or not metadata.aux_image_path):
-                aux_path = get_aux_path(dbimage.path, args.aux_image_name)
+            if args['aux_image_name']:
+                aux_path = get_aux_path(dbimage.path, args['aux_image_name'])
                 logger.info(f"Checking for auxiliary path: {aux_path}")
 
+                # Always check if the file exists locally, regardless of database state
                 if thumb_fs.exists(aux_path):
                     logger.info(f"Found auxiliary file: {aux_path}")
-                    updated_obj['aux_image_path'] = aux_path.replace('static/', '')
-                elif args.skip_thumbnail_creation:
+                    # Update database if it doesn't match
+                    if not metadata or not metadata.aux_image_path or metadata.aux_image_path != aux_path.replace('static/', ''):
+                        updated_obj['aux_image_path'] = aux_path.replace('static/', '')
+                elif args['skip_thumbnail_creation']:
                     logger.info(f"Skipping auxiliary file creation: {aux_path}")
                 elif not aux_path.startswith('s3://'):
                     logger.info(f"Creating auxiliary file: {aux_path}")
                     create_parent_dirs(aux_path)
-                    store = fs.get_store(dbimage.image_path)
+                    store = thumb_fs.get_store(dbimage.image_path)
                     colors = []
                     for channel in image.channels:
                         colors.append(channel['color'])
                     try:
-                        make_mip_from_zarr(store, aux_path, p_lower=args.p_lower, p_upper=args.p_upper, colors=colors, clahe_limit=args.clahe_limit)
+                        make_mip_from_zarr(store, aux_path, colors=colors,
+                                         clahe_limit=args['clahe_limit'],
+                                         **args['stretch_kwargs'])
                         logger.info(f"Wrote {aux_path}")
                         updated_obj['aux_image_path'] = aux_path.replace('static/', '')
                     except Exception as e:
                         logger.exception(f"Error making auxiliary image at {aux_path}: {e}")
                         aux_path = None
 
-            if args.thumbnail_name and (not metadata or not metadata.thumbnail_path):
-                tb_path = get_aux_path(dbimage.path, args.thumbnail_name)
+            if args['thumbnail_name']:
+                tb_path = get_aux_path(dbimage.path, args['thumbnail_name'])
 
+                # Always check if the file exists locally, regardless of database state
                 if thumb_fs.exists(tb_path):
                     logger.trace(f"Found thumbnail: {tb_path}")
-                    updated_obj['thumbnail_path'] = tb_path.replace('static/', '')
-                elif args.skip_thumbnail_creation:
+                    # Update database if it doesn't match
+                    if not metadata or not metadata.thumbnail_path or metadata.thumbnail_path != tb_path.replace('static/', ''):
+                        updated_obj['thumbnail_path'] = tb_path.replace('static/', '')
+                elif args['skip_thumbnail_creation']:
                     logger.trace(f"Skipping thumbnail creation: {tb_path}")
                 elif aux_path:
                     logger.trace(f"Creating thumbnail: {tb_path}")
@@ -228,7 +236,7 @@ def load(settings_path, args):
                     logger.info(f"Wrote {tb_path}")
                     updated_obj['thumbnail_path'] = tb_path.replace('static/', '')
                 else:
-                    logger.trace(f"Cannot make thumbnail for {path} without aux image")
+                    logger.trace(f"Cannot make thumbnail for {dbimage.path} without aux image")
 
             if updated_obj:
                 if not metadata:

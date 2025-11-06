@@ -1,16 +1,25 @@
+name: images
 label: "Dye Bioavailability"
 
 discovery:
-  data_url: https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
-    #data_url: /groups/lavis/lavislab/data_external/Dye_Bioavailability_images/2025-05-30_WF_20x_3Ch_MECP2.HT/Converted_OME-NGFF
+  #data_url: https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/Converted_OME-NGFF
+  data_url: /groups/lavis/lavislab/data_external/Dye_Bioavailability_images/Converted_OME-NGFF
 
-aux_image_mode: relative
+#aux_image_mode: relative
+aux_image_mode: static
 
 metadata_file: ./t3.csv
+title_template: "<font color='0000ff'>{DAPI (blue)}</font> <font color='00b300'>{FITC (green)}</font> <font color='ff8c1a'>{CY3 (orange)}</font> <font color='db00db'>{CY5 (magenta)}</font>"
 filters:
+  - column_name: "Species"
   - column_name: "Tissue"
   - column_name: "Pulse Dye"
   - column_name: "Chase Dye"
+hide_columns:
+    - "DAPI (blue)"
+    - "FITC (green)"
+    - "CY3 (orange)"
+    - "CY5 (magenta)"
 
 # Configure which viewers are available for this collection
 # If this field is omitted or empty, all viewers are available
