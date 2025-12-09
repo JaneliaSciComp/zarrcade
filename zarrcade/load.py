@@ -271,6 +271,34 @@ def load(settings_path, args):
                 else:
                     logger.warning(f"No metadata found for {dbimage.path} or {dbimage.image_path}")
 
+    # Report metadata entries from CSV that were not found on disk
+    if metadata_path:
+        logger.info("Checking for metadata entries without corresponding images...")
+
+        # Get all metadata entries
+        all_metadata = db.get_all_image_metadata(collection_name)
+
+        # Get all images and create a set of their paths
+        all_images = get_all_images(db, collection_name)
+        image_paths = set()
+        for dbimage in all_images:
+            image_paths.add(dbimage.path)
+            image_paths.add(dbimage.image_path)
+
+        # Find metadata entries without corresponding images
+        missing_names = []
+        for metadata in all_metadata:
+            # Check if this metadata path matches any image path
+            if metadata.path not in image_paths:
+                missing_names.append(metadata.path)
+
+        if missing_names:
+            logger.warning(f"Found {len(missing_names)} metadata entries without corresponding images on disk:")
+            for name in sorted(missing_names):
+                logger.warning(f"  - {name}")
+        else:
+            logger.info("All metadata entries have corresponding images on disk.")
+
     logger.info("Database initialization complete.")
 
 
