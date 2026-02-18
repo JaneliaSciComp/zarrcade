@@ -1,0 +1,25 @@
+[project]
+name = "zarrcade-cli"
+version = "2.0.0"
+description = "CLI for OME-Zarr MIP generation and discovery"
+authors = ["Konrad Rokicki <rokickik@janelia.hhmi.org>"]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[tasks]
+zarrcade = "python -m zarrcade_cli"
+
+[dependencies]
+python = "3.10.*"
+loguru = "0.7.*"
+fsspec = "2024.*"
+s3fs = "2024.*"
+zarr = "<3"
+pillow = "11.*"
+pathspec = "*"
+pandas = "2.2.*"
+click = "8.*"
+pip = "*"
+
+[pypi-dependencies]
+microfilm = "*"

@@ -1,121 +1,353 @@
-# Zarrcade 
+# Zarrcade
 
 ![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
 
-[![Python CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml/badge.svg)](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/python-ci.yml)
-
-Zarrcade makes it easy to generate simple web applications for browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images. It implements the following features:
-
-* Automatic discovery of OME-Zarr images on [any storage backend supported by fsspec](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations) including file system, AWS S3, Azure Blob, Google Cloud Storage, Dropbox, etc.
-* MIP/thumbnail generation
-* Web-based MIP gallery with convenient viewing links to OME-Zarr-compatible viewers
-* Searchable/filterable metadata and annotations
-* Build-in file proxy for non-public storage backends
-* Integration with the Allen Institute's [BioFile Finder](https://bff.allencell.org/)
-* Integration with external file proxies (e.g. [x2s3](https://github.com/JaneliaSciComp/x2s3))
+Zarrcade makes it easy to generate simple web applications for browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images.
 
 <img alt="Zarrcade screenshot" src="https://github.com/user-attachments/assets/57895e8f-b427-43d3-bd81-bae2acb449a7" />
 
-## Prerequisites
+## Features
 
-### 1. Install pixi
+* Automatic discovery of OME-Zarr images on local filesystems and [S3-compatible storage](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations)
+* MIP (Maximum Intensity Projection) and thumbnail generation with advanced contrast adjustment
+* Static web gallery with full-text search and filterable metadata -- no backend required
+* One-click viewing in [Neuroglancer](https://github.com/google/neuroglancer), [Avivator](https://github.com/hms-dbmi/viv), and other OME-Zarr-compatible viewers
+* Customizable branding, title templates, and viewer configuration
+* Docker deployment with runtime configuration via volume mount
+* URL-shareable state (search terms, filters, pagination)
 
-[Install pixi](https://pixi.sh/latest/) if you don't already have it.
 
-### 2. Clone this repo
+## Architecture
+
+Zarrcade has two independent components:
+
+| Component | Purpose | Technology |
+|-----------|---------|------------|
+| **CLI** (`cli/`) | Discover zarr containers and generate MIPs/thumbnails | Python (Click, zarr, fsspec, microfilm) |
+| **Web SPA** (`web/`) | Display searchable image gallery from CSV data | React + TypeScript (Vite, PapaParse, Pico CSS) |
+
+The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA is served as static files via nginx in Docker.
+
+```
+┌─────────────┐         ┌─────────┐         ┌────────────┐
+│  OME-Zarr   │──CLI───>│  CSV +  │──HTTP──>│  React SPA │
+│  Images     │         │  MIPs   │         │  (browser) │
+└─────────────┘         └─────────┘         └────────────┘
+```
+
+
+## Quick Start
+
+### Prerequisites
+
+* [Pixi](https://pixi.sh/latest/) (for the CLI)
+* [Node.js](https://nodejs.org/) 20+ (for web development)
+* [Docker](https://www.docker.com/) (for deployment)
+
+### Example 1: Fly-eFISH
+
+Discover OME-Zarr images from S3 and view them in the gallery:
 
 ```bash
+# Clone and set up the CLI
 git clone https://github.com/JaneliaSciComp/zarrcade.git
-cd zarrcade
-```
-
-### 3. Initialize the pixi environment
-
-```bash
+cd zarrcade/cli
 pixi install
+
+# Discover zarr containers (or use the pre-made CSV in examples/)
+pixi run zarrcade discover s3://janelia-data-examples/fly-efish \
+    -o ../examples/flyefish.csv --include-metadata
+
+# Generate thumbnails
+pixi run zarrcade mips --input-csv ../examples/flyefish.csv \
+    -o ../examples/thumbnails --output-csv ../examples/flyefish-with-thumbs.csv
+
+# Serve the gallery with Docker
+cd ../docker
+CONFIG_FILE=../examples/config-flyefish.json docker compose up
 ```
 
-Now you can run the `pixi run zarrcade` command.
+### Example 2: OpenOrganelle
 
-
-## Examples
-
-To try a simple example, use one of following commands to import the example data before starting the server.
-
-### Example 1: Discover all OME-Zarr images stored within a given location
-
-This example runs Zarr discovery on an S3 bucket. The metadata file adds textual annotations for each image. 
+This example uses pre-existing thumbnail URLs, so no MIP generation is needed:
 
 ```bash
-pixi run zarrcade load examples/flyefish.yaml
-pixi run zarrcade start
+cd docker
+CONFIG_FILE=../examples/config-openorganelle.json docker compose up
 ```
 
-### Example 2: Import OME-Zarr images specified in a spreadsheet
+Open [http://localhost:8080](http://localhost:8080) to browse the gallery.
 
-In this example, absolute paths are provided to [Open Organelle](https://openorganelle.janelia.org/) Zarr images in the [metadata file](examples/openorganelle.tsv), along with absolute thumbnail paths.
+
+## CLI Usage
+
+The CLI has two commands: **discover** and **mips**. Run from the `cli/` directory.
+
+### Discover OME-Zarr Containers
+
+Scan a directory tree for OME-Zarr containers and output their paths and metadata as CSV:
 
 ```bash
-pixi run zarrcade load examples/openorganelle.yaml
-pixi run zarrcade start
+pixi run zarrcade discover /path/to/zarrs -o images.csv
+
+# Include image metadata (dimensions, channels, compression, etc.)
+pixi run zarrcade discover /path/to/zarrs -o images.csv --include-metadata
+
+# Discover from S3 with a base URL for web access
+pixi run zarrcade discover s3://bucket/zarrs -o images.csv \
+    --base-url https://bucket.s3.amazonaws.com/zarrs
+
+# Exclude paths matching a pattern
+pixi run zarrcade discover /path/to/zarrs -o images.csv --exclude "*.backup"
+
+# Output as TSV
+pixi run zarrcade discover /path/to/zarrs -o images.tsv --format tsv
 ```
 
-## Loading your own data
+**Output columns:** `path`, `name`, `group_path`, `uri` (if `--base-url`), and optionally `axes_order`, `dimensions`, `dimensions_voxels`, `voxel_sizes`, `chunk_size`, `num_channels`, `num_timepoints`, `dtype`, `compression`, `channel_colors`, `channel_names`.
 
-### 1. Create OME-Zarr images
+### Generate MIPs and Thumbnails
 
-If your images are not already in OME-Zarr format, you will need to convert them, e.g. using bioformats2raw:
+Create Maximum Intensity Projections and thumbnails from zarr containers:
 
 ```bash
-bioformats2raw -w 128 -h 128 -z 64 --compression zlib /path/to/input /path/to/zarr
+# Generate from a directory scan
+pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails
+
+# Generate from a CSV (reads zarr paths from the first column)
+pixi run zarrcade mips --input-csv images.csv -o /output/thumbnails
+
+# Write an updated CSV with thumbnail paths
+pixi run zarrcade mips --input-csv images.csv -o /output/thumbnails \
+    --output-csv images-with-thumbs.csv
+
+# Skip already-generated thumbnails
+pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --skip-existing
+
+# Use nested output directories (preserves zarr path structure)
+pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --naming nested
 ```
 
-If you have many images to convert, use the [nf-omezarr Nextflow pipeline](https://github.com/JaneliaSciComp/nf-omezarr) to efficiently run bioformats2raw on a collection of images. This pipeline also lets you scale the conversion processes to your available compute resources (cluster, cloud, etc).
-
-### 2. Create YAML configuration for your data collection
-
-There is [documentation](docs/Configuration.md) on creating collection settings files, or you can follow one of the [examples](examples/).
+**Image processing options:** `--thumbnail-size`, `--mip-size`, `--clahe-limit`, `--p-lower`, `--p-upper`, `--max-gain`, `--target-max`, `--ignore-zeros`, `--k-bg`, `--min-dynamic`. Run `pixi run zarrcade mips --help` for full details.
 
 
-### 3. Import images and metadata into Zarrcade
+## Web SPA Configuration
 
-You can import images into Zarrcade using the provided command line script:
+The SPA is configured via a `config.json` file. Here is a complete example:
+
+```json
+{
+  "dataUrl": "https://example.com/images.csv",
+  "title": "My Image Collection",
+  "data": {
+    "delimiter": ",",
+    "pathColumn": "path",
+    "baseUrl": "https://s3.example.com/zarrs",
+    "thumbnailColumn": "thumbnail_url",
+    "thumbnailBaseUrl": "https://s3.example.com/thumbnails"
+  },
+  "display": {
+    "titleTemplate": "{name} - {date}",
+    "hideColumns": ["path", "thumbnail_url"],
+    "pageSize": 50
+  },
+  "filters": [
+    { "column": "species", "label": "Species" },
+    { "column": "probes", "label": "Probes", "dataType": "csv" }
+  ],
+  "viewers": [
+    {
+      "name": "Neuroglancer",
+      "icon": "neuroglancer.png",
+      "urlTemplate": "https://neuroglancer-demo.appspot.com/#!{URL}",
+      "enabled": true
+    }
+  ],
+  "branding": {
+    "headerLeftLogo": "https://example.com/logo.png",
+    "footerLinks": [
+      { "label": "About", "url": "https://example.com/about" }
+    ]
+  }
+}
+```
+
+### Configuration Reference
+
+| Section | Field | Description | Default |
+|---------|-------|-------------|---------|
+| *(root)* | `dataUrl` | **Required.** URL to CSV/TSV data file | -- |
+| *(root)* | `title` | Page title | `"Zarrcade"` |
+| `data` | `delimiter` | CSV delimiter: `","`, `"\t"`, or `"auto"` | `","` |
+| `data` | `pathColumn` | Column containing zarr paths | `"path"` |
+| `data` | `baseUrl` | Base URL prepended to relative paths | -- |
+| `data` | `thumbnailColumn` | Column containing thumbnail paths | -- |
+| `data` | `thumbnailBaseUrl` | Base URL prepended to thumbnail paths | -- |
+| `display` | `titleTemplate` | Template with `{columnName}` variables | -- |
+| `display` | `titleColumn` | Column to use as card title | -- |
+| `display` | `hideColumns` | Columns to hide from card display | `[]` |
+| `display` | `pageSize` | Results per page | `50` |
+| `filters[]` | `column` | CSV column to filter on | -- |
+| `filters[]` | `label` | Display label for the dropdown | -- |
+| `filters[]` | `dataType` | `"string"` or `"csv"` (comma-separated values in cells) | `"string"` |
+| `viewers[]` | `name` | Display name | -- |
+| `viewers[]` | `icon` | Icon filename (in `/icons/` directory) | -- |
+| `viewers[]` | `urlTemplate` | URL template with `{URL}` placeholder | -- |
+| `viewers[]` | `enabled` | Show/hide this viewer | -- |
+| `branding` | `headerLeftLogo` | URL for left header logo | -- |
+| `branding` | `headerRightLogo` | URL for right header logo | -- |
+| `branding` | `footerLinks` | Array of `{label, url}` footer links | `[]` |
+
+### URL Parameters
+
+The SPA supports these URL parameters for deep linking:
+
+| Parameter | Description |
+|-----------|-------------|
+| `?config=<url>` | Load configuration from a remote URL |
+| `?data=<url>` | Override the `dataUrl` from config |
+| `?search=<term>` | Pre-set search term |
+| `?page=<number>` | Navigate to a specific page |
+| `?<column>=<value>` | Pre-set a filter value (column name as key) |
+
+### Built-in Viewers
+
+These viewers are available by default (configure via `viewers` array):
+
+| Viewer | Default | Description |
+|--------|---------|-------------|
+| [Neuroglancer](https://github.com/google/neuroglancer) | Enabled | 3D volumetric viewer by Google |
+| [Avivator](https://github.com/hms-dbmi/viv) | Enabled | OME-NGFF viewer by HMS-DBMI |
+| [OME-NGFF Validator](https://ome.github.io/ome-ngff-validator/) | Disabled | Validates OME-NGFF compliance |
+| [Vol-E](https://volumeviewer.allencell.org/) | Disabled | 3D Cell Viewer by Allen Institute |
+| [BioNGFF](https://biongff.github.io/biongff-viewer/) | Disabled | BioNGFF web viewer |
+
+
+## Docker Deployment
+
+### Build and Run
 
 ```bash
-pixi run zarrcade load path/to/mycollection.yaml
+cd docker
+docker compose build
+docker compose up
 ```
 
-This will automatically create a local Sqlite database containing a Zarrcade **collection** named "mycollection" and populate it with information about the images in the specified directory. By default, this will also create MIPs and thumbnails for each image in `./static/.zarrcade` (unless your metadata file already contains thumbnail paths). 
+The gallery is served at [http://localhost:8080](http://localhost:8080).
 
-Read more about the import options in the [Data Import](./docs/DataImport.md) section of the documentation.
+### Custom Configuration
 
-### 4. Run the Zarrcade web application
-
-Start the development server, pointing it to your OME-Zarr data:
+Mount a custom `config.json` at runtime:
 
 ```bash
-pixi run dev-launch
+CONFIG_FILE=/path/to/my-config.json docker compose up
 ```
 
-This is equivalent to running Uvicorn like this:
+Or use a volume mount directly:
+
 ```bash
-pixi run uvicorn zarrcade.serve:app --port 8000 --reload
+docker run -p 8080:80 \
+    -v /path/to/config.json:/usr/share/nginx/html/config.json:ro \
+    zarrcade
 ```
 
-Your images and annotations will be browseable at [http://0.0.0.0:8000](http://0.0.0.0:8000). Read the documentation below for more details on how to configure the web UI and deploy the service in production.
+### Serving Data Files
+
+The CSV data file and thumbnail images must be accessible via HTTP from the browser. Common approaches:
+
+1. **Same server**: Place CSV and thumbnails in a web-accessible directory and use relative or absolute URLs in `config.json`
+2. **S3/cloud storage**: Host on S3 (or similar) with public read access and use the HTTPS URL
+3. **Separate web server**: Serve data files from another origin (CORS headers may be needed)
 
 
-## Documentation
+## Web Development
 
-* [Overview](./docs/Overview.md) - learn about the data model and overall architecture
-* [Configuration](./docs/Configuration.md) - configure the Zarrcade service using settings.yaml or environment variables
-* [Deployment](./docs/Deployment.md) - instructions for deploying the service with Docker and in production mode
-* [Development Notes](./docs/Development.md) - technical notes for developers working on Zarrcade itself
+```bash
+cd web
+npm install
+npm run dev       # Start dev server with hot reload
+npm run build     # Production build to dist/
+npm run preview   # Preview the production build
+```
+
+The dev server runs at [http://localhost:5173](http://localhost:5173). Place a `config.json` in `web/public/` pointing to your data, or use `?data=<url>` to load data directly.
+
+
+## CSV Data Format
+
+The SPA reads standard CSV or TSV files. Requirements:
+
+* One row per image
+* A **path column** (configurable, default: `path`) containing zarr container paths or full URIs
+* Optional **thumbnail column** containing thumbnail image paths or URLs
+* Any additional columns become searchable metadata displayed on image cards
+
+Example CSV:
+```csv
+path,name,species,tissue,thumbnail_url
+experiment1/sample_a.zarr,Sample A,Mouse,Brain,thumbnails/sample_a.jpg
+experiment2/sample_b.zarr,Sample B,Human,Liver,thumbnails/sample_b.jpg
+```
+
+
+## Project Structure
+
+```
+zarrcade/
+├── cli/                        # Python CLI package
+│   ├── pixi.toml              # Pixi environment and dependencies
+│   └── zarrcade_cli/          # Source code
+│       ├── __main__.py        # CLI entry point (Click)
+│       ├── commands/
+│       │   ├── discover.py    # zarrcade discover command
+│       │   └── generate_mips.py  # zarrcade mips command
+│       └── core/
+│           ├── agent.py       # Image discovery protocol
+│           ├── filestore.py   # Storage abstraction (local + S3)
+│           ├── model.py       # Data models (Image, Channel, Axis)
+│           ├── omezarr.py     # OME-Zarr discovery agent
+│           └── thumbnails.py  # MIP generation (microfilm + CLAHE)
+│
+├── web/                        # React + TypeScript SPA
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── public/
+│   │   ├── config.json        # Default configuration
+│   │   └── icons/             # Viewer icons and fallback image
+│   └── src/
+│       ├── App.tsx            # Main application component
+│       ├── config.ts          # Configuration loader
+│       ├── types.ts           # TypeScript type definitions
+│       ├── components/        # React UI components
+│       ├── hooks/             # React hooks (data, search, filters, pagination, theme)
+│       ├── utils/             # Utilities (CSV, viewers, clipboard)
+│       └── styles/            # CSS (Pico CSS framework)
+│
+├── docker/                     # Docker deployment
+│   ├── Dockerfile             # Multi-stage build (Node -> nginx)
+│   ├── docker-compose.yml
+│   └── nginx.conf             # nginx config with SPA routing and caching
+│
+└── examples/                   # Example datasets and configurations
+    ├── flyefish.csv
+    ├── openorganelle.tsv
+    ├── t3.csv
+    ├── config-flyefish.json
+    ├── config-openorganelle.json
+    └── config-t3.json
+```
 
 
 ## Known Limitations
 
-* The `OmeZarrAgent` does not currently support the full OME-Zarr specification, and may fail with certain types of images. If you encounter an error with your data, please open an issue on the [Github repository](https://github.com/JaneliaSciComp/zarrcade/issues).
+* The OME-Zarr discovery agent does not support the full OME-Zarr specification and may fail with certain image layouts. If you encounter an error, please [open an issue](https://github.com/JaneliaSciComp/zarrcade/issues).
+* The SPA loads the entire CSV into the browser, so very large datasets (100k+ rows) may impact performance.
+* Search is substring-based across all columns; there is no field-specific or boolean query syntax.
+
+
+## License
+
+[BSD 3-Clause License](LICENSE) - Howard Hughes Medical Institute
 
 
 ## Attributions

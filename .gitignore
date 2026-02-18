@@ -4,6 +4,9 @@ __pycache__
 .coverage
 *.egg-info
 
+# Web
+node_modules
+
 # Junk
 .nfs*
 .DS_Store
@@ -21,7 +24,6 @@ static/ext
 certs
 *.env
 settings*.yaml
-
 
 # pixi environments
 .pixi

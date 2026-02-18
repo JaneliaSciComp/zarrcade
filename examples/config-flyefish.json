@@ -1,0 +1,39 @@
+{
+  "dataUrl": "https://example.com/flyefish.csv",
+  "title": "Fly-eFISH",
+
+  "data": {
+    "delimiter": ",",
+    "pathColumn": "Path",
+    "baseUrl": "https://janelia-data-examples.s3.amazonaws.com/fly-efish",
+    "thumbnailBaseUrl": "https://example.com/thumbnails"
+  },
+
+  "display": {
+    "titleColumn": "Image Name",
+    "hideColumns": ["Probes", "Image Name"],
+    "pageSize": 50
+  },
+
+  "filters": [
+    { "column": "Driver line", "label": "Driver line" },
+    { "column": "Probes", "label": "Probes", "dataType": "csv" },
+    { "column": "Region", "label": "Region" },
+    { "column": "Zoom", "label": "Zoom" }
+  ],
+
+  "viewers": [
+    {
+      "name": "Neuroglancer",
+      "icon": "neuroglancer.png",
+      "urlTemplate": "https://neuroglancer-demo.appspot.com/#!{URL}",
+      "enabled": true
+    },
+    {
+      "name": "Avivator",
+      "icon": "vizarr_logo.png",
+      "urlTemplate": "https://janeliascicomp.github.io/viv/?image_url={URL}",
+      "enabled": true
+    }
+  ]
+}
