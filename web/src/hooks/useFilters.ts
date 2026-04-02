@@ -44,29 +44,35 @@ export function useFilters(
       options[config.column] = new Set<string>();
     });
 
+    const hasEmpty: Record<string, boolean> = {};
+
     data.forEach((row) => {
       filterConfigs.forEach((config) => {
         const value = row[config.column];
-        if (value !== undefined && value !== null && value !== '') {
-          if (config.dataType === 'csv' && typeof value === 'string') {
-            // Split CSV values
-            value.split(',').forEach((v) => {
-              const trimmed = v.trim();
-              if (trimmed) {
-                options[config.column].add(trimmed);
-              }
-            });
-          } else {
-            options[config.column].add(String(value));
-          }
+        if (value === undefined || value === null || value === '') {
+          hasEmpty[config.column] = true;
+        } else if (config.dataType === 'csv' && typeof value === 'string') {
+          // Split CSV values
+          value.split(',').forEach((v) => {
+            const trimmed = v.trim();
+            if (trimmed) {
+              options[config.column].add(trimmed);
+            }
+          });
+        } else {
+          options[config.column].add(String(value));
         }
       });
     });
 
-    // Convert sets to sorted arrays
+    // Convert sets to sorted arrays, with "None" first if there are empty rows
     const result: Record<string, string[]> = {};
     Object.entries(options).forEach(([column, valueSet]) => {
-      result[column] = Array.from(valueSet).sort();
+      const sorted = Array.from(valueSet).sort();
+      if (hasEmpty[column]) {
+        sorted.unshift('None');
+      }
+      result[column] = sorted;
     });
 
     return result;
@@ -119,8 +125,11 @@ export function useFilters(
     return data.filter((row) => {
       return Object.entries(activeFilters).every(([column, filterValue]) => {
         const cellValue = row[column];
-        if (cellValue === undefined || cellValue === null) {
+        if (cellValue === undefined || cellValue === null || cellValue === '') {
           return filterValue === 'None';
+        }
+        if (filterValue === 'None') {
+          return false;
         }
 
         const config = filterConfigs.find((c) => c.column === column);
