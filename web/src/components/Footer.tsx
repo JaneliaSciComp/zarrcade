@@ -14,7 +14,11 @@ export function Footer({ config }: FooterProps) {
   return (
     <footer className="footer">
       <div className="footer-content">
-        <span>Powered by Zarrcade</span>
+        <span>
+          <a href="https://github.com/JaneliaSciComp/zarrcade" target="_blank" rel="noopener noreferrer" style={{ color: 'white', textDecoration: 'none' }}>
+            <i className="fa-brands fa-github" style={{ fontSize: '1.5rem', marginRight: '0.5rem' }} /><span style={{ position: 'relative', top: '-1px' }}>Made with Zarrcade</span>
+          </a>
+        </span>
         {links.length > 0 && (
           <div className="footer-links">
             {links.map((link, index) => (
