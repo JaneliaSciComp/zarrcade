@@ -33,11 +33,9 @@ export function SearchBar({ value, onChange, onReset }: SearchBarProps) {
         aria-label="Search"
       />
       <button type="submit">Search</button>
-      {(value || inputValue) && (
-        <button type="button" className="secondary" onClick={handleReset}>
-          Reset
-        </button>
-      )}
+      <button type="button" className="secondary" onClick={handleReset}>
+        Reset
+      </button>
     </form>
   );
 }
