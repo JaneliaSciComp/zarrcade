@@ -42,7 +42,7 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
           }}
         />
         <div className="image-card-overlay">
-          <div className="overlay-buttons">
+          <div className="overlay-buttons" onClick={(e) => e.stopPropagation()}>
             <button
               className="overlay-button"
               onClick={handleCopyLink}
