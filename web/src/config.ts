@@ -8,31 +8,31 @@ const DEFAULT_VIEWERS: Viewer[] = [
   {
     name: 'Neuroglancer',
     icon: 'neuroglancer.png',
-    urlTemplate: 'https://neuroglancer-demo.appspot.com/#!{URL}',
+    urlTemplate: "https://neuroglancer-demo.appspot.com/#!{\"layers\":[{\"name\":\"{NAME}\",\"source\":\"{URL}\",\"type\":\"auto\"}],\"selectedLayer\":{\"visible\":true,\"layer\":\"{NAME}\"},\"layout\":\"4panel-alt\"}",
     enabled: true,
   },
   {
     name: 'Avivator',
     icon: 'vizarr_logo.png',
-    urlTemplate: 'https://janeliascicomp.github.io/viv/?image_url={URL}',
+    urlTemplate: 'https://janeliascicomp.github.io/viv/?image_url={ENCODED_URL}',
     enabled: true,
   },
   {
     name: 'OME-NGFF Validator',
     icon: 'check.png',
-    urlTemplate: 'https://ome.github.io/ome-ngff-validator/?source={URL}',
+    urlTemplate: 'https://ome.github.io/ome-ngff-validator/?source={ENCODED_URL}',
     enabled: false,
   },
   {
     name: 'Vol-E',
     icon: 'aics_website-3d-cell-viewer.png',
-    urlTemplate: 'https://volumeviewer.allencell.org/viewer?url={URL}',
+    urlTemplate: 'https://volumeviewer.allencell.org/viewer?url={ENCODED_URL}',
     enabled: false,
   },
   {
     name: 'BioNGFF',
     icon: 'vizarr_logo.png',
-    urlTemplate: 'https://biongff.github.io/biongff-viewer/?source={URL}',
+    urlTemplate: 'https://biongff.github.io/biongff-viewer/?source={ENCODED_URL}',
     enabled: false,
   },
 ];

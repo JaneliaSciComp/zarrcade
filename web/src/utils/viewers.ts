@@ -7,10 +7,18 @@ import type { Viewer } from '../types';
 /**
  * Generate a viewer URL by substituting the data URL into the template
  */
+function extractName(url: string): string {
+  const path = url.replace(/\/+$/, '');
+  const basename = path.split('/').pop() || 'image';
+  return basename.replace(/\.zarr$/i, '');
+}
+
 export function getViewerUrl(viewer: Viewer, dataUrl: string): string {
-  // URL encode the data URL for safety
-  const encodedUrl = encodeURIComponent(dataUrl);
-  return viewer.urlTemplate.replace('{URL}', encodedUrl);
+  const name = extractName(dataUrl);
+  return viewer.urlTemplate
+    .split('{ENCODED_URL}').join(encodeURIComponent(dataUrl))
+    .split('{URL}').join(dataUrl)
+    .split('{NAME}').join(name);
 }
 
 /**
