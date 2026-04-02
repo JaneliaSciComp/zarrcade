@@ -6,7 +6,7 @@ __pycache__
 
 # Web
 node_modules
-config.local.json
+config.local.*
 web/public/data
 
 # Junk
