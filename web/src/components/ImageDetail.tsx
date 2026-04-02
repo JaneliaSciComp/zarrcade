@@ -44,7 +44,8 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
         <h2 dangerouslySetInnerHTML={{ __html: title }} />
         <div className="image-detail-actions">
           <button className="outline" onClick={handleCopyLink} title="Copy data URL">
-            {showCopied ? 'Copied!' : 'Copy data link'}
+            <i className={showCopied ? 'fa-regular fa-circle-check' : 'fa-regular fa-clipboard'} />
+            {showCopied ? ' Copied!' : ' Copy data link'}
           </button>
           {viewers.map((viewer) => (
             <a

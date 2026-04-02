@@ -48,7 +48,7 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
               onClick={handleCopyLink}
               title="Copy data URL"
             >
-              {showCopied ? '✓' : '📋'}
+              <i className={showCopied ? 'fa-regular fa-circle-check' : 'fa-regular fa-clipboard'} />
             </button>
             {viewers.map((viewer) => (
               <ViewerButton key={viewer.name} viewer={viewer} dataUrl={imagePath} />
