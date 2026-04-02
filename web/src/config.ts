@@ -71,14 +71,28 @@ export async function loadConfig(): Promise<AppConfig> {
       console.warn('Failed to load config from URL param:', e);
     }
   } else {
-    // Try to load from /config.json
+    // Try config.local.json first (gitignored, for development)
+    let loaded = false;
     try {
-      const response = await fetch('./config.json');
-      if (response.ok) {
-        config = await response.json();
+      const localResponse = await fetch('./config.local.json');
+      if (localResponse.ok) {
+        config = await localResponse.json();
+        loaded = true;
       }
     } catch (e) {
-      console.warn('No config.json found, using defaults');
+      // config.local.json not found, fall through
+    }
+
+    // Fall back to config.json
+    if (!loaded) {
+      try {
+        const response = await fetch('./config.json');
+        if (response.ok) {
+          config = await response.json();
+        }
+      } catch (e) {
+        console.warn('No config.json found, using defaults');
+      }
     }
   }
 

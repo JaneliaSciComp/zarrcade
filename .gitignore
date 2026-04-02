@@ -6,6 +6,8 @@ __pycache__
 
 # Web
 node_modules
+config.local.json
+web/public/data
 
 # Junk
 .nfs*
