@@ -11,9 +11,10 @@ import { copyToClipboard } from '../utils/clipboard';
 interface ImageCardProps {
   row: ImageRow;
   config: AppConfig;
+  onClick: () => void;
 }
 
-export function ImageCard({ row, config }: ImageCardProps) {
+export function ImageCard({ row, config, onClick }: ImageCardProps) {
   const [showCopied, setShowCopied] = useState(false);
 
   const imagePath = getImagePath(row, config);
@@ -30,7 +31,7 @@ export function ImageCard({ row, config }: ImageCardProps) {
   };
 
   return (
-    <div className="image-card">
+    <div className="image-card" onClick={onClick} style={{ cursor: 'pointer' }}>
       <div className="image-card-thumbnail">
         <img
           src={thumbnailUrl}

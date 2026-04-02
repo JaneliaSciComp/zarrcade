@@ -354,6 +354,86 @@ body {
   text-decoration: underline;
 }
 
+/* Image Detail Page */
+.image-detail-nav {
+  margin-bottom: 1rem;
+}
+
+.image-detail-back {
+  background: none;
+  border: none;
+  color: var(--pico-primary);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem 0;
+}
+
+.image-detail-back:hover {
+  text-decoration: underline;
+}
+
+.image-detail-header {
+  margin-bottom: 1.5rem;
+}
+
+.image-detail-header h2 {
+  margin-bottom: 0.75rem;
+}
+
+.image-detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.image-detail-actions a[role="button"],
+.image-detail-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  margin: 0;
+}
+
+.image-detail-viewer-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.image-detail-body {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.image-detail-thumbnail {
+  flex-shrink: 0;
+}
+
+.image-detail-thumbnail img {
+  max-width: 400px;
+  max-height: 400px;
+  border-radius: var(--pico-border-radius);
+}
+
+.image-detail-metadata {
+  flex: 1;
+  min-width: 0;
+}
+
+.image-detail-metadata th {
+  white-space: nowrap;
+  font-weight: 600;
+  width: 1%;
+}
+
+.image-detail-metadata td {
+  word-break: break-word;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .top-bar {
@@ -394,6 +474,14 @@ body {
   .footer-content {
     flex-direction: column;
     text-align: center;
+  }
+
+  .image-detail-body {
+    flex-direction: column;
+  }
+
+  .image-detail-thumbnail img {
+    max-width: 100%;
   }
 }
 

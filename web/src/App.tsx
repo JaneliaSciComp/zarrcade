@@ -2,8 +2,8 @@
  * Main App component for Zarrcade SPA
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import type { AppConfig } from './types';
+import { useState, useEffect } from 'react';
+import type { AppConfig, ImageRow } from './types';
 import { loadConfig } from './config';
 import { useData } from './hooks/useData';
 import { useSearch } from './hooks/useSearch';
@@ -15,11 +15,13 @@ import { SearchBar } from './components/SearchBar';
 import { FilterDropdowns } from './components/FilterDropdowns';
 import { Gallery } from './components/Gallery';
 import { Pagination } from './components/Pagination';
+import { ImageDetail } from './components/ImageDetail';
 import { Footer } from './components/Footer';
 
 function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<ImageRow | null>(null);
   const { theme, toggleTheme } = useTheme();
 
   // Load configuration
@@ -63,6 +65,15 @@ function App() {
     clearFilters();
   };
 
+  const handleImageClick = (row: ImageRow) => {
+    setSelectedImage(row);
+    window.scrollTo(0, 0);
+  };
+
+  const handleBack = () => {
+    setSelectedImage(null);
+  };
+
   // Error state
   if (configError) {
     return (
@@ -101,30 +112,45 @@ function App() {
       <TopBar config={config} theme={theme} onToggleTheme={toggleTheme} />
 
       <main className="main-content">
-        <div className="controls">
-          <SearchBar
-            value={searchTerm}
-            onChange={setSearchTerm}
-            onReset={handleReset}
+        {selectedImage ? (
+          <ImageDetail
+            row={selectedImage}
+            columns={columns}
+            config={config}
+            onBack={handleBack}
           />
-          <FilterDropdowns
-            filters={filterConfigs}
-            filterOptions={filterOptions}
-            activeFilters={activeFilters}
-            onFilterChange={setFilter}
-          />
-        </div>
+        ) : (
+          <>
+            <div className="controls">
+              <SearchBar
+                value={searchTerm}
+                onChange={setSearchTerm}
+                onReset={handleReset}
+              />
+              <FilterDropdowns
+                filters={filterConfigs}
+                filterOptions={filterOptions}
+                activeFilters={activeFilters}
+                onFilterChange={setFilter}
+              />
+            </div>
 
-        <Gallery data={paginatedData} config={config} />
+            <Gallery
+              data={paginatedData}
+              config={config}
+              onImageClick={handleImageClick}
+            />
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          startIndex={startIndex}
-          endIndex={endIndex}
-          onPageChange={goToPage}
-        />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={goToPage}
+            />
+          </>
+        )}
       </main>
 
       <Footer config={config} />

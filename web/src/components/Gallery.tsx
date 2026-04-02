@@ -8,9 +8,10 @@ import { ImageCard } from './ImageCard';
 interface GalleryProps {
   data: ImageRow[];
   config: AppConfig;
+  onImageClick: (row: ImageRow) => void;
 }
 
-export function Gallery({ data, config }: GalleryProps) {
+export function Gallery({ data, config, onImageClick }: GalleryProps) {
   if (data.length === 0) {
     return (
       <div className="gallery-empty">
@@ -22,7 +23,12 @@ export function Gallery({ data, config }: GalleryProps) {
   return (
     <div className="gallery">
       {data.map((row, index) => (
-        <ImageCard key={index} row={row} config={config} />
+        <ImageCard
+          key={index}
+          row={row}
+          config={config}
+          onClick={() => onImageClick(row)}
+        />
       ))}
     </div>
   );
