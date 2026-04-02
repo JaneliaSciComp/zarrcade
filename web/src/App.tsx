@@ -10,6 +10,7 @@ import { useSearch } from './hooks/useSearch';
 import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useTheme } from './hooks/useTheme';
+import { downloadCsv, getBioFileFinderUrl } from './utils/csv';
 import { TopBar } from './components/TopBar';
 import { SearchBar } from './components/SearchBar';
 import { FilterDropdowns } from './components/FilterDropdowns';
@@ -163,6 +164,23 @@ function App() {
                 activeFilters={activeFilters}
                 onFilterChange={setFilter}
               />
+            </div>
+
+            <div className="gallery-actions">
+              <button
+                className="gallery-action-link"
+                onClick={() => downloadCsv(filteredData, columns, config, 'metadata.csv')}
+              >
+                <i className="fa-solid fa-download" /> Download metadata as CSV
+              </button>
+              <a
+                className="gallery-action-link"
+                href={getBioFileFinderUrl(config)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <i className="fa-solid fa-table-cells" /> View collection in BioFile Finder
+              </a>
             </div>
 
             <Gallery

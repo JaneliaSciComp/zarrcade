@@ -154,11 +154,37 @@ body {
   margin: 0;
 }
 
+/* Gallery Actions */
+.gallery-actions {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-bottom: 0;
+}
+
+.gallery-action-link {
+  background: none;
+  border: none;
+  color: var(--pico-primary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gallery-action-link:hover {
+  text-decoration: underline;
+}
+
 /* Gallery Grid */
 .gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1.5rem;
+  margin-top: 2rem;
   margin-bottom: 2rem;
 }
 

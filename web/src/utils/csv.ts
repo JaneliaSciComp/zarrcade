@@ -95,3 +95,51 @@ export function getVisibleColumns(columns: string[], config: AppConfig): string[
   const hideColumns = config.display?.hideColumns || [];
   return columns.filter((col) => !hideColumns.includes(col));
 }
+
+/**
+ * Generate a CSV string from data rows and trigger a download
+ */
+export function downloadCsv(data: ImageRow[], columns: string[], config: AppConfig, filename: string): void {
+  const visibleColumns = getVisibleColumns(columns, config);
+  const escape = (val: string) => {
+    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  };
+
+  const header = visibleColumns.map(escape).join(',');
+  const rows = data.map((row) =>
+    visibleColumns.map((col) => escape(String(row[col] ?? ''))).join(',')
+  );
+  const csv = [header, ...rows].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Build a BioFile Finder URL for the current data
+ */
+export function getBioFileFinderUrl(config: AppConfig): string {
+  const absoluteUrl = new URL(config.dataUrl, window.location.href).href;
+  const title = config.title || 'zarrcade';
+  const source = JSON.stringify({ name: `${title}-data`, type: 'csv', uri: absoluteUrl });
+
+  // Build column widths: title column at 0.5, then first 3 filter columns
+  const titleCol = config.display?.titleColumn || 'File Name';
+  const filterCols = (config.filters || []).slice(0, 3).map((f) => f.column);
+  const columnWidths = [titleCol + ':0.5', ...filterCols].join(',');
+
+  const params = new URLSearchParams();
+  params.set('c', columnWidths);
+  params.set('v', '3');
+  params.set('source', source);
+
+  return `https://bff.allencell.org/app?${params.toString()}`;
+}
