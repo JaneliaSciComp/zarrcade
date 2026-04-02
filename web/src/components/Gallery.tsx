@@ -7,11 +7,12 @@ import { ImageCard } from './ImageCard';
 
 interface GalleryProps {
   data: ImageRow[];
+  allData: ImageRow[];
   config: AppConfig;
-  onImageClick: (row: ImageRow) => void;
+  onImageClick: (index: number) => void;
 }
 
-export function Gallery({ data, config, onImageClick }: GalleryProps) {
+export function Gallery({ data, allData, config, onImageClick }: GalleryProps) {
   if (data.length === 0) {
     return (
       <div className="gallery-empty">
@@ -22,14 +23,17 @@ export function Gallery({ data, config, onImageClick }: GalleryProps) {
 
   return (
     <div className="gallery">
-      {data.map((row, index) => (
-        <ImageCard
-          key={index}
-          row={row}
-          config={config}
-          onClick={() => onImageClick(row)}
-        />
-      ))}
+      {data.map((row, i) => {
+        const globalIndex = allData.indexOf(row);
+        return (
+          <ImageCard
+            key={i}
+            row={row}
+            config={config}
+            onClick={() => onImageClick(globalIndex)}
+          />
+        );
+      })}
     </div>
   );
 }

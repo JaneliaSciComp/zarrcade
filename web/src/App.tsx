@@ -2,8 +2,8 @@
  * Main App component for Zarrcade SPA
  */
 
-import { useState, useEffect } from 'react';
-import type { AppConfig, ImageRow } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import type { AppConfig } from './types';
 import { loadConfig } from './config';
 import { useData } from './hooks/useData';
 import { useSearch } from './hooks/useSearch';
@@ -21,7 +21,7 @@ import { Footer } from './components/Footer';
 function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState<ImageRow | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const { theme, toggleTheme } = useTheme();
 
   // Load configuration
@@ -59,20 +59,50 @@ function App() {
     endIndex,
   } = usePagination(filteredData, pageSize);
 
+  // Initialize detail view from URL and handle popstate (back button)
+  useEffect(() => {
+    const readDetailFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const detailParam = params.get('detail');
+      if (detailParam !== null) {
+        const index = parseInt(detailParam, 10);
+        if (!isNaN(index)) {
+          setSelectedImageIndex(index);
+          return;
+        }
+      }
+      setSelectedImageIndex(null);
+    };
+
+    readDetailFromUrl();
+    window.addEventListener('popstate', readDetailFromUrl);
+    return () => window.removeEventListener('popstate', readDetailFromUrl);
+  }, []);
+
   // Handle reset (clear search and filters)
   const handleReset = () => {
     setSearchTerm('');
     clearFilters();
   };
 
-  const handleImageClick = (row: ImageRow) => {
-    setSelectedImage(row);
+  const handleImageClick = useCallback((index: number) => {
+    setSelectedImageIndex(index);
+    const params = new URLSearchParams(window.location.search);
+    params.set('detail', String(index));
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
     window.scrollTo(0, 0);
-  };
+  }, []);
 
-  const handleBack = () => {
-    setSelectedImage(null);
-  };
+  const handleBack = useCallback(() => {
+    setSelectedImageIndex(null);
+    const params = new URLSearchParams(window.location.search);
+    params.delete('detail');
+    const newUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`;
+    window.history.pushState({}, '', newUrl);
+  }, []);
+
+  const selectedImage = selectedImageIndex !== null ? data[selectedImageIndex] ?? null : null;
 
   // Error state
   if (configError) {
@@ -137,6 +167,7 @@ function App() {
 
             <Gallery
               data={paginatedData}
+              allData={data}
               config={config}
               onImageClick={handleImageClick}
             />
