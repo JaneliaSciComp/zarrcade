@@ -68,7 +68,7 @@ export function getTitle(row: ImageRow, config: AppConfig): string {
 
   // If template is configured, use it
   if (template) {
-    return template.replace(/\{(\w+)\}/g, (_, key) => {
+    return template.replace(/\{([^}]+)\}/g, (_, key) => {
       const value = row[key];
       return value !== undefined ? String(value) : '';
     });
