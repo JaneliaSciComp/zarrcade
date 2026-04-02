@@ -4,13 +4,13 @@
 
   "data": {
     "delimiter": "\t",
-    "pathColumn": "uri",
-    "thumbnailColumn": "thumbnail_url"
+    "pathColumn": "File Path",
+    "thumbnailColumn": "Thumbnail"
   },
 
   "display": {
-    "titleColumn": "name",
-    "hideColumns": ["uri", "thumbnail_url"],
+    "titleColumn": "File Name",
+    "hideColumns": ["Projection"],
     "pageSize": 50
   },
 

@@ -4,14 +4,13 @@
 
   "data": {
     "delimiter": ",",
-    "pathColumn": "Path",
-    "baseUrl": "https://janelia-data-examples.s3.amazonaws.com/fly-efish",
-    "thumbnailBaseUrl": "https://example.com/thumbnails"
+    "pathColumn": "File Path",
+    "thumbnailColumn": "Thumbnail"
   },
 
   "display": {
-    "titleColumn": "Image Name",
-    "hideColumns": ["Probes", "Image Name"],
+    "titleColumn": "File Name",
+    "hideColumns": ["Probes", "File Name", "Projection"],
     "pageSize": 50
   },
 

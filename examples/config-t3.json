@@ -4,14 +4,13 @@
 
   "data": {
     "delimiter": ",",
-    "pathColumn": "Name",
-    "baseUrl": "https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/Converted_OME-NGFF",
-    "thumbnailBaseUrl": "https://s3.janelia.org/lavis-lab/Dye_Bioavailability_images/Converted_OME-NGFF/.zarrcade"
+    "pathColumn": "File Path",
+    "thumbnailColumn": "Thumbnail"
   },
 
   "display": {
     "titleTemplate": "<font color='0000ff'>{DAPI (blue)}</font> <font color='00b300'>{FITC (green)}</font> <font color='ff8c1a'>{CY3 (orange)}</font> <font color='db00db'>{CY5 (magenta)}</font>",
-    "hideColumns": ["DAPI (blue)", "FITC (green)", "CY3 (orange)", "CY5 (magenta)"],
+    "hideColumns": ["DAPI (blue)", "FITC (green)", "CY3 (orange)", "CY5 (magenta)", "Projection"],
     "pageSize": 50
   },
 
