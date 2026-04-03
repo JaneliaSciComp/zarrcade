@@ -5,6 +5,15 @@
 import type { ImageRow, AppConfig } from '../types';
 
 /**
+ * Resolve a relative path against a base file URL.
+ * Uses the browser's URL constructor for correct resolution.
+ */
+function resolveRelativeUrl(relativePath: string, baseFileUrl: string): string {
+  const absoluteBase = new URL(baseFileUrl, window.location.href).href;
+  return new URL(relativePath, absoluteBase).href;
+}
+
+/**
  * Get the path/URI for an image row
  */
 export function getImagePath(row: ImageRow, config: AppConfig): string {
@@ -22,10 +31,15 @@ export function getImagePath(row: ImageRow, config: AppConfig): string {
     return pathStr;
   }
 
-  // Otherwise, prepend base URL if configured
+  // Prepend base URL if configured
   const baseUrl = config.data?.baseUrl;
   if (baseUrl) {
     return `${baseUrl.replace(/\/$/, '')}/${pathStr.replace(/^\//, '')}`;
+  }
+
+  // Resolve relative to the CSV data URL
+  if (config.dataUrl) {
+    return resolveRelativeUrl(pathStr, config.dataUrl);
   }
 
   return pathStr;
@@ -46,10 +60,14 @@ export function getThumbnailUrl(row: ImageRow, config: AppConfig): string {
       if (thumbStr.startsWith('http://') || thumbStr.startsWith('https://')) {
         return thumbStr;
       }
-      // Otherwise, prepend thumbnail base URL if configured
+      // Prepend thumbnail base URL if configured
       const thumbBase = config.data?.thumbnailBaseUrl;
       if (thumbBase) {
         return `${thumbBase.replace(/\/$/, '')}/${thumbStr.replace(/^\//, '')}`;
+      }
+      // Resolve relative to the CSV data URL
+      if (config.dataUrl) {
+        return resolveRelativeUrl(thumbStr, config.dataUrl);
       }
       return thumbStr;
     }
