@@ -55,8 +55,8 @@ def get_output_path(zarr_path: str, output_dir: str, naming: str, suffix: str) -
               help='Output naming strategy: flat (hash-based) or nested (path-based)')
 @click.option('--thumbnail-size', type=int, default=300,
               help='Thumbnail size in pixels (default: 300)')
-@click.option('--mip-size', type=int, default=1024,
-              help='MIP size in pixels (default: 1024)')
+@click.option('--mip-size', type=int, default=None,
+              help='Minimum XY dimension for resolution selection (default: thumbnail-size)')
 @click.option('--skip-existing', is_flag=True, default=False,
               help='Skip if output already exists')
 @click.option('--output-csv', type=click.Path(),
@@ -114,6 +114,10 @@ def mips(input_path: Optional[str], output_dir: str, input_csv: Optional[str],
     # Validate input
     if not input_path and not input_csv:
         raise click.UsageError("Either INPUT_PATH or --input-csv must be provided")
+
+    # Default mip_size to thumbnail_size
+    if mip_size is None:
+        mip_size = thumbnail_size
 
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -219,7 +223,7 @@ def mips(input_path: Optional[str], output_dir: str, input_csv: Optional[str],
 
 
 def process_zarr(zarr_path: str, output_dir: str, naming: str,
-                 thumbnail_size: int, mip_size: int, skip_existing: bool,
+                 thumbnail_size: int, min_dim_size: int, skip_existing: bool,
                  clahe_limit: float, stretch_kwargs: dict,
                  colors: list = None) -> Optional[dict]:
     """Process a single zarr container to generate MIP and thumbnail.
@@ -254,6 +258,7 @@ def process_zarr(zarr_path: str, output_dir: str, naming: str,
             adjust_channel_brightness=True,
             colors=colors,
             clahe_limit=clahe_limit,
+            min_dim_size=min_dim_size,
             **stretch_kwargs
         )
 

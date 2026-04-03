@@ -185,8 +185,8 @@ def stretch_with_max_gain_bg_guard(
 
 
 def _select_dataset(root, min_dim_size):
-    """Walk backwards through datasets to find one with
-    the min dimension size in at least one direction.
+    """Walk backwards through datasets to find one where the XY dimensions
+    (last two) meet the minimum size threshold.
     """
     multiscale = root['/'].attrs['multiscales'][0]
     selected_dataset = None
@@ -194,18 +194,19 @@ def _select_dataset(root, min_dim_size):
         dataset_candidate = multiscale['datasets'][i]
         path_candidate = dataset_candidate['path']
         time_series_candidate = root[path_candidate]
-        # assumes TCZYX
+        # assumes TCZYX — check only Y and X (last 2 dims)
         image_data_candidate = time_series_candidate[0]
+        xy_dims = image_data_candidate.shape[-2:]
 
-        if any(dim >= min_dim_size for dim in image_data_candidate.shape):
+        if any(dim >= min_dim_size for dim in xy_dims):
             selected_dataset = dataset_candidate
-            logger.trace(f"Selected dataset at index {i} with shape: {image_data_candidate.shape}")
+            logger.debug(f"Selected dataset at index {i} with shape: {image_data_candidate.shape}")
             break
 
     if selected_dataset is None:
-        # If no dataset has the min dimension size, use the last one as fallback
-        selected_dataset = multiscale['datasets'][-1]
-        logger.trace(f"No dataset with shape >= {min_dim_size} found, using fallback dataset with shape: {root[selected_dataset['path']][0].shape}")
+        # If no dataset has the min dimension size, use the highest resolution as fallback
+        selected_dataset = multiscale['datasets'][0]
+        logger.debug(f"No dataset with XY >= {min_dim_size} found, using fallback dataset with shape: {root[selected_dataset['path']][0].shape}")
 
     return selected_dataset
 
@@ -267,21 +268,25 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
     height = image_data.shape[2]      # Y dimension
     width = image_data.shape[3]       # X dimension
 
+    logger.info(f"Using resolution level '{path}': {num_channels} channels, {num_slices} Z-slices, {height}x{width}")
+
     # Create MIP for each channel
     mip_image_list = []
     for c in range(num_channels):
+        logger.info(f"  Channel {c+1}/{num_channels}: reading {num_slices} slices...")
         channel_data = image_data[c, :, :, :]  # Extract the data for channel c
+        logger.info(f"  Channel {c+1}/{num_channels}: computing MIP...")
         mip_image = np.max(channel_data, axis=0)  # Perform the MIP across Z-axis
         if adjust_channel_brightness:
-            logger.trace(f"Adjusting channel brightness for channel {c} with stretch_kwargs={stretch_kwargs}")
-            # Stretch the contrast with a maximum gain to avoid blowing out the image
+            logger.info(f"  Channel {c+1}/{num_channels}: stretching contrast...")
             mip_image = stretch_with_max_gain_bg_guard(mip_image, **stretch_kwargs)
-            # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to improve contrast
+            logger.info(f"  Channel {c+1}/{num_channels}: applying CLAHE...")
             mip_image = ski.exposure.equalize_adapthist(mip_image, clip_limit=clahe_limit)
 
         mip_image_list.append(mip_image)
 
     # Use colorify_by_hex to create colored versions of each channel
+    logger.info(f"Colorifying and combining {len(mip_image_list)} channels...")
     colored_images = []
     for i, mip_image in enumerate(mip_image_list):
         # Get the color for this channel, cycling through available colors
@@ -316,7 +321,7 @@ def _make_mip(root, colors=None, min_dim_size=1024, adjust_channel_brightness=Tr
         return arr
 
 
-def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=None, clahe_limit=0.02, **stretch_kwargs):
+def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=None, clahe_limit=0.02, min_dim_size=1024, **stretch_kwargs):
     """Create a maximum intensity projection (MIP) from an OME-Zarr image.
 
     Parameters
@@ -331,12 +336,15 @@ def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=N
         List of colors for each channel.
     clahe_limit : float
         Clip limit for CLAHE (Contrast Limited Adaptive Histogram Equalization).
+    min_dim_size : int
+        Minimum XY dimension for resolution level selection (default: 1024).
     **stretch_kwargs : dict
         Additional keyword arguments to pass to stretch_with_max_gain_bg_guard.
         Supported parameters: p_lower, p_upper, max_gain, target_max, ignore_zeros, k_bg, min_dynamic
     """
     root = zarr.open(store, mode='r')
     mip = _make_mip(root, colors,
+                    min_dim_size=min_dim_size,
                     adjust_channel_brightness=adjust_channel_brightness,
                     clahe_limit=clahe_limit,
                     **stretch_kwargs
