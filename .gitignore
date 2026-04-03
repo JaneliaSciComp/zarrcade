@@ -8,6 +8,8 @@ __pycache__
 node_modules
 config.local.*
 web/public/data
+web/dist
+web/tsconfig.tsbuildinfo
 
 # Junk
 .nfs*
