@@ -17,30 +17,31 @@ from ..core.omezarr import OmeZarrAgent
 from ..core.thumbnails import make_mip_from_zarr, make_thumbnail
 
 
-def get_output_path(zarr_path: str, output_dir: str, naming: str, suffix: str) -> str:
+def get_output_path(zarr_path: str, output_dir: str, naming: str, filename: str) -> str:
     """Generate output path for a thumbnail based on naming strategy.
 
     Args:
-        zarr_path: Path to the zarr container
+        zarr_path: Relative path to the zarr container
         output_dir: Base output directory
         naming: Naming strategy ('flat' or 'nested')
-        suffix: File suffix (e.g., '_mip.png' or '_thumb.jpg')
+        filename: Output filename (e.g., 'thumbnail.png')
 
     Returns:
         Full output path for the file
     """
     if naming == 'flat':
-        # Use hash of path for flat naming
-        path_hash = hashlib.sha256(zarr_path.encode()).hexdigest()[:16]
-        filename = f"{path_hash}{suffix}"
-        return os.path.join(output_dir, filename)
+        # Use zarr folder name without .zarr extension
+        basename = os.path.basename(zarr_path.rstrip('/'))
+        if basename.endswith('.zarr'):
+            basename = basename[:-5]
+        name, ext = os.path.splitext(filename)
+        return os.path.join(output_dir, f"{basename}_{name}{ext}")
     else:
         # Nested naming preserves directory structure
-        # Clean up the path for use as a directory structure
         clean_path = zarr_path.strip('/').replace('.zarr', '')
         subdir = os.path.join(output_dir, clean_path)
         os.makedirs(subdir, exist_ok=True)
-        return os.path.join(subdir, f"thumbnail{suffix.replace('_thumb', '').replace('_mip', '')}")
+        return os.path.join(subdir, filename)
 
 
 @click.command()
@@ -51,12 +52,16 @@ def get_output_path(zarr_path: str, output_dir: str, naming: str, suffix: str) -
               help='Read zarr paths from CSV file (first column)')
 @click.option('--base-url', type=str, default=None,
               help='Base URL to resolve relative zarr paths')
-@click.option('--naming', type=click.Choice(['flat', 'nested']), default='flat',
-              help='Output naming strategy: flat (hash-based) or nested (path-based)')
+@click.option('--naming', type=click.Choice(['flat', 'nested']), default='nested', show_default=True,
+              help='Output naming strategy: flat (filename-based) or nested (path-based)')
 @click.option('--thumbnail-size', type=int, default=300,
               help='Thumbnail size in pixels (default: 300)')
 @click.option('--mip-size', type=int, default=None,
               help='Minimum XY dimension for resolution selection (default: thumbnail-size)')
+@click.option('--mip-filename', type=str, default='thumbnail.png',
+              help='Output filename for MIP (default: thumbnail.png)')
+@click.option('--thumb-filename', type=str, default='thumbnail.jpg',
+              help='Output filename for thumbnail (default: thumbnail.jpg)')
 @click.option('--skip-existing', is_flag=True, default=False,
               help='Skip if output already exists')
 @click.option('--output-csv', type=click.Path(),
@@ -86,6 +91,7 @@ def get_output_path(zarr_path: str, output_dir: str, naming: str, suffix: str) -
               help='Enable verbose logging')
 def mips(input_path: Optional[str], output_dir: str, input_csv: Optional[str],
          base_url: Optional[str], naming: str, thumbnail_size: int, mip_size: int,
+         mip_filename: str, thumb_filename: str,
          skip_existing: bool, output_csv: Optional[str], thumbnail_column: str,
          clahe_limit: float, p_lower: float, p_upper: float, max_gain: float,
          target_max: int, ignore_zeros: bool, k_bg: float, min_dynamic: float,
@@ -156,7 +162,8 @@ def mips(input_path: Optional[str], output_dir: str, input_csv: Optional[str],
 
             # Process this zarr
             result = process_zarr(
-                full_path, output_dir, naming, thumbnail_size, mip_size,
+                full_path, zarr_path, output_dir, naming, thumbnail_size, mip_size,
+                mip_filename, thumb_filename,
                 skip_existing, clahe_limit, stretch_kwargs
             )
 
@@ -201,7 +208,8 @@ def mips(input_path: Optional[str], output_dir: str, input_csv: Optional[str],
 
             # Process this zarr
             result = process_zarr(
-                full_path, output_dir, naming, thumbnail_size, mip_size,
+                full_path, zarr_path, output_dir, naming, thumbnail_size, mip_size,
+                mip_filename, thumb_filename,
                 skip_existing, clahe_limit, stretch_kwargs, colors
             )
 
@@ -222,8 +230,10 @@ def mips(input_path: Optional[str], output_dir: str, input_csv: Optional[str],
     logger.info(f"Generated {len(results)} thumbnail(s)")
 
 
-def process_zarr(zarr_path: str, output_dir: str, naming: str,
-                 thumbnail_size: int, min_dim_size: int, skip_existing: bool,
+def process_zarr(zarr_path: str, relative_path: str, output_dir: str, naming: str,
+                 thumbnail_size: int, min_dim_size: int,
+                 mip_filename: str, thumb_filename: str,
+                 skip_existing: bool,
                  clahe_limit: float, stretch_kwargs: dict,
                  colors: list = None) -> Optional[dict]:
     """Process a single zarr container to generate MIP and thumbnail.
@@ -232,9 +242,9 @@ def process_zarr(zarr_path: str, output_dir: str, naming: str,
         Dictionary with 'mip_path' and 'thumbnail_path', or None on error
     """
     try:
-        # Generate output paths
-        mip_path = get_output_path(zarr_path, output_dir, naming, '_mip.png')
-        thumbnail_path = get_output_path(zarr_path, output_dir, naming, '_thumb.jpg')
+        # Generate output paths using relative path for directory structure
+        mip_path = get_output_path(relative_path, output_dir, naming, mip_filename)
+        thumbnail_path = get_output_path(relative_path, output_dir, naming, thumb_filename)
 
         # Skip if exists
         if skip_existing and os.path.exists(thumbnail_path):
