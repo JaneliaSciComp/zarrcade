@@ -1,4 +1,4 @@
-[project]
+[workspace]
 name = "zarrcade"
 version = "1.9.0"
 description = " Create web-based OME-Zarr galleries"
