@@ -21,13 +21,15 @@ export function Gallery({ data, allData, config, onImageClick }: GalleryProps) {
     );
   }
 
+  const pathColumn = config.data?.pathColumn || 'path';
   return (
     <div className="gallery">
-      {data.map((row, i) => {
+      {data.map((row) => {
         const globalIndex = allData.indexOf(row);
+        const rowKey = row[pathColumn] !== undefined ? String(row[pathColumn]) : `row-${globalIndex}`;
         return (
           <ImageCard
-            key={i}
+            key={rowKey}
             row={row}
             config={config}
             onClick={() => onImageClick(globalIndex)}

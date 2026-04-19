@@ -14,6 +14,7 @@ export function useZarrThumbnail(
   const [thumb, setThumb] = useState<SelectedThumbnail | null>(null);
 
   useEffect(() => {
+    setThumb(null);
     if (!enabled || !zarrUrl) return;
     let cancelled = false;
     fetchBestThumbnail(zarrUrl, targetSize).then((result) => {
