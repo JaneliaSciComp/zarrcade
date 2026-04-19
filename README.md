@@ -301,6 +301,26 @@ The SPA already supports `?config=<url>` without any container changes. Equivale
 http://localhost:8080/?config=https://s3.example.com/my-config.json
 ```
 
+### Publishing the Image to GHCR
+
+Releases are pushed to the GitHub Container Registry at `ghcr.io/janeliascicomp/zarrcade`. From the repo root:
+
+```bash
+# One-time: authenticate with a PAT that has write:packages scope
+echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
+
+# Build and push both <version> and latest tags
+./release.sh 2.0.0
+```
+
+Then anyone can run the released image without building locally:
+
+```bash
+docker run -p 8080:80 \
+    -e CONFIG_URL=https://example.com/my-config.json \
+    ghcr.io/janeliascicomp/zarrcade:latest
+```
+
 ### Serving Data Files
 
 The CSV data file and thumbnail images must be accessible via HTTP from the browser. Common approaches:

@@ -30,6 +30,11 @@ COPY web/public/config.json /usr/share/nginx/html/config.json
 # Copy icons
 COPY web/public/icons /usr/share/nginx/html/icons
 
+# Make sure everything nginx serves is readable regardless of the host file
+# perms at COPY time (otherwise a restrictive host umask leaves files 0600
+# and the nginx worker user gets 403 on everything).
+RUN chmod -R a+rX /usr/share/nginx/html
+
 # nginx:alpine runs any *.sh in /docker-entrypoint.d/ before starting nginx.
 # envsubst ships with nginx:alpine (from the gettext package), so no extra deps.
 COPY docker/entrypoint.sh /docker-entrypoint.d/20-zarrcade-config-url.sh

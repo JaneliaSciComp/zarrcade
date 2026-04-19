@@ -18,9 +18,11 @@ if [ -n "${CONFIG_URL:-}" ] && [ -f "${INDEX}" ]; then
     tmp=$(mktemp)
     CONFIG_URL="${CONFIG_URL}" envsubst '${CONFIG_URL}' < "${INDEX}" > "${tmp}"
     mv "${tmp}" "${INDEX}"
+    chmod 644 "${INDEX}"
 fi
 
 if [ -f "${STAGED}" ]; then
     echo "[zarrcade] Using mounted config from ${STAGED}"
     cp "${STAGED}" "${TARGET}"
+    chmod 644 "${TARGET}"
 fi
