@@ -369,9 +369,9 @@ body {
 
 .pagination-arrow:hover:not(:disabled),
 .pagination-page:hover:not(.active) {
-  background-color: var(--pico-primary-hover);
+  background-color: var(--pico-primary);
   color: white;
-  border-color: var(--pico-primary-hover);
+  border-color: var(--pico-primary);
 }
 
 .pagination-arrow:disabled {
@@ -380,9 +380,12 @@ body {
 }
 
 .pagination-page.active {
-  background-color: var(--pico-primary);
+  background-color: #134e4a;
   color: white;
-  border-color: var(--pico-primary);
+  border-color: #134e4a;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(19, 78, 74, 0.25);
+  cursor: default;
 }
 
 .pagination-ellipsis {
