@@ -4,6 +4,7 @@ import click
 from loguru import logger
 
 from .commands.discover import discover
+from .commands.embed_thumbnails import embed
 from .commands.generate_mips import mips
 
 
@@ -15,6 +16,7 @@ def cli():
 
 
 cli.add_command(discover)
+cli.add_command(embed)
 cli.add_command(mips)
 
 
