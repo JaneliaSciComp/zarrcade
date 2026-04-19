@@ -18,20 +18,9 @@ web/tsconfig.tsbuildinfo
 
 # Data
 data
-.zarrcade*
-static/ext
-
-# Zarrcade databases
-*.db
-
-# Zarrcade settings
-certs
-*.env
-settings*.yaml
 
 # pixi environments
 .pixi
-*.egg-info
 
 # AI assistants
 CLAUDE.md

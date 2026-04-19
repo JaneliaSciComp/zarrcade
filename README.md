@@ -23,7 +23,7 @@ Zarrcade has two independent components:
 
 | Component | Purpose | Technology |
 |-----------|---------|------------|
-| **CLI** (`cli/`) | Discover zarr containers and generate MIPs/thumbnails | Python (Click, zarr, fsspec, microfilm) |
+| **CLI** (`zarrcade/`) | Discover zarr containers and generate MIPs/thumbnails | Python (Click, zarr, fsspec, microfilm) |
 | **Web SPA** (`web/`) | Display searchable image gallery from CSV data | React + TypeScript (Vite, PapaParse, Pico CSS) |
 
 The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA is served as static files via nginx in Docker.
@@ -51,19 +51,19 @@ Discover OME-Zarr images from S3 and view them in the gallery:
 ```bash
 # Clone and set up the CLI
 git clone https://github.com/JaneliaSciComp/zarrcade.git
-cd zarrcade/cli
+cd zarrcade
 pixi install
 
 # Discover zarr containers (or use the pre-made CSV in examples/)
 pixi run zarrcade discover s3://janelia-data-examples/fly-efish \
-    -o ../examples/flyefish.csv --include-metadata
+    -o examples/flyefish.csv --include-metadata
 
 # Generate thumbnails
-pixi run zarrcade mips --input-csv ../examples/flyefish.csv \
-    -o ../examples/thumbnails --output-csv ../examples/flyefish-with-thumbs.csv
+pixi run zarrcade mips --input-csv examples/flyefish.csv \
+    -o examples/thumbnails --output-csv examples/flyefish-with-thumbs.csv
 
 # Serve the gallery with Docker
-cd ../docker
+cd docker
 CONFIG_FILE=../examples/config-flyefish.json docker compose up
 ```
 
@@ -81,7 +81,7 @@ Open [http://localhost:8080](http://localhost:8080) to browse the gallery.
 
 ## CLI Usage
 
-The CLI has two commands: **discover** and **mips**. Run from the `cli/` directory.
+The CLI has two commands: **discover** and **mips**. Run from the repo root.
 
 ### Discover OME-Zarr Containers
 
@@ -293,20 +293,21 @@ experiment2/sample_b.zarr,Sample B,Human,Liver,thumbnails/sample_b.jpg
 ## Project Structure
 
 ```
-zarrcade/
-├── cli/                        # Python CLI package
-│   ├── pixi.toml              # Pixi environment and dependencies
-│   └── zarrcade_cli/          # Source code
-│       ├── __main__.py        # CLI entry point (Click)
-│       ├── commands/
-│       │   ├── discover.py    # zarrcade discover command
-│       │   └── generate_mips.py  # zarrcade mips command
-│       └── core/
-│           ├── agent.py       # Image discovery protocol
-│           ├── filestore.py   # Storage abstraction (local + S3)
-│           ├── model.py       # Data models (Image, Channel, Axis)
-│           ├── omezarr.py     # OME-Zarr discovery agent
-│           └── thumbnails.py  # MIP generation (microfilm + CLAHE)
+zarrcade/                       # repo root
+├── pixi.toml                  # Pixi environment and CLI dependencies
+├── zarrcade/                   # Python CLI source code
+│   ├── __main__.py            # CLI entry point (Click)
+│   ├── commands/
+│   │   ├── discover.py        # zarrcade discover command
+│   │   ├── embed_thumbnails.py # zarrcade embed command
+│   │   └── generate_mips.py   # zarrcade mips command
+│   └── core/
+│       ├── agent.py           # Image discovery protocol
+│       ├── filestore.py       # Storage abstraction (local + S3)
+│       ├── model.py           # Data models (Image, Channel, Axis)
+│       ├── omezarr.py         # OME-Zarr discovery agent
+│       ├── thumbnails.py      # MIP generation (microfilm + CLAHE)
+│       └── zarr_thumbnails.py # Zarr-embedded thumbnail utilities
 │
 ├── web/                        # React + TypeScript SPA
 │   ├── package.json
