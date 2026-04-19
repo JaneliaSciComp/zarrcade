@@ -2,8 +2,6 @@
 
 import os
 import sys
-import hashlib
-from pathlib import Path
 from typing import Optional
 
 import click

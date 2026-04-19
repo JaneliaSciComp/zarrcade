@@ -9,7 +9,7 @@ import numpy as np
 from loguru import logger
 
 from .filestore import Filestore
-from .model import Image, Channel, Axis
+from .model import Image, Channel
 from .agent import WalkResult
 
 
@@ -62,7 +62,6 @@ def _encode_image(image_group: zarr.Group) -> Image:
         raise ValueError("No scale transformation found in the full scale dataset")
     scales = scale_transform['scale']
 
-    axes_map = {}
     axes_names = []
     dimensions_voxels = []
     voxel_sizes = []
@@ -100,7 +99,6 @@ def _encode_image(image_group: zarr.Group) -> Image:
             dimensions.append("%i" % (extent * scale))
         dimensions_voxels.append(str(extent))
         chunks.append("%i" % chunk)
-        axes_map[name] = Axis(name, scale, unit, extent, chunk)
 
     color_generator = _yield_color()
     channels = []
@@ -138,7 +136,6 @@ def _encode_image(image_group: zarr.Group) -> Image:
         compression=str(array.compressor),
         channels=channels,
         axes_order=''.join(axes_names),
-        axes=axes_map
     )
 
 

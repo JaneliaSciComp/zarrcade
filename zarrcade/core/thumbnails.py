@@ -4,12 +4,10 @@ import io
 import os
 
 import zarr
-import matplotlib
 import numpy as np
 import skimage as ski
 from loguru import logger
 from PIL import Image
-from microfilm.microplot import microshow
 from microfilm import colorify
 from scipy.stats import median_abs_deviation as mad
 
@@ -31,65 +29,6 @@ def adjust_brightness(img: np.ndarray, p_lower=0, p_upper=90) -> np.ndarray:
     """
     p_lower, p_upper = np.percentile(img, (p_lower, p_upper))
     return ski.exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
-
-
-def adjust_file_brightness(src_path, dst_path):
-    img = ski.io.imread(src_path)
-    p_lower, p_upper = np.percentile(img, (0, 99.90))
-    img_rescale = ski.exposure.rescale_intensity(img, in_range=(p_lower, p_upper))
-    ski.io.imsave(dst_path, img_rescale)
-
-
-def stretch_with_max_gain(channel, p_lower=0.1, p_upper=99.9, max_gain=8, target_max=65535):
-    """Stretch a single image channel to the full range, but limit the maximum gain.
-
-    Parameters
-    ----------
-    channel : np.ndarray
-        2D array for a single channel (e.g., one fluorescence color).
-    p_lower : float
-        Lower percentile for contrast stretching (default: 0.1).
-    p_upper : float
-        Upper percentile for contrast stretching (default: 99.9).
-    max_gain : float
-        Maximum allowed gain (e.g., 8-32). Limits how much a narrow range can be amplified.
-    target_max : int
-        Target maximum value (65535 for 16-bit output, 255 for 8-bit).
-
-    Returns
-    -------
-    np.ndarray
-        Contrast-stretched channel with gain capped.
-    """
-    # Convert to float for safe math
-    ch_float = channel.astype(np.float32)
-
-    # Compute lower and upper percentiles
-    lo = np.percentile(ch_float, p_lower)
-    hi = np.percentile(ch_float, p_upper)
-    logger.trace(f"Lower percentile: {lo}, Upper percentile: {hi}")
-
-    # Calculate the range, ensuring it's not zero
-    dynamic_range = max(hi - lo, 1e-6)
-    logger.trace(f"Dynamic range: {dynamic_range}")
-
-    # Calculate the stretch gain
-    gain = target_max / dynamic_range
-    logger.trace(f"Gain: {gain}")
-
-    if gain > max_gain:
-        logger.trace(f"Gain is too high, capping at {max_gain}")
-
-    # Cap the gain if it's too high
-    gain = min(gain, max_gain)
-
-    # Apply the stretch
-    stretched = (ch_float - lo) * gain
-
-    # Clip to the valid range
-    stretched = np.clip(stretched, 0, target_max)
-
-    return stretched.astype(np.uint16)
 
 
 def stretch_with_max_gain_bg_guard(

@@ -18,16 +18,6 @@ class Channel:
 
 
 @dataclass
-class Axis:
-    """Information about one axis of the image."""
-    name: str
-    scale: float
-    unit: str
-    extent: int
-    chunk: int
-
-
-@dataclass
 class Image:
     """Information about an OME-Zarr image."""
     group_path: str = None
@@ -40,5 +30,4 @@ class Image:
     dtype: str = None
     compression: str = None
     channels: list[Channel] = field(default_factory=lambda: [])
-    axes: dict[str, Axis] = field(default_factory=lambda: [])
     axes_order: str = None

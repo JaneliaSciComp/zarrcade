@@ -12,7 +12,6 @@ export interface Viewer {
 export interface FilterConfig {
   column: string;
   label: string;
-  type?: 'dropdown';
   dataType?: 'string' | 'csv';
 }
 

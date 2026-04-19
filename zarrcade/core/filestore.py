@@ -66,22 +66,6 @@ class Filestore(Protocol):
         """Returns the full absolute path to the given URI."""
         raise NotImplementedError()
 
-    def get_url(self, uri):
-        """Returns the full URL to the given URI."""
-        raise NotImplementedError()
-
-    def exists(self, uri):
-        """Returns true if a file or folder exists at the given URI."""
-        raise NotImplementedError()
-
-    def open(self, uri):
-        """Opens the file at the given URI and returns the file handle."""
-        raise NotImplementedError()
-
-    def get_size(self, uri):
-        """Returns the size of the file at the given URI."""
-        raise NotImplementedError()
-
     def get_children(self, uri):
         """Returns the children of the given URI."""
         raise NotImplementedError()
@@ -104,29 +88,6 @@ class RelativeFilestore(Filestore):
     def get_absolute_path(self, relative_path):
         """Returns the full absolute path to the given path."""
         return os.path.join(self.resolver.fsroot, relative_path)
-
-    def get_url(self, relative_path):
-        """Returns the full URL to the given path."""
-        if self.resolver.web_url:
-            return os.path.join(self.resolver.web_url, relative_path)
-        else:
-            return None
-
-    def exists(self, relative_path):
-        """Returns true if a file or folder exists at the given relative path."""
-        path = self.get_absolute_path(relative_path)
-        return self.resolver.fs.exists(path)
-
-    def open(self, relative_path):
-        """Opens the file at the given relative path and returns the file handle."""
-        path = self.get_absolute_path(relative_path)
-        return self.resolver.fs.open(path)
-
-    def get_size(self, relative_path):
-        """Returns the size of the file at the given relative path."""
-        path = self.get_absolute_path(relative_path)
-        info = self.resolver.fs.info(path)
-        return info['size']
 
     def get_children(self, relative_path):
         """Returns the children of the given relative path."""
@@ -159,27 +120,6 @@ class AbsoluteFilestore(Filestore):
     def get_absolute_path(self, uri):
         """Returns the full absolute path to the given path."""
         return uri
-
-    def get_url(self, uri):
-        """Returns the full URL to the given path."""
-        resolver = get_resolver(uri)
-        return resolver.web_url
-
-    def exists(self, uri):
-        """Returns true if a file or folder exists at the given relative path."""
-        resolver = get_resolver(uri)
-        return resolver.fs.exists(uri)
-
-    def open(self, uri):
-        """Opens the file at the given relative path and returns the file handle."""
-        resolver = get_resolver(uri)
-        return resolver.fs.open(uri)
-
-    def get_size(self, uri):
-        """Returns the size of the file at the given relative path."""
-        resolver = get_resolver(uri)
-        info = resolver.fs.info(uri)
-        return info['size']
 
     def get_children(self, uri):
         """Returns the children of the given relative path."""

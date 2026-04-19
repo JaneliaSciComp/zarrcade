@@ -75,15 +75,6 @@ export function getCsvThumbnailUrl(row: ImageRow, config: AppConfig): string | n
 }
 
 /**
- * Get the thumbnail URL for an image row, falling back to a placeholder.
- * Callers that want to try the zarr convention should use `getCsvThumbnailUrl`
- * and handle `null` themselves.
- */
-export function getThumbnailUrl(row: ImageRow, config: AppConfig): string {
-  return getCsvThumbnailUrl(row, config) ?? THUMBNAIL_PLACEHOLDER;
-}
-
-/**
  * Get the display title for an image row
  */
 export function getTitle(row: ImageRow, config: AppConfig): string {

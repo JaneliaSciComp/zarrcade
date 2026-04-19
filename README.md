@@ -10,11 +10,12 @@ Zarrcade makes it easy to generate simple web applications for browsing, searchi
 
 * Automatic discovery of OME-Zarr images on local filesystems and [S3-compatible storage](https://filesystem-spec.readthedocs.io/en/latest/api.html#other-known-implementations)
 * MIP (Maximum Intensity Projection) and thumbnail generation with advanced contrast adjustment
+* Optional embedding of thumbnails into the zarr itself via the [thumbnails convention](https://github.com/clbarnes/zarr-convention-thumbnails)
 * Static web gallery with full-text search and filterable metadata -- no backend required
 * One-click viewing in [Neuroglancer](https://github.com/google/neuroglancer), [Avivator](https://github.com/hms-dbmi/viv), and other OME-Zarr-compatible viewers
 * Customizable branding, title templates, and viewer configuration
 * Docker deployment with runtime configuration via volume mount
-* URL-shareable state (search terms, filters, pagination)
+* URL-shareable state (search terms, filters, pagination, detail view)
 
 
 ## Architecture
@@ -23,7 +24,7 @@ Zarrcade has two independent components:
 
 | Component | Purpose | Technology |
 |-----------|---------|------------|
-| **CLI** (`zarrcade/`) | Discover zarr containers and generate MIPs/thumbnails | Python (Click, zarr, fsspec, microfilm) |
+| **CLI** (`zarrcade/`) | Discover zarrs, generate MIPs/thumbnails, embed thumbnails into zarrs | Python (Click, zarr, fsspec, microfilm) |
 | **Web SPA** (`web/`) | Display searchable image gallery from CSV data | React + TypeScript (Vite, PapaParse, Pico CSS) |
 
 The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA is served as static files via nginx in Docker.
@@ -62,6 +63,11 @@ pixi run zarrcade discover s3://janelia-data-examples/fly-efish \
 pixi run zarrcade mips --input-csv examples/flyefish.csv \
     -o examples/thumbnails --output-csv examples/flyefish-with-thumbs.csv
 
+# (optional) Embed those thumbnails into the zarrs so the SPA can find them
+# without a thumbnail column
+pixi run zarrcade embed --input-csv examples/flyefish-with-thumbs.csv \
+    --zarr-base-url https://janelia-data-examples.s3.amazonaws.com/fly-efish
+
 # Serve the gallery with Docker
 cd docker
 CONFIG_FILE=../examples/config-flyefish.json docker compose up
@@ -81,7 +87,7 @@ Open [http://localhost:8080](http://localhost:8080) to browse the gallery.
 
 ## CLI Usage
 
-The CLI has two commands: **discover** and **mips**. Run from the repo root.
+The CLI has three commands: **discover**, **mips**, and **embed**. Run from the repo root.
 
 ### Discover OME-Zarr Containers
 
@@ -111,7 +117,7 @@ pixi run zarrcade discover /path/to/zarrs -o images.tsv --format tsv
 Create Maximum Intensity Projections and thumbnails from zarr containers:
 
 ```bash
-# Generate from a directory scan
+# Generate from a directory scan (default naming preserves the input path structure)
 pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails
 
 # Generate from a CSV (reads zarr paths from the first column)
@@ -124,11 +130,32 @@ pixi run zarrcade mips --input-csv images.csv -o /output/thumbnails \
 # Skip already-generated thumbnails
 pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --skip-existing
 
-# Use nested output directories (preserves zarr path structure)
-pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --naming nested
+# Flat output: use zarr basename instead of preserving directories
+pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --naming flat
 ```
 
+**Naming strategies:** `nested` (default) preserves the input directory layout under the output dir; `flat` uses each zarr's basename (e.g. `sample_a_thumbnail.jpg`).
+
 **Image processing options:** `--thumbnail-size`, `--mip-size`, `--clahe-limit`, `--p-lower`, `--p-upper`, `--max-gain`, `--target-max`, `--ignore-zeros`, `--k-bg`, `--min-dynamic`. Run `pixi run zarrcade mips --help` for full details.
+
+### Embed Thumbnails into Zarr
+
+Write existing thumbnail images into their zarr containers using the [thumbnails convention](https://github.com/clbarnes/zarr-convention-thumbnails). The SPA reads these directly from `zarr.json`, so a separate thumbnail column in the CSV is no longer needed:
+
+```bash
+# Read a CSV with zarr paths in column 1 and thumbnail paths in column 2
+pixi run zarrcade embed --input-csv images-with-thumbs.csv
+
+# Resolve relative paths against base URLs
+pixi run zarrcade embed --input-csv images-with-thumbs.csv \
+    --zarr-base-url https://bucket.s3.amazonaws.com/zarrs \
+    --thumbnail-base-url https://example.com/thumbs
+
+# Skip zarrs that already have thumbnails registered
+pixi run zarrcade embed --input-csv images-with-thumbs.csv --skip-existing
+```
+
+For each row this writes the original thumbnail plus a downsampled, brightness-stretched JPEG under `<zarr>/thumbnails/` and registers both in the zarr root's attrs. Options: `--size`, `--jpeg-quality`, `--p-lower`, `--p-upper`.
 
 
 ## Web SPA Configuration
@@ -176,7 +203,7 @@ The SPA is configured via a `config.json` file. Here is a complete example:
 
 | Section | Field | Description | Default |
 |---------|-------|-------------|---------|
-| *(root)* | `dataUrl` | **Required.** URL to CSV/TSV data file | -- |
+| *(root)* | `dataUrl` | URL to CSV/TSV data file. Required for the gallery; if empty or missing the SPA renders a Welcome / getting-started screen. | -- |
 | *(root)* | `title` | Page title | `"Zarrcade"` |
 | `data` | `delimiter` | CSV delimiter: `","`, `"\t"`, or `"auto"` | `","` |
 | `data` | `pathColumn` | Column containing zarr paths | `"path"` |
@@ -192,7 +219,7 @@ The SPA is configured via a `config.json` file. Here is a complete example:
 | `filters[]` | `dataType` | `"string"` or `"csv"` (comma-separated values in cells) | `"string"` |
 | `viewers[]` | `name` | Display name | -- |
 | `viewers[]` | `icon` | Icon filename (in `/icons/` directory) | -- |
-| `viewers[]` | `urlTemplate` | URL template with `{URL}` placeholder | -- |
+| `viewers[]` | `urlTemplate` | URL template. Placeholders: `{URL}` (raw zarr URL), `{ENCODED_URL}` (percent-encoded), `{NAME}` (zarr basename, no `.zarr`) | -- |
 | `viewers[]` | `enabled` | Show/hide this viewer | -- |
 | `branding` | `headerLeftLogo` | URL for left header logo | -- |
 | `branding` | `headerRightLogo` | URL for right header logo | -- |
@@ -208,6 +235,7 @@ The SPA supports these URL parameters for deep linking:
 | `?data=<url>` | Override the `dataUrl` from config |
 | `?search=<term>` | Pre-set search term |
 | `?page=<number>` | Navigate to a specific page |
+| `?detail=<index>` | Open the detail page for a specific image |
 | `?<column>=<value>` | Pre-set a filter value (column name as key) |
 
 ### Built-in Viewers
@@ -289,6 +317,14 @@ experiment1/sample_a.zarr,Sample A,Mouse,Brain,thumbnails/sample_a.jpg
 experiment2/sample_b.zarr,Sample B,Human,Liver,thumbnails/sample_b.jpg
 ```
 
+### Thumbnail Resolution
+
+For each row the SPA tries these sources in order:
+
+1. The configured `thumbnailColumn` from the CSV row (resolved against `thumbnailBaseUrl` if relative).
+2. Thumbnails registered in the zarr itself via the [thumbnails convention](https://github.com/clbarnes/zarr-convention-thumbnails) — read lazily from `<zarr>/zarr.json` `attributes.thumbnails` as cards scroll into view. Write these with `zarrcade embed`.
+3. A built-in placeholder (`./icons/zarr.jpg`).
+
 
 ## Project Structure
 
@@ -298,16 +334,16 @@ zarrcade/                       # repo root
 ├── zarrcade/                   # Python CLI source code
 │   ├── __main__.py            # CLI entry point (Click)
 │   ├── commands/
-│   │   ├── discover.py        # zarrcade discover command
-│   │   ├── embed_thumbnails.py # zarrcade embed command
-│   │   └── generate_mips.py   # zarrcade mips command
+│   │   ├── discover.py         # zarrcade discover command
+│   │   ├── generate_mips.py    # zarrcade mips command
+│   │   └── embed_thumbnails.py # zarrcade embed command
 │   └── core/
 │       ├── agent.py           # Image discovery protocol
-│       ├── filestore.py       # Storage abstraction (local + S3)
-│       ├── model.py           # Data models (Image, Channel, Axis)
+│       ├── filestore.py       # Storage abstraction (local + S3 via fsspec)
+│       ├── model.py           # Data models (Image, Channel)
 │       ├── omezarr.py         # OME-Zarr discovery agent
 │       ├── thumbnails.py      # MIP generation (microfilm + CLAHE)
-│       └── zarr_thumbnails.py # Zarr-embedded thumbnail utilities
+│       └── zarr_thumbnails.py # Thumbnails convention read/write helpers
 │
 ├── web/                        # React + TypeScript SPA
 │   ├── package.json
@@ -316,12 +352,15 @@ zarrcade/                       # repo root
 │   │   ├── config.json        # Default configuration
 │   │   └── icons/             # Viewer icons and fallback image
 │   └── src/
-│       ├── App.tsx            # Main application component
+│       ├── App.tsx            # Main application component (gallery + detail routing)
 │       ├── config.ts          # Configuration loader
 │       ├── types.ts           # TypeScript type definitions
-│       ├── components/        # React UI components
-│       ├── hooks/             # React hooks (data, search, filters, pagination, theme)
-│       ├── utils/             # Utilities (CSV, viewers, clipboard)
+│       ├── components/        # TopBar, SearchBar, FilterDropdowns, Gallery,
+│       │                      # ImageCard, ImageDetail, Pagination, ThemeToggle,
+│       │                      # Welcome, Footer
+│       ├── hooks/             # useData, useSearch, useFilters, usePagination,
+│       │                      # useTheme, useIntersectionObserver, useZarrThumbnail
+│       ├── utils/             # csv, viewers, clipboard, zarrThumbnails
 │       └── styles/            # CSS (Pico CSS framework)
 │
 ├── docker/                     # Docker deployment
