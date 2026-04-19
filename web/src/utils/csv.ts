@@ -45,36 +45,42 @@ export function getImagePath(row: ImageRow, config: AppConfig): string {
   return pathStr;
 }
 
-/**
- * Get the thumbnail URL for an image row
- */
-export function getThumbnailUrl(row: ImageRow, config: AppConfig): string {
-  const thumbnailColumn = config.data?.thumbnailColumn;
+export const THUMBNAIL_PLACEHOLDER = './icons/zarr.jpg';
 
-  // If thumbnail column is configured and has a value, use it
-  if (thumbnailColumn) {
-    const thumbnail = row[thumbnailColumn];
-    if (thumbnail) {
-      const thumbStr = String(thumbnail);
-      // If already a full URL, return as-is
-      if (thumbStr.startsWith('http://') || thumbStr.startsWith('https://')) {
-        return thumbStr;
-      }
-      // Prepend thumbnail base URL if configured
-      const thumbBase = config.data?.thumbnailBaseUrl;
-      if (thumbBase) {
-        return `${thumbBase.replace(/\/$/, '')}/${thumbStr.replace(/^\//, '')}`;
-      }
-      // Resolve relative to the CSV data URL
-      if (config.dataUrl) {
-        return resolveRelativeUrl(thumbStr, config.dataUrl);
-      }
-      return thumbStr;
-    }
+/**
+ * Resolve a CSV-provided thumbnail URL, or return null if the row has none.
+ */
+export function getCsvThumbnailUrl(row: ImageRow, config: AppConfig): string | null {
+  const thumbnailColumn = config.data?.thumbnailColumn;
+  if (!thumbnailColumn) return null;
+
+  const thumbnail = row[thumbnailColumn];
+  if (!thumbnail) return null;
+
+  const thumbStr = String(thumbnail);
+  if (thumbStr.startsWith('http://') || thumbStr.startsWith('https://')) {
+    return thumbStr;
   }
 
-  // Fallback to default placeholder
-  return './icons/zarr.jpg';
+  const thumbBase = config.data?.thumbnailBaseUrl;
+  if (thumbBase) {
+    return `${thumbBase.replace(/\/$/, '')}/${thumbStr.replace(/^\//, '')}`;
+  }
+
+  if (config.dataUrl) {
+    return resolveRelativeUrl(thumbStr, config.dataUrl);
+  }
+
+  return thumbStr;
+}
+
+/**
+ * Get the thumbnail URL for an image row, falling back to a placeholder.
+ * Callers that want to try the zarr convention should use `getCsvThumbnailUrl`
+ * and handle `null` themselves.
+ */
+export function getThumbnailUrl(row: ImageRow, config: AppConfig): string {
+  return getCsvThumbnailUrl(row, config) ?? THUMBNAIL_PLACEHOLDER;
 }
 
 /**

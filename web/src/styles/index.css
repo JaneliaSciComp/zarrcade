@@ -3,22 +3,58 @@
 /* Import Pico CSS from CDN */
 @import url('https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css');
 
-/* CSS Variables */
+/* Base typography + sizing vars (theme-neutral) */
 :root {
-  --pico-primary: #524c84;
-  --pico-primary-hover: #7b78b8;
-  --separator-color: #999;
   --pico-font-family-sans-serif: Inter, system-ui, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, Helvetica, Arial, "Helvetica Neue", sans-serif;
   --pico-font-size: 87.5%;
   --pico-line-height: 1.25;
   --pico-form-element-spacing-vertical: 0.5rem;
   --pico-form-element-spacing-horizontal: 1.0rem;
   --pico-border-radius: 0.375rem;
+  --separator-color: #999;
+}
+
+/* Palette
+   Accent / primary: teal-600 (#0d9488) — teal-700 (#0f766e) on hover
+   Secondary:        slate-600 (#475569) — slate-700 (#334155) on hover
+   Chrome bars:      slate-800 (#1e293b)
+   Gallery (dark):   pure black
+*/
+:root:not([data-theme="dark"]),
+[data-theme="light"],
+[data-theme="dark"] {
+  --pico-primary: #0d9488;
+  --pico-primary-background: #0d9488;
+  --pico-primary-border: #0d9488;
+  --pico-primary-underline: #0d9488;
+  --pico-primary-hover: #0f766e;
+  --pico-primary-hover-background: #0f766e;
+  --pico-primary-hover-border: #0f766e;
+  --pico-primary-hover-underline: #0f766e;
+  --pico-primary-focus: rgba(13, 148, 136, 0.25);
+  --pico-primary-inverse: #fff;
+
+  --pico-secondary: #475569;
+  --pico-secondary-background: #475569;
+  --pico-secondary-border: #475569;
+  --pico-secondary-underline: #475569;
+  --pico-secondary-hover: #334155;
+  --pico-secondary-hover-background: #334155;
+  --pico-secondary-hover-border: #334155;
+  --pico-secondary-hover-underline: #334155;
+  --pico-secondary-focus: rgba(71, 85, 105, 0.25);
+  --pico-secondary-inverse: #fff;
 }
 
 [data-theme="dark"] {
-  --separator-color: #666666;
-  --pico-background-color: #111;
+  --separator-color: #334155;
+  --pico-background-color: #000;
+}
+
+/* Links inherit the Pico primary var, with a subtle underline. */
+a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Base Layout */
@@ -45,6 +81,55 @@ body {
   width: 100%;
 }
 
+/* Welcome / getting started screen */
+.welcome {
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  line-height: 1.6;
+}
+
+.welcome h1 {
+  margin-bottom: 0.25rem;
+}
+
+.welcome-tagline {
+  font-size: 1.1rem;
+  color: var(--pico-muted-color);
+  margin-bottom: 2rem;
+}
+
+.welcome section {
+  margin-bottom: 2rem;
+}
+
+.welcome h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.welcome h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.welcome pre {
+  background: var(--pico-code-background-color);
+  color: var(--pico-code-color);
+  padding: 0.75rem 1rem;
+  border-radius: var(--pico-border-radius);
+  overflow-x: auto;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.welcome code {
+  font-size: 0.9em;
+}
+
 /* Loading and Error States */
 .loading-container,
 .error-container {
@@ -69,7 +154,7 @@ body {
 
 /* Top Bar */
 .top-bar {
-  background-color: black;
+  background-color: #1e293b;
   color: white;
   padding: 0.5rem 1rem;
   display: flex;
@@ -165,18 +250,19 @@ body {
 .gallery-action-link {
   background: none;
   border: none;
-  color: var(--pico-primary);
   cursor: pointer;
   font-size: 0.9rem;
   padding: 0;
-  text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  color: var(--pico-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .gallery-action-link:hover {
-  text-decoration: underline;
+  color: var(--pico-primary-hover);
 }
 
 /* Gallery Grid */
@@ -204,13 +290,17 @@ body {
 .image-card-thumbnail {
   position: relative;
   width: 100%;
+  height: 300px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .image-card-thumbnail img {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 100%;
+  width: auto;
   height: auto;
   border-radius: var(--pico-border-radius);
   transition: opacity 0.2s;
@@ -328,9 +418,9 @@ body {
 
 .pagination-arrow:hover:not(:disabled),
 .pagination-page:hover:not(.active) {
-  background-color: var(--pico-primary-hover);
+  background-color: var(--pico-primary);
   color: white;
-  border-color: var(--pico-primary-hover);
+  border-color: var(--pico-primary);
 }
 
 .pagination-arrow:disabled {
@@ -339,9 +429,12 @@ body {
 }
 
 .pagination-page.active {
-  background-color: var(--pico-primary);
+  background-color: #134e4a;
   color: white;
-  border-color: var(--pico-primary);
+  border-color: #134e4a;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(19, 78, 74, 0.25);
+  cursor: default;
 }
 
 .pagination-ellipsis {
@@ -351,7 +444,7 @@ body {
 
 /* Footer */
 .footer {
-  background-color: black;
+  background-color: #1e293b;
   color: white;
   padding: 1rem 2rem;
   margin-top: auto;
@@ -393,10 +486,12 @@ body {
   cursor: pointer;
   font-size: 1rem;
   padding: 0.25rem 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .image-detail-back:hover {
-  text-decoration: underline;
+  color: var(--pico-primary-hover);
 }
 
 .image-detail-header {
@@ -443,6 +538,8 @@ body {
 .image-detail-thumbnail img {
   max-width: 400px;
   max-height: 400px;
+  width: auto;
+  height: auto;
   border-radius: var(--pico-border-radius);
 }
 

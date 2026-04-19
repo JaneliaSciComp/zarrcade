@@ -18,18 +18,26 @@ import { Gallery } from './components/Gallery';
 import { Pagination } from './components/Pagination';
 import { ImageDetail } from './components/ImageDetail';
 import { Footer } from './components/Footer';
+import { Welcome } from './components/Welcome';
 
 function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const { theme, toggleTheme } = useTheme();
 
   // Load configuration
   useEffect(() => {
     loadConfig()
-      .then(setConfig)
-      .catch((e) => setConfigError(e.message));
+      .then((c) => {
+        setConfig(c);
+        setConfigLoaded(true);
+      })
+      .catch((e) => {
+        setConfigError(e.message);
+        setConfigLoaded(true);
+      });
   }, []);
 
   // Load data
@@ -105,22 +113,40 @@ function App() {
 
   const selectedImage = selectedImageIndex !== null ? data[selectedImageIndex] ?? null : null;
 
-  // Error state
+  // Config load failed (malformed JSON, network error, etc.)
   if (configError) {
     return (
       <div className="error-container">
         <h2>Configuration Error</h2>
         <p>{configError}</p>
-        <p>
-          Please provide a <code>config.json</code> file or use the{' '}
-          <code>?data=URL</code> parameter.
-        </p>
       </div>
     );
   }
 
-  // Loading state
-  if (!config || loading) {
+  // Still loading config
+  if (!configLoaded) {
+    return (
+      <div className="loading-container">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  // Config loaded but no dataUrl set — show setup instructions
+  if (!config) {
+    return (
+      <div className="app">
+        <TopBar config={null} theme={theme} onToggleTheme={toggleTheme} />
+        <main className="main-content">
+          <Welcome />
+        </main>
+        <Footer config={null} />
+      </div>
+    );
+  }
+
+  // Data still loading
+  if (loading) {
     return (
       <div className="loading-container">
         <p>Loading...</p>
@@ -182,6 +208,15 @@ function App() {
                 <i className="fa-solid fa-table-cells" /> View collection in BioFile Finder
               </a>
             </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={goToPage}
+            />
 
             <Gallery
               data={paginatedData}

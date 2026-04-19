@@ -2,11 +2,18 @@
  * Image card component for gallery
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ImageRow, AppConfig, Viewer } from '../types';
-import { getImagePath, getThumbnailUrl, getTitle } from '../utils/csv';
+import {
+  getCsvThumbnailUrl,
+  getImagePath,
+  getTitle,
+  THUMBNAIL_PLACEHOLDER,
+} from '../utils/csv';
 import { getViewerUrl, getEnabledViewers } from '../utils/viewers';
 import { copyToClipboard } from '../utils/clipboard';
+import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
+import { useZarrThumbnail } from '../hooks/useZarrThumbnail';
 
 interface ImageCardProps {
   row: ImageRow;
@@ -14,13 +21,46 @@ interface ImageCardProps {
   onClick: () => void;
 }
 
+const THUMBNAIL_TARGET_SIZE = 300;
+
 export function ImageCard({ row, config, onClick }: ImageCardProps) {
   const [showCopied, setShowCopied] = useState(false);
 
   const imagePath = getImagePath(row, config);
-  const thumbnailUrl = getThumbnailUrl(row, config);
+  const csvThumbnail = getCsvThumbnailUrl(row, config);
   const title = getTitle(row, config);
   const viewers = getEnabledViewers(config.viewers);
+
+  const { ref, inView } = useIntersectionObserver<HTMLDivElement>({
+    rootMargin: '200px',
+  });
+
+  const conventionThumbnail = useZarrThumbnail(
+    csvThumbnail ? null : imagePath,
+    THUMBNAIL_TARGET_SIZE,
+    inView
+  );
+
+  const resolvedUrl = csvThumbnail ?? conventionThumbnail?.url ?? null;
+
+  // Preload the resolved thumbnail. Only display it once it has decoded;
+  // until then, show the placeholder. This prevents stale images from the
+  // previous page sticking around on slow connections.
+  const [displayUrl, setDisplayUrl] = useState<string>(THUMBNAIL_PLACEHOLDER);
+  useEffect(() => {
+    setDisplayUrl(THUMBNAIL_PLACEHOLDER);
+    if (!resolvedUrl) return;
+    const img = new Image();
+    let cancelled = false;
+    img.onload = () => { if (!cancelled) setDisplayUrl(resolvedUrl); };
+    img.onerror = () => { if (!cancelled) setDisplayUrl(THUMBNAIL_PLACEHOLDER); };
+    img.src = resolvedUrl;
+    return () => {
+      cancelled = true;
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [resolvedUrl]);
 
   const handleCopyLink = async () => {
     const success = await copyToClipboard(imagePath);
@@ -31,14 +71,19 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
   };
 
   return (
-    <div className="image-card" onClick={onClick} style={{ cursor: 'pointer' }}>
+    <div
+      ref={ref}
+      className="image-card"
+      onClick={onClick}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="image-card-thumbnail">
         <img
-          src={thumbnailUrl}
+          src={displayUrl}
           alt={title}
           loading="lazy"
           onError={(e) => {
-            (e.target as HTMLImageElement).src = './icons/zarr.jpg';
+            (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
           }}
         />
         <div className="image-card-overlay">
