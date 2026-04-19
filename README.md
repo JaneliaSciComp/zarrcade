@@ -265,18 +265,40 @@ The gallery is served at [http://localhost:8080](http://localhost:8080).
 
 ### Custom Configuration
 
-Mount a custom `config.json` at runtime:
+Three ways to customize the SPA config for a running container:
+
+**1. Mount a config file at runtime**
 
 ```bash
 CONFIG_FILE=/path/to/my-config.json docker compose up
 ```
 
-Or use a volume mount directly:
+Or with `docker run`:
 
 ```bash
 docker run -p 8080:80 \
     -v /path/to/config.json:/usr/share/nginx/html/config.json:ro \
     zarrcade
+```
+
+**2. Point the SPA at a remote config URL**
+
+Set `CONFIG_URL` and the SPA will fetch the config client-side at load time — no volume mount required:
+
+```bash
+CONFIG_URL=https://s3.example.com/my-config.json docker compose up
+```
+
+```bash
+docker run -p 8080:80 -e CONFIG_URL=https://s3.example.com/my-config.json zarrcade
+```
+
+**3. Use the `?config=<url>` query parameter**
+
+The SPA already supports `?config=<url>` without any container changes. Equivalent to `CONFIG_URL`, just set per-session instead of per-deployment:
+
+```
+http://localhost:8080/?config=https://s3.example.com/my-config.json
 ```
 
 ### Serving Data Files

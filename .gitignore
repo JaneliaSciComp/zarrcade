@@ -11,6 +11,9 @@ web/public/data
 web/dist
 web/tsconfig.tsbuildinfo
 
+# Docker
+docker/.env
+
 # Junk
 .nfs*
 .DS_Store

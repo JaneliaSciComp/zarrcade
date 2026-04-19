@@ -50,13 +50,25 @@ const DEFAULT_CONFIG: Partial<AppConfig> = {
 };
 
 /**
- * Load configuration from various sources
- * Priority: URL param > /config.json > defaults
+ * Runtime-injected config URL. The Docker image substitutes this at container
+ * startup from the CONFIG_URL env var; in dev the literal `${CONFIG_URL}`
+ * placeholder is left in place and treated as absent.
+ */
+function getInjectedConfigUrl(): string | null {
+  const raw = (window as unknown as { __ZARRCADE_CONFIG_URL__?: string })
+    .__ZARRCADE_CONFIG_URL__;
+  if (!raw || raw === '${CONFIG_URL}') return null;
+  return raw;
+}
+
+/**
+ * Load configuration from various sources.
+ * Priority: `?config=` query param > CONFIG_URL (Docker-injected) >
+ *          /config.local.json (dev only) > /config.json > built-in defaults
  */
 export async function loadConfig(): Promise<AppConfig | null> {
-  // Check for config URL in query params
   const urlParams = new URLSearchParams(window.location.search);
-  const configUrl = urlParams.get('config');
+  const configUrl = urlParams.get('config') ?? getInjectedConfigUrl();
 
   let config: Partial<AppConfig> = {};
 

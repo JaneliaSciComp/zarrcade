@@ -30,6 +30,11 @@ COPY web/public/config.json /usr/share/nginx/html/config.json
 # Copy icons
 COPY web/public/icons /usr/share/nginx/html/icons
 
+# nginx:alpine runs any *.sh in /docker-entrypoint.d/ before starting nginx.
+# envsubst ships with nginx:alpine (from the gettext package), so no extra deps.
+COPY docker/entrypoint.sh /docker-entrypoint.d/20-zarrcade-config-url.sh
+RUN chmod +x /docker-entrypoint.d/20-zarrcade-config-url.sh
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

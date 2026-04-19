@@ -8,7 +8,13 @@ services:
     ports:
       - "8080:80"
     volumes:
-      # Mount custom config at runtime (optional)
-      - ${CONFIG_FILE:-./config.json}:/usr/share/nginx/html/config.json:ro
+      # Optional: mount a config file via CONFIG_FILE. If unset, /dev/null is
+      # bind-mounted as a placeholder (not a regular file); the entrypoint
+      # detects that and falls back to the baked-in default.
+      - ${CONFIG_FILE:-/dev/null}:/etc/zarrcade/config.json:ro
     environment:
       - NGINX_HOST=localhost
+      # Optional: URL to a config.json. When set, the SPA fetches it in the
+      # browser at load time (same as visiting /?config=<url>). Independent of
+      # CONFIG_FILE — set either or both.
+      - CONFIG_URL
