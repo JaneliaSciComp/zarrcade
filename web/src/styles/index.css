@@ -81,6 +81,55 @@ body {
   width: 100%;
 }
 
+/* Welcome / getting started screen */
+.welcome {
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  line-height: 1.6;
+}
+
+.welcome h1 {
+  margin-bottom: 0.25rem;
+}
+
+.welcome-tagline {
+  font-size: 1.1rem;
+  color: var(--pico-muted-color);
+  margin-bottom: 2rem;
+}
+
+.welcome section {
+  margin-bottom: 2rem;
+}
+
+.welcome h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+}
+
+.welcome h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.welcome pre {
+  background: var(--pico-code-background-color);
+  color: var(--pico-code-color);
+  padding: 0.75rem 1rem;
+  border-radius: var(--pico-border-radius);
+  overflow-x: auto;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.welcome code {
+  font-size: 0.9em;
+}
+
 /* Loading and Error States */
 .loading-container,
 .error-container {

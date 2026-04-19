@@ -53,7 +53,7 @@ const DEFAULT_CONFIG: Partial<AppConfig> = {
  * Load configuration from various sources
  * Priority: URL param > /config.json > defaults
  */
-export async function loadConfig(): Promise<AppConfig> {
+export async function loadConfig(): Promise<AppConfig | null> {
   // Check for config URL in query params
   const urlParams = new URLSearchParams(window.location.search);
   const configUrl = urlParams.get('config');
@@ -118,7 +118,7 @@ export async function loadConfig(): Promise<AppConfig> {
   } as AppConfig;
 
   if (!mergedConfig.dataUrl) {
-    throw new Error('No data URL configured. Set dataUrl in config.json or use ?data= parameter.');
+    return null;
   }
 
   return mergedConfig;
