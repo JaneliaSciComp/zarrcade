@@ -4,9 +4,18 @@
 
 import { useState } from 'react';
 import type { ImageRow, AppConfig } from '../types';
-import { getImagePath, getThumbnailUrl, getTitle, getVisibleColumns } from '../utils/csv';
+import {
+  getCsvThumbnailUrl,
+  getImagePath,
+  getTitle,
+  getVisibleColumns,
+  THUMBNAIL_PLACEHOLDER,
+} from '../utils/csv';
 import { getViewerUrl, getEnabledViewers } from '../utils/viewers';
 import { copyToClipboard } from '../utils/clipboard';
+import { useZarrThumbnail } from '../hooks/useZarrThumbnail';
+
+const THUMBNAIL_TARGET_SIZE = 400;
 
 interface ImageDetailProps {
   row: ImageRow;
@@ -19,7 +28,14 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
   const [showCopied, setShowCopied] = useState(false);
 
   const imagePath = getImagePath(row, config);
-  const thumbnailUrl = getThumbnailUrl(row, config);
+  const csvThumbnail = getCsvThumbnailUrl(row, config);
+  const conventionThumbnail = useZarrThumbnail(
+    csvThumbnail ? null : imagePath,
+    THUMBNAIL_TARGET_SIZE,
+    true
+  );
+  const thumbnailUrl =
+    csvThumbnail ?? conventionThumbnail?.url ?? THUMBNAIL_PLACEHOLDER;
   const title = getTitle(row, config);
   const viewers = getEnabledViewers(config.viewers);
   const visibleColumns = getVisibleColumns(columns, config);
@@ -74,7 +90,7 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
             src={thumbnailUrl}
             alt={title}
             onError={(e) => {
-              (e.target as HTMLImageElement).src = './icons/zarr.jpg';
+              (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
             }}
           />
         </div>
