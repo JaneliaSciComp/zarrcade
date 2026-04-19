@@ -183,6 +183,15 @@ function App() {
               </a>
             </div>
 
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              onPageChange={goToPage}
+            />
+
             <Gallery
               data={paginatedData}
               allData={data}
