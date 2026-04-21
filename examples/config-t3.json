@@ -1,0 +1,38 @@
+{
+  "dataUrl": "https://example.com/t3.csv",
+  "title": "Dye Bioavailability",
+
+  "data": {
+    "delimiter": ",",
+    "pathColumn": "File Path",
+    "thumbnailColumn": "Thumbnail"
+  },
+
+  "display": {
+    "titleTemplate": "<font color='0000ff'>{DAPI (blue)}</font> <font color='00b300'>{FITC (green)}</font> <font color='ff8c1a'>{CY3 (orange)}</font> <font color='db00db'>{CY5 (magenta)}</font>",
+    "hideColumns": ["DAPI (blue)", "FITC (green)", "CY3 (orange)", "CY5 (magenta)", "Projection"],
+    "pageSize": 50
+  },
+
+  "filters": [
+    { "column": "Species", "label": "Species" },
+    { "column": "Tissue", "label": "Tissue" },
+    { "column": "Pulse Dye", "label": "Pulse Dye" },
+    { "column": "Chase Dye", "label": "Chase Dye" }
+  ],
+
+  "viewers": [
+    {
+      "name": "Avivator",
+      "icon": "vizarr_logo.png",
+      "urlTemplate": "https://janeliascicomp.github.io/viv/?image_url={ENCODED_URL}",
+      "enabled": true
+    },
+    {
+      "name": "Neuroglancer",
+      "icon": "neuroglancer.png",
+      "urlTemplate": "https://neuroglancer-demo.appspot.com/#!{\"layers\":[{\"name\":\"{NAME}\",\"source\":\"{URL}\",\"type\":\"auto\"}],\"selectedLayer\":{\"visible\":true,\"layer\":\"{NAME}\"},\"layout\":\"xy\"}",
+      "enabled": true
+    }
+  ]
+}

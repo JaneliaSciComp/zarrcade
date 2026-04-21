@@ -4,6 +4,16 @@ __pycache__
 .coverage
 *.egg-info
 
+# Web
+node_modules
+config.local.*
+web/public/data
+web/dist
+web/tsconfig.tsbuildinfo
+
+# Docker
+docker/.env
+
 # Junk
 .nfs*
 .DS_Store
@@ -11,21 +21,9 @@ __pycache__
 
 # Data
 data
-.zarrcade*
-static/ext
-
-# Zarrcade databases
-*.db
-
-# Zarrcade settings
-certs
-*.env
-settings*.yaml
-
 
 # pixi environments
 .pixi
-*.egg-info
 
 # AI assistants
 CLAUDE.md

@@ -1,0 +1,38 @@
+{
+  "dataUrl": "https://example.com/flyefish.csv",
+  "title": "Fly-eFISH",
+
+  "data": {
+    "delimiter": ",",
+    "pathColumn": "File Path",
+    "thumbnailColumn": "Thumbnail"
+  },
+
+  "display": {
+    "titleColumn": "File Name",
+    "hideColumns": ["Probes", "File Name", "Projection"],
+    "pageSize": 50
+  },
+
+  "filters": [
+    { "column": "Driver line", "label": "Driver line" },
+    { "column": "Probes", "label": "Probes", "dataType": "csv" },
+    { "column": "Region", "label": "Region" },
+    { "column": "Zoom", "label": "Zoom" }
+  ],
+
+  "viewers": [
+    {
+      "name": "Neuroglancer",
+      "icon": "neuroglancer.png",
+      "urlTemplate": "https://neuroglancer-demo.appspot.com/#!{\"layers\":[{\"name\":\"{NAME}\",\"source\":\"{URL}\",\"type\":\"auto\"}],\"selectedLayer\":{\"visible\":true,\"layer\":\"{NAME}\"},\"layout\":\"4panel-alt\"}",
+      "enabled": true
+    },
+    {
+      "name": "Avivator",
+      "icon": "vizarr_logo.png",
+      "urlTemplate": "https://janeliascicomp.github.io/viv/?image_url={ENCODED_URL}",
+      "enabled": true
+    }
+  ]
+}

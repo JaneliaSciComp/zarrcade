@@ -1,34 +1,45 @@
-# check=skip=JSONArgsRecommended
-FROM ghcr.io/prefix-dev/pixi:0.41.4 AS build
-ARG GIT_TAG=main
+# Zarrcade SPA - Multi-stage build
+# Stage 1: Build the SPA
+FROM node:20-alpine AS builder
 
-RUN apt-get update && apt-get install -y git
+WORKDIR /app/web
 
-WORKDIR /app
-RUN git clone --branch $GIT_TAG --depth 1 https://github.com/JaneliaSciComp/zarrcade.git
+# Copy package files first for better caching
+COPY web/package*.json ./
+RUN npm ci
 
-WORKDIR /app/zarrcade
-# install dependencies to `/app/.pixi/envs/default`
-# use `--locked` to ensure the lockfile is up to date with pixi.toml
-RUN pixi install --locked -e default \
-    # create the shell-hook bash script to activate the environment
-    && pixi shell-hook -e default -s bash > /shell-hook \
-    && echo "#!/bin/bash" > /app/entrypoint.sh \
-    && cat /shell-hook >> /app/entrypoint.sh \
-    # extend the shell-hook script to run the command passed to the container
-    && echo 'exec "$@"' >> /app/entrypoint.sh \
-    && chmod +x /app/entrypoint.sh
+# Copy source and build
+COPY web/ ./
+RUN npm run build
 
-FROM ubuntu:24.04 AS production
+# Stage 2: Production nginx server
+FROM nginx:alpine AS production
+
 LABEL org.opencontainers.image.source="https://github.com/JaneliaSciComp/zarrcade"
+LABEL org.opencontainers.image.description="Zarrcade - Web gallery for OME-Zarr images"
 
-ENV HOST=0.0.0.0
-ENV PORT=8000
-ENV NUM_WORKERS=8
+# Copy built SPA from builder
+COPY --from=builder /app/web/dist /usr/share/nginx/html
 
-WORKDIR /app/zarrcade
-COPY --from=build /app /app
+# Copy nginx configuration
+COPY docker/nginx.conf /etc/nginx/nginx.conf
 
-EXPOSE $PORT
-ENTRYPOINT [ "/app/entrypoint.sh" ]
-CMD uvicorn zarrcade.serve:app --host ${HOST} --port ${PORT} --workers ${NUM_WORKERS} --forwarded-allow-ips='*' --proxy-headers
+# Copy default config.json (can be overridden at runtime via volume mount)
+COPY web/public/config.json /usr/share/nginx/html/config.json
+
+# Copy icons
+COPY web/public/icons /usr/share/nginx/html/icons
+
+# Make sure everything nginx serves is readable regardless of the host file
+# perms at COPY time (otherwise a restrictive host umask leaves files 0600
+# and the nginx worker user gets 403 on everything).
+RUN chmod -R a+rX /usr/share/nginx/html
+
+# nginx:alpine runs any *.sh in /docker-entrypoint.d/ before starting nginx.
+# envsubst ships with nginx:alpine (from the gettext package), so no extra deps.
+COPY docker/entrypoint.sh /docker-entrypoint.d/20-zarrcade-config-url.sh
+RUN chmod +x /docker-entrypoint.d/20-zarrcade-config-url.sh
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

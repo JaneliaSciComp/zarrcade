@@ -1,6 +1,3 @@
-from .database import Database
-from .filestore import Filestore, get_filestore
-from .model import Image, Channel, Axis
-from .settings import Settings
+"""Zarrcade CLI - MIP generation and zarr discovery tools."""
 
-__all__ = ['Settings', 'Database', 'Filestore', 'Image', 'Channel', 'Axis', get_filestore]
+__version__ = "2.0.0"
