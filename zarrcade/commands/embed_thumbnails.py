@@ -15,10 +15,11 @@ from PIL import Image
 
 from ..core.filestore import get_filestore
 from ..core.zarr_thumbnails import (
+    CONVENTION_NAME,
     SOFTWARE_URL,
     build_entry,
     guess_media_type,
-    has_thumbnails,
+    load_root_metadata,
     register,
 )
 
@@ -145,7 +146,13 @@ def _embed_one(zarr_uri: str, thumb_uri: str, size: int, jpeg_quality: int,
     fs = get_filestore(zarr_uri)
     store = fs.get_store("")
 
-    if skip_existing and has_thumbnails(store):
+    # Verify the zarr root exists BEFORE writing anything. fsspec's mapper
+    # creates parent directories on write, so a missing zarr would otherwise
+    # end up as an empty directory with just a thumbnails/ subdir when
+    # register() fails below.
+    attrs, _, _ = load_root_metadata(store)
+
+    if skip_existing and CONVENTION_NAME in attrs:
         logger.debug("Existing thumbnails metadata found, skipping")
         return
 

@@ -109,12 +109,6 @@ def save_root_attrs(store, attrs: dict, zarr_format: str,
         store[".zattrs"] = json.dumps(attrs, indent=2).encode("utf-8")
 
 
-def has_thumbnails(store) -> bool:
-    """Return True if the store's root already has a `thumbnails` attr."""
-    attrs, _, _ = load_root_metadata(store)
-    return CONVENTION_NAME in attrs
-
-
 def register(store, entries: list) -> None:
     """Write the thumbnail entries to the zarr root's attrs and register
     the convention in `zarr_conventions` (dedup'd by name).
