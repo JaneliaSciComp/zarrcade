@@ -472,11 +472,9 @@ body {
   padding: 0;
   margin: 0;
   border: none;
-  background: transparent;
-  /* Pico redefines --pico-color to primary-inverse (white) inside `button`,
-     so reading var(--pico-color) here gave white text on a white background.
-     Inherit the surrounding page color instead. */
-  color: inherit;
+  /* Same teal-on-white as a non-current paginator page. */
+  background: var(--pico-primary-background);
+  color: white;
   cursor: pointer;
   font-size: 0.9rem;
   border-radius: 0;
@@ -484,10 +482,6 @@ body {
 
 .view-toggle-button + .view-toggle-button {
   border-left: 1px solid var(--pico-muted-border-color);
-}
-
-.view-toggle-button:hover {
-  background-color: var(--pico-secondary-background);
 }
 
 .view-toggle-button.is-active {
