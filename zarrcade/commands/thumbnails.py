@@ -19,8 +19,11 @@ from ..core.thumbnails import make_thumbnail
               help='Glob pattern for input files within INPUT_DIR')
 @click.option('--size', 'thumbnail_size', type=int, default=300, show_default=True,
               help='Max width/height in pixels (aspect-preserving)')
-@click.option('--quality', type=int, default=85, show_default=True,
-              help='JPEG quality (1-95)')
+@click.option('--quality', type=int, default=90, show_default=True,
+              help='JPEG quality (1-95); ignored for PNG output')
+@click.option('--format', 'out_format',
+              type=click.Choice(['jpg', 'png']), default='jpg', show_default=True,
+              help='Output format. PNG is lossless and often better for fluorescence MIPs.')
 @click.option('--suffix', type=str, default='', show_default=True,
               help='Suffix to append to the basename (e.g. "_thumb")')
 @click.option('--overwrite', is_flag=True, default=False,
@@ -28,8 +31,8 @@ from ..core.thumbnails import make_thumbnail
 @click.option('-v', '--verbose', is_flag=True, default=False,
               help='Enable verbose logging')
 def thumbnails(input_dir: str, output_dir: Optional[str], pattern: str,
-               thumbnail_size: int, quality: int, suffix: str,
-               overwrite: bool, verbose: bool):
+               thumbnail_size: int, quality: int, out_format: str,
+               suffix: str, overwrite: bool, verbose: bool):
     """Resize raster images into smaller JPEG thumbnails.
 
     Walks INPUT_DIR for files matching --pattern and writes a resized JPEG
@@ -64,9 +67,9 @@ def thumbnails(input_dir: str, output_dir: Optional[str], pattern: str,
     skipped = 0
     failed = 0
     for i, src in enumerate(inputs, 1):
-        dst = out_dir / f"{src.stem}{suffix}.jpg"
+        dst = out_dir / f"{src.stem}{suffix}.{out_format}"
         # Guard against overwriting the source when in_dir == out_dir and
-        # the input already has a .jpg/.jpeg extension matching the output.
+        # the input already has an extension matching the output.
         if dst.resolve() == src.resolve():
             logger.warning(f"[{i}/{len(inputs)}] skip (would overwrite source): {src}")
             skipped += 1
