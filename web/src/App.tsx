@@ -11,6 +11,7 @@ import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useTheme } from './hooks/useTheme';
 import { downloadCsv, getBioFileFinderUrl } from './utils/csv';
+import { copyToClipboard } from './utils/clipboard';
 import { TopBar } from './components/TopBar';
 import { SearchBar } from './components/SearchBar';
 import { FilterDropdowns } from './components/FilterDropdowns';
@@ -164,20 +165,33 @@ function App() {
     );
   }
 
-  const galleryMenuItems = selectedImage
-    ? undefined
-    : [
-        {
-          label: 'Download metadata as CSV',
-          icon: 'fa-solid fa-download',
-          onClick: () => downloadCsv(data, columns, config, 'metadata.csv'),
-        },
-        {
-          label: 'View collection in BioFile Finder',
-          icon: 'fa-solid fa-table-cells',
-          href: getBioFileFinderUrl(config),
-        },
-      ];
+  const pageActions = [
+    {
+      label: 'Copy link to current view',
+      icon: 'fa-solid fa-link',
+      onClick: () => copyToClipboard(window.location.href),
+    },
+    ...(selectedImage
+      ? []
+      : [
+          {
+            label: 'Download metadata as CSV',
+            icon: 'fa-solid fa-download',
+            onClick: () => downloadCsv(data, columns, config, 'metadata.csv'),
+          },
+          {
+            label: 'View collection in BioFile Finder',
+            icon: 'fa-solid fa-table-cells',
+            href: getBioFileFinderUrl(config),
+          },
+        ]),
+  ];
+
+  const siteItems = (config.branding?.menuItems || []).map((item) => ({
+    label: item.label,
+    icon: item.icon || 'fa-solid fa-link',
+    href: item.href,
+  }));
 
   return (
     <div className="app">
@@ -185,7 +199,7 @@ function App() {
         config={config}
         theme={theme}
         onToggleTheme={toggleTheme}
-        menuItems={galleryMenuItems}
+        menuGroups={[pageActions, siteItems]}
       />
 
       <main className="main-content">

@@ -50,6 +50,16 @@ export type SlotContent =
   | { text: string }
   | { image: string; href?: string; alt?: string };
 
+/**
+ * Per-site item appended to the top-bar settings menu.
+ * Always an external link; uses an optional Font Awesome icon class.
+ */
+export interface BrandingMenuItem {
+  label: string;
+  href: string;
+  icon?: string;
+}
+
 export interface BrandingConfig {
   headerLeftLogo?: LogoSpec;
   headerRightLogo?: LogoSpec;
@@ -59,6 +69,8 @@ export interface BrandingConfig {
   footerBg?: string;
   /** Two-column footer slots. */
   footer?: { left?: SlotContent; right?: SlotContent };
+  /** Site-defined items shown in the settings menu (under the page actions). */
+  menuItems?: BrandingMenuItem[];
   /** Kept for back-compat with older configs. */
   footerLinks?: Array<{ label: string; url: string }>;
 }

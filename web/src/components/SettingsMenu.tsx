@@ -5,7 +5,7 @@
  * right side stays uncluttered. Closes on outside click, Escape, or selection.
  */
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 export type SettingsMenuItem = {
   label: ReactNode;
@@ -15,11 +15,14 @@ export type SettingsMenuItem = {
 interface SettingsMenuProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
-  /** Custom items rendered at the top of the menu, above the built-in items. */
-  extraItems?: SettingsMenuItem[];
+  /**
+   * Groups of items rendered above the built-in theme/About entries.
+   * Each non-empty group is separated from the next by a horizontal rule.
+   */
+  extraGroups?: SettingsMenuItem[][];
 }
 
-export function SettingsMenu({ theme, onToggleTheme, extraItems }: SettingsMenuProps) {
+export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -66,41 +69,49 @@ export function SettingsMenu({ theme, onToggleTheme, extraItems }: SettingsMenuP
 
       {open && (
         <div id={menuId} role="menu" className="settings-menu-panel">
-          {extraItems?.map((item, i) => {
-            const inner = (
-              <>
-                <i className={item.icon} />
-                <span>{item.label}</span>
-              </>
-            );
-            return 'href' in item ? (
-              <a
-                key={i}
-                role="menuitem"
-                className="settings-menu-item"
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-              >
-                {inner}
-              </a>
-            ) : (
-              <button
-                key={i}
-                type="button"
-                role="menuitem"
-                className="settings-menu-item"
-                onClick={() => {
-                  item.onClick();
-                  setOpen(false);
-                }}
-              >
-                {inner}
-              </button>
-            );
-          })}
-          {extraItems && extraItems.length > 0 && <hr className="settings-menu-sep" />}
+          {(extraGroups ?? [])
+            .filter((g) => g.length > 0)
+            .map((group, gi) => (
+              // Fragment (no wrapper div) — Pico styles div[role="group"] as
+              // a horizontal button group, which broke item layout.
+              <Fragment key={`g${gi}`}>
+                {group.map((item, i) => {
+                  const inner = (
+                    <>
+                      <i className={item.icon} />
+                      <span>{item.label}</span>
+                    </>
+                  );
+                  return 'href' in item ? (
+                    <a
+                      key={i}
+                      role="menuitem"
+                      className="settings-menu-item"
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => setOpen(false)}
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <button
+                      key={i}
+                      type="button"
+                      role="menuitem"
+                      className="settings-menu-item"
+                      onClick={() => {
+                        item.onClick();
+                        setOpen(false);
+                      }}
+                    >
+                      {inner}
+                    </button>
+                  );
+                })}
+                <hr className="settings-menu-sep" />
+              </Fragment>
+            ))}
 
           <button
             type="button"
