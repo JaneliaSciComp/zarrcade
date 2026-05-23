@@ -170,11 +170,24 @@ body {
   gap: 1rem;
 }
 
+.top-bar-center {
+  /* Take whatever horizontal space is left between the two logo clusters,
+     and contain its text so the H1 can ellipsis-truncate instead of
+     wrapping to a new line. */
+  flex: 1;
+  min-width: 0;
+  padding: 0 1rem;
+  text-align: center;
+}
+
 .top-bar-center h1 {
   margin: 0;
   font-size: 1.5rem;
   color: white;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .top-bar-logo {
@@ -639,14 +652,7 @@ body {
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .top-bar {
-    flex-wrap: wrap;
     gap: 0.5rem;
-  }
-
-  .top-bar-center {
-    order: -1;
-    width: 100%;
-    text-align: center;
   }
 
   .gallery {
