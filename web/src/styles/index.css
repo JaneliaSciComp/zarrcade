@@ -517,6 +517,9 @@ body {
   font-size: 0.85rem;
   padding: 0.4rem 0.75rem;
   margin: 0;
+  /* Match the 20px viewer icon so the copy button isn't shorter than the
+     icon-bearing viewer buttons. */
+  line-height: 20px;
 }
 
 .image-detail-viewer-icon {
