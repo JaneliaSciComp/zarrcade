@@ -432,12 +432,133 @@ body {
 }
 
 /* Pagination */
+.pagination-row {
+  display: flex;
+  /* Bottom-align so the single-row view toggle lines up with the pagination
+     button row (which sits below the "Showing X–Y of Z items" info text). */
+  align-items: flex-end;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.pagination-row > .pagination {
+  flex: 1;
+  margin: 0;
+}
+
 .pagination {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
   margin: 2rem 0;
+}
+
+/* View Toggle (Gallery vs Table) */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  overflow: hidden;
+}
+
+.view-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Match the pagination button footprint so the row aligns visually. */
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  /* Pico redefines --pico-color to primary-inverse (white) inside `button`,
+     so reading var(--pico-color) here gave white text on a white background.
+     Inherit the surrounding page color instead. */
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 0;
+}
+
+.view-toggle-button + .view-toggle-button {
+  border-left: 1px solid var(--pico-muted-border-color);
+}
+
+.view-toggle-button:hover {
+  background-color: var(--pico-secondary-background);
+}
+
+.view-toggle-button.is-active {
+  /* Match the active pagination page swatch so both groups read as
+     "currently selected" with one visual vocabulary. */
+  background-color: #134e4a;
+  color: white;
+  font-weight: 700;
+}
+
+/* Table View */
+.table-view {
+  overflow-x: auto;
+  margin: 1rem 0 2rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+}
+
+.table-view table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.table-view thead th {
+  position: sticky;
+  top: 0;
+  /* Match the Reset button (Pico .secondary). */
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.table-view tbody tr {
+  cursor: pointer;
+}
+
+.table-view tbody tr:nth-child(even) {
+  /* Very subtle zebra — just enough to scan across rows. */
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.table-view tbody tr:hover {
+  background: var(--pico-primary-background);
+  color: white;
+}
+
+/* Pico sets an opaque background-color on every td. Make tbody cells
+   transparent so the row's zebra + hover backgrounds are visible.
+   thead th keeps its opaque background (needed for position: sticky). */
+.table-view tbody td {
+  background: transparent;
+}
+
+.table-view tbody td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  vertical-align: top;
+}
+
+.table-cell-truncate {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pagination-info {

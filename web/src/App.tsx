@@ -16,6 +16,8 @@ import { TopBar } from './components/TopBar';
 import { SearchBar } from './components/SearchBar';
 import { FilterDropdowns } from './components/FilterDropdowns';
 import { Gallery } from './components/Gallery';
+import { TableView } from './components/TableView';
+import { ViewToggle, type ViewMode } from './components/ViewToggle';
 import { Pagination } from './components/Pagination';
 import { ImageDetail } from './components/ImageDetail';
 import { Footer } from './components/Footer';
@@ -26,6 +28,7 @@ function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('gallery');
   const { theme, toggleTheme } = useTheme();
 
   // Load configuration
@@ -69,24 +72,38 @@ function App() {
     endIndex,
   } = usePagination(filteredData, pageSize);
 
-  // Initialize detail view from URL and handle popstate (back button)
+  // Initialize detail view and view mode from URL; re-read on popstate.
   useEffect(() => {
-    const readDetailFromUrl = () => {
+    const readFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
       const detailParam = params.get('detail');
       if (detailParam !== null) {
         const index = parseInt(detailParam, 10);
-        if (!isNaN(index)) {
-          setSelectedImageIndex(index);
-          return;
-        }
+        setSelectedImageIndex(!isNaN(index) ? index : null);
+      } else {
+        setSelectedImageIndex(null);
       }
-      setSelectedImageIndex(null);
+
+      const viewParam = params.get('view');
+      setViewMode(viewParam === 'table' ? 'table' : 'gallery');
     };
 
-    readDetailFromUrl();
-    window.addEventListener('popstate', readDetailFromUrl);
-    return () => window.removeEventListener('popstate', readDetailFromUrl);
+    readFromUrl();
+    window.addEventListener('popstate', readFromUrl);
+    return () => window.removeEventListener('popstate', readFromUrl);
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    const params = new URLSearchParams(window.location.search);
+    if (mode === 'gallery') {
+      params.delete('view');
+    } else {
+      params.set('view', mode);
+    }
+    const qs = params.toString();
+    const newUrl = `${window.location.pathname}${qs ? '?' + qs : ''}`;
+    window.history.pushState({}, '', newUrl);
   }, []);
 
   // Handle reset (clear search and filters)
@@ -226,21 +243,34 @@ function App() {
               />
             </div>
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              startIndex={startIndex}
-              endIndex={endIndex}
-              onPageChange={goToPage}
-            />
+            <div className="pagination-row">
+              <ViewToggle value={viewMode} onChange={handleViewModeChange} />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                onPageChange={goToPage}
+              />
+            </div>
 
-            <Gallery
-              data={paginatedData}
-              allData={data}
-              config={config}
-              onImageClick={handleImageClick}
-            />
+            {viewMode === 'table' ? (
+              <TableView
+                data={paginatedData}
+                allData={data}
+                columns={columns}
+                config={config}
+                onRowClick={handleImageClick}
+              />
+            ) : (
+              <Gallery
+                data={paginatedData}
+                allData={data}
+                config={config}
+                onImageClick={handleImageClick}
+              />
+            )}
 
             <Pagination
               currentPage={currentPage}
