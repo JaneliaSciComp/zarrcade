@@ -71,6 +71,9 @@ export async function loadConfig(): Promise<AppConfig | null> {
   const configUrl = urlParams.get('config') ?? getInjectedConfigUrl();
 
   let config: Partial<AppConfig> = {};
+  // The absolute URL of the config file we actually loaded; used to resolve
+  // a relative dataUrl against the config's location rather than the app URL.
+  let loadedFromUrl: string | null = null;
 
   if (configUrl) {
     // Load from URL parameter
@@ -78,6 +81,7 @@ export async function loadConfig(): Promise<AppConfig | null> {
       const response = await fetch(configUrl);
       if (response.ok) {
         config = await response.json();
+        loadedFromUrl = new URL(configUrl, window.location.href).href;
       }
     } catch (e) {
       console.warn('Failed to load config from URL param:', e);
@@ -89,6 +93,7 @@ export async function loadConfig(): Promise<AppConfig | null> {
       const localResponse = await fetch('./config.local.json');
       if (localResponse.ok) {
         config = await localResponse.json();
+        loadedFromUrl = new URL('./config.local.json', window.location.href).href;
         loaded = true;
       }
     } catch (e) {
@@ -101,6 +106,7 @@ export async function loadConfig(): Promise<AppConfig | null> {
         const response = await fetch('./config.json');
         if (response.ok) {
           config = await response.json();
+          loadedFromUrl = new URL('./config.json', window.location.href).href;
         }
       } catch (e) {
         console.warn('No config.json found, using defaults');
@@ -108,7 +114,13 @@ export async function loadConfig(): Promise<AppConfig | null> {
     }
   }
 
-  // Check for data URL override in query params
+  // Resolve a relative dataUrl against the config file's URL, so the CSV is
+  // looked up next to the JSON rather than next to the app's index.html.
+  if (config.dataUrl && loadedFromUrl) {
+    config.dataUrl = new URL(config.dataUrl, loadedFromUrl).href;
+  }
+
+  // Check for data URL override in query params (resolved against the app URL)
   const dataUrl = urlParams.get('data');
   if (dataUrl) {
     config.dataUrl = dataUrl;
