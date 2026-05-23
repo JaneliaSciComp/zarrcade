@@ -21,6 +21,9 @@ export interface DataConfig {
   baseUrl?: string;
   thumbnailColumn?: string;
   thumbnailBaseUrl?: string;
+  // Optional full-size image shown on the detail page in place of the thumbnail.
+  fullSizeColumn?: string;
+  fullSizeBaseUrl?: string;
 }
 
 export interface DisplayConfig {

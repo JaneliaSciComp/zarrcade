@@ -75,6 +75,34 @@ export function getCsvThumbnailUrl(row: ImageRow, config: AppConfig): string | n
 }
 
 /**
+ * Resolve a CSV-provided full-size image URL, or return null if the row has none.
+ * Mirrors getCsvThumbnailUrl but uses fullSizeColumn / fullSizeBaseUrl.
+ */
+export function getFullSizeImageUrl(row: ImageRow, config: AppConfig): string | null {
+  const fullSizeColumn = config.data?.fullSizeColumn;
+  if (!fullSizeColumn) return null;
+
+  const value = row[fullSizeColumn];
+  if (!value) return null;
+
+  const str = String(value);
+  if (str.startsWith('http://') || str.startsWith('https://')) {
+    return str;
+  }
+
+  const base = config.data?.fullSizeBaseUrl;
+  if (base) {
+    return `${base.replace(/\/$/, '')}/${str.replace(/^\//, '')}`;
+  }
+
+  if (config.dataUrl) {
+    return resolveRelativeUrl(str, config.dataUrl);
+  }
+
+  return str;
+}
+
+/**
  * Get the display title for an image row
  */
 export function getTitle(row: ImageRow, config: AppConfig): string {
