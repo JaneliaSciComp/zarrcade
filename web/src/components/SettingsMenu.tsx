@@ -5,14 +5,21 @@
  * right side stays uncluttered. Closes on outside click, Escape, or selection.
  */
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+
+export type SettingsMenuItem = {
+  label: ReactNode;
+  icon: string; // Font Awesome class string, e.g. "fa-solid fa-download"
+} & ({ onClick: () => void } | { href: string });
 
 interface SettingsMenuProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  /** Custom items rendered at the top of the menu, above the built-in items. */
+  extraItems?: SettingsMenuItem[];
 }
 
-export function SettingsMenu({ theme, onToggleTheme }: SettingsMenuProps) {
+export function SettingsMenu({ theme, onToggleTheme, extraItems }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -59,6 +66,42 @@ export function SettingsMenu({ theme, onToggleTheme }: SettingsMenuProps) {
 
       {open && (
         <div id={menuId} role="menu" className="settings-menu-panel">
+          {extraItems?.map((item, i) => {
+            const inner = (
+              <>
+                <i className={item.icon} />
+                <span>{item.label}</span>
+              </>
+            );
+            return 'href' in item ? (
+              <a
+                key={i}
+                role="menuitem"
+                className="settings-menu-item"
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+              >
+                {inner}
+              </a>
+            ) : (
+              <button
+                key={i}
+                type="button"
+                role="menuitem"
+                className="settings-menu-item"
+                onClick={() => {
+                  item.onClick();
+                  setOpen(false);
+                }}
+              >
+                {inner}
+              </button>
+            );
+          })}
+          {extraItems && extraItems.length > 0 && <hr className="settings-menu-sep" />}
+
           <button
             type="button"
             role="menuitem"

@@ -164,9 +164,29 @@ function App() {
     );
   }
 
+  const galleryMenuItems = selectedImage
+    ? undefined
+    : [
+        {
+          label: 'Download metadata as CSV',
+          icon: 'fa-solid fa-download',
+          onClick: () => downloadCsv(data, columns, config, 'metadata.csv'),
+        },
+        {
+          label: 'View collection in BioFile Finder',
+          icon: 'fa-solid fa-table-cells',
+          href: getBioFileFinderUrl(config),
+        },
+      ];
+
   return (
     <div className="app">
-      <TopBar config={config} theme={theme} onToggleTheme={toggleTheme} />
+      <TopBar
+        config={config}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        menuItems={galleryMenuItems}
+      />
 
       <main className="main-content">
         {selectedImage ? (
@@ -190,23 +210,6 @@ function App() {
                 activeFilters={activeFilters}
                 onFilterChange={setFilter}
               />
-            </div>
-
-            <div className="gallery-actions">
-              <button
-                className="gallery-action-link"
-                onClick={() => downloadCsv(filteredData, columns, config, 'metadata.csv')}
-              >
-                <i className="fa-solid fa-download" /> Download metadata as CSV
-              </button>
-              <a
-                className="gallery-action-link"
-                href={getBioFileFinderUrl(config)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <i className="fa-solid fa-table-cells" /> View collection in BioFile Finder
-              </a>
             </div>
 
             <Pagination

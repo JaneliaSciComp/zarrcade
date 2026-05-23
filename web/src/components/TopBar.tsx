@@ -3,12 +3,13 @@
  */
 
 import type { AppConfig, LogoSpec } from '../types';
-import { SettingsMenu } from './SettingsMenu';
+import { SettingsMenu, type SettingsMenuItem } from './SettingsMenu';
 
 interface TopBarProps {
   config: AppConfig | null;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  menuItems?: SettingsMenuItem[];
 }
 
 function Logo({ spec }: { spec?: LogoSpec }) {
@@ -25,7 +26,7 @@ function Logo({ spec }: { spec?: LogoSpec }) {
   return img;
 }
 
-export function TopBar({ config, theme, onToggleTheme }: TopBarProps) {
+export function TopBar({ config, theme, onToggleTheme, menuItems }: TopBarProps) {
   const branding = config?.branding;
   const title = config?.title || 'Zarrcade';
   const style = branding?.headerBg ? { background: branding.headerBg } : undefined;
@@ -40,7 +41,7 @@ export function TopBar({ config, theme, onToggleTheme }: TopBarProps) {
       </div>
       <div className="top-bar-right">
         <Logo spec={branding?.headerRightLogo} />
-        <SettingsMenu theme={theme} onToggleTheme={onToggleTheme} />
+        <SettingsMenu theme={theme} onToggleTheme={onToggleTheme} extraItems={menuItems} />
       </div>
     </nav>
   );
