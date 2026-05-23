@@ -157,9 +157,11 @@ body {
   background-color: #1e293b;
   color: white;
   padding: 0.5rem 1rem;
-  display: flex;
+  /* Grid with equal-width side columns so the title stays optically
+     centered even when one logo slot is empty. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   min-height: 60px;
 }
 
@@ -170,11 +172,11 @@ body {
   gap: 1rem;
 }
 
+.top-bar-right {
+  justify-content: flex-end;
+}
+
 .top-bar-center {
-  /* Take whatever horizontal space is left between the two logo clusters,
-     and contain its text so the H1 can ellipsis-truncate instead of
-     wrapping to a new line. */
-  flex: 1;
   min-width: 0;
   padding: 0 1rem;
   text-align: center;
