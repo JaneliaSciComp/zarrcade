@@ -91,13 +91,20 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
 
       <div className="image-detail-body">
         <div className="image-detail-thumbnail">
-          <img
-            src={detailImageUrl}
-            alt={title}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
-            }}
-          />
+          <a
+            href={detailImageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open image in a new tab"
+          >
+            <img
+              src={detailImageUrl}
+              alt={title}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
+              }}
+            />
+          </a>
         </div>
 
         <table className="image-detail-metadata">

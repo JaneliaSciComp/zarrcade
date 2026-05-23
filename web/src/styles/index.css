@@ -536,11 +536,14 @@ body {
 }
 
 .image-detail-thumbnail img {
-  max-width: 400px;
-  max-height: 400px;
+  /* Allow the image to grow up to 50% of the viewport width
+     (and a sensible portion of the height) while preserving aspect ratio. */
+  max-width: 50vw;
+  max-height: 80vh;
   width: auto;
   height: auto;
   border-radius: var(--pico-border-radius);
+  cursor: zoom-in;
 }
 
 .image-detail-metadata {
