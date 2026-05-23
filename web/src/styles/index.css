@@ -182,19 +182,74 @@ body {
   height: auto;
 }
 
-/* Theme Toggle */
-.theme-toggle {
+/* Settings Menu */
+.settings-menu {
+  position: relative;
+  /* Visually separate the kebab from the adjacent right logo. */
+  margin-left: 0.75rem;
+  margin-right: 0.25rem;
+}
+
+.settings-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
+  color: inherit;
   cursor: pointer;
-  font-size: 1.5rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 1.25rem;
+  line-height: 1;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
   border-radius: var(--pico-border-radius);
   transition: background-color 0.2s;
 }
 
-.theme-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.settings-menu-trigger:hover,
+.settings-menu-trigger[aria-expanded="true"] {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.settings-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  min-width: 220px;
+  background: var(--pico-background-color);
+  color: var(--pico-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 0.25rem;
+  z-index: 100;
+}
+
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: calc(var(--pico-border-radius) - 2px);
+}
+
+.settings-menu-item:hover,
+.settings-menu-item:focus-visible {
+  background-color: var(--pico-secondary-background);
+  outline: none;
+}
+
+.settings-menu-item i {
+  width: 1.1rem;
+  text-align: center;
 }
 
 /* Controls (Search + Filters) */
@@ -460,18 +515,35 @@ body {
   gap: 1rem;
 }
 
-.footer-links {
+.footer-side {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
 }
 
-.footer-links a {
-  color: white;
+.footer-right {
+  margin-left: auto;
+  text-align: right;
+}
+
+.footer a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.footer a:hover {
   text-decoration: none;
 }
 
-.footer-links a:hover {
-  text-decoration: underline;
+.footer-image {
+  max-height: 40px;
+  height: auto;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
 }
 
 /* Image Detail Page */

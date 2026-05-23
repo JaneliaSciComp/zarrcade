@@ -2,7 +2,31 @@
  * Configuration loading for Zarrcade SPA
  */
 
-import type { AppConfig, Viewer } from './types';
+import type { AppConfig, BrandingConfig, Viewer } from './types';
+
+/**
+ * Mutate a BrandingConfig in place, turning every relative asset URL into an
+ * absolute URL resolved against the config file's location.
+ */
+function resolveBrandingAgainst(b: BrandingConfig, base: string): void {
+  const resolveStr = (s: string | undefined) =>
+    s ? new URL(s, base).href : s;
+
+  const resolveLogo = (logo: BrandingConfig['headerLeftLogo']) => {
+    if (!logo) return logo;
+    if (typeof logo === 'string') return resolveStr(logo);
+    return { ...logo, src: new URL(logo.src, base).href };
+  };
+
+  b.headerLeftLogo = resolveLogo(b.headerLeftLogo);
+  b.headerRightLogo = resolveLogo(b.headerRightLogo);
+
+  for (const slot of [b.footer?.left, b.footer?.right]) {
+    if (slot && 'image' in slot) {
+      slot.image = new URL(slot.image, base).href;
+    }
+  }
+}
 
 const DEFAULT_VIEWERS: Viewer[] = [
   {
@@ -118,6 +142,13 @@ export async function loadConfig(): Promise<AppConfig | null> {
   // looked up next to the JSON rather than next to the app's index.html.
   if (config.dataUrl && loadedFromUrl) {
     config.dataUrl = new URL(config.dataUrl, loadedFromUrl).href;
+  }
+
+  // Resolve branding asset URLs against the config file's URL too. This lets
+  // a site ship its own `ext/` folder next to zarrcade.json and reference
+  // assets by relative path.
+  if (loadedFromUrl && config.branding) {
+    resolveBrandingAgainst(config.branding, loadedFromUrl);
   }
 
   // Check for data URL override in query params (resolved against the app URL)

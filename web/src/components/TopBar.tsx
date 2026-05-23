@@ -2,8 +2,8 @@
  * Top navigation bar component
  */
 
-import type { AppConfig } from '../types';
-import { ThemeToggle } from './ThemeToggle';
+import type { AppConfig, LogoSpec } from '../types';
+import { SettingsMenu } from './SettingsMenu';
 
 interface TopBarProps {
   config: AppConfig | null;
@@ -11,26 +11,36 @@ interface TopBarProps {
   onToggleTheme: () => void;
 }
 
+function Logo({ spec }: { spec?: LogoSpec }) {
+  if (!spec) return null;
+  const obj = typeof spec === 'string' ? { src: spec } : spec;
+  const img = <img src={obj.src} alt={obj.alt ?? 'Logo'} className="top-bar-logo" />;
+  if (obj.href) {
+    return (
+      <a href={obj.href} target="_blank" rel="noopener noreferrer">
+        {img}
+      </a>
+    );
+  }
+  return img;
+}
+
 export function TopBar({ config, theme, onToggleTheme }: TopBarProps) {
-  const leftLogo = config?.branding?.headerLeftLogo;
-  const rightLogo = config?.branding?.headerRightLogo;
+  const branding = config?.branding;
   const title = config?.title || 'Zarrcade';
+  const style = branding?.headerBg ? { background: branding.headerBg } : undefined;
 
   return (
-    <nav className="top-bar">
+    <nav className="top-bar" style={style}>
       <div className="top-bar-left">
-        {leftLogo && (
-          <img src={leftLogo} alt="Logo" className="top-bar-logo" />
-        )}
+        <Logo spec={branding?.headerLeftLogo} />
       </div>
       <div className="top-bar-center">
         <h1>{title}</h1>
       </div>
       <div className="top-bar-right">
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-        {rightLogo && (
-          <img src={rightLogo} alt="Logo" className="top-bar-logo" />
-        )}
+        <Logo spec={branding?.headerRightLogo} />
+        <SettingsMenu theme={theme} onToggleTheme={onToggleTheme} />
       </div>
     </nav>
   );
