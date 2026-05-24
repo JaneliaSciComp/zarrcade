@@ -1,7 +1,9 @@
 /* Zarrcade SPA Styles - Based on Pico CSS */
 
-/* Import Pico CSS from CDN */
-@import url('https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css');
+/* Bundled via npm so we work offline / behind firewalls and aren't exposed
+   to CDN compromise. */
+@import url('@picocss/pico/css/pico.min.css');
+@import url('@fortawesome/fontawesome-free/css/all.min.css');
 
 /* Base typography + sizing vars (theme-neutral) */
 :root {
