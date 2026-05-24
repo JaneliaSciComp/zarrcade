@@ -1,10 +1,8 @@
 # Zarrcade
 
-![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
-
 [![CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/ci.yml/badge.svg)](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/ci.yml)
 
-Zarrcade makes it easy to generate simple web applications for browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images.
+Zarrcade makes it easy to generate simple client-side webapps for browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images.
 
 <img alt="Zarrcade screenshot" src="https://github.com/user-attachments/assets/57895e8f-b427-43d3-bd81-bae2acb449a7" />
 
