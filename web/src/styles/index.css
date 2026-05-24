@@ -347,6 +347,30 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  cursor: pointer;
+  border-radius: var(--pico-border-radius);
+  /* Make the focus ring sit outside the card edges so it's visible against
+     a contrasting page background. */
+  outline-offset: 2px;
+  /* The card div has role="button" for keyboard accessibility; Pico styles
+     [role="button"] like an actual <button> (filled background, padding,
+     border). Reset those so the card stays a transparent container. */
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: none;
+  --pico-background-color: transparent;
+}
+
+.image-card:focus {
+  outline: none;
+}
+
+.image-card:focus-visible {
+  outline: 2px solid var(--pico-primary);
 }
 
 .image-card-thumbnail {
@@ -368,11 +392,15 @@ body {
   transition: opacity 0.2s;
 }
 
-.image-card-thumbnail:hover img {
+.image-card:hover .image-card-thumbnail img,
+.image-card:focus-within .image-card-thumbnail img {
   opacity: 0.8;
 }
 
-/* Card Overlay */
+/* Card Overlay
+   visibility (not just opacity) so the overlay's <button>/<a> elements are
+   removed from the tab order when the card isn't hovered or focused —
+   otherwise keyboard users would tab through invisible controls. */
 .image-card-overlay {
   position: absolute;
   top: 0;
@@ -384,12 +412,16 @@ body {
   justify-content: center;
   padding-top: 0.5rem;
   opacity: 0;
-  transition: opacity 0.2s;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0s linear 0.2s;
   pointer-events: none;
 }
 
-.image-card-thumbnail:hover .image-card-overlay {
+.image-card:hover .image-card-overlay,
+.image-card:focus-within .image-card-overlay {
   opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s, visibility 0s linear 0s;
 }
 
 .overlay-buttons {
@@ -531,6 +563,12 @@ body {
 
 .table-view tbody tr {
   cursor: pointer;
+  /* Rows have role="button" for keyboard accessibility; suppress Pico's
+     filled-button styling on the row element. */
+  background: none;
+  --pico-background-color: transparent;
+  border: none;
+  padding: 0;
 }
 
 .table-view tbody tr:nth-child(even) {
@@ -538,9 +576,11 @@ body {
   background: rgba(0, 0, 0, 0.025);
 }
 
-.table-view tbody tr:hover {
+.table-view tbody tr:hover,
+.table-view tbody tr:focus-visible {
   background: var(--pico-primary-background);
   color: white;
+  outline: none;
 }
 
 /* Pico sets an opaque background-color on every td. Make tbody cells

@@ -57,7 +57,6 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
       <button
         type="button"
         className="settings-menu-trigger"
-        aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
         aria-label="Settings"
@@ -67,8 +66,14 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
         <i className="fa-solid fa-bars" />
       </button>
 
+      {/*
+        Disclosure pattern (rather than ARIA menu): the panel is a region of
+        ordinary buttons/links navigated with Tab. We dropped role="menu" /
+        role="menuitem" because they imply arrow-key focus management we
+        weren't implementing, and native Tab order works fine here.
+      */}
       {open && (
-        <div id={menuId} role="menu" className="settings-menu-panel">
+        <div id={menuId} className="settings-menu-panel">
           {(extraGroups ?? [])
             .filter((g) => g.length > 0)
             .map((group, gi) => (
@@ -85,7 +90,6 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
                   return 'href' in item ? (
                     <a
                       key={i}
-                      role="menuitem"
                       className="settings-menu-item"
                       href={item.href}
                       target="_blank"
@@ -98,7 +102,6 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
                     <button
                       key={i}
                       type="button"
-                      role="menuitem"
                       className="settings-menu-item"
                       onClick={() => {
                         item.onClick();
@@ -115,7 +118,6 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
 
           <button
             type="button"
-            role="menuitem"
             className="settings-menu-item"
             onClick={handleToggleTheme}
           >
@@ -124,7 +126,6 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
           </button>
 
           <a
-            role="menuitem"
             className="settings-menu-item"
             href="https://github.com/JaneliaSciComp/zarrcade"
             target="_blank"

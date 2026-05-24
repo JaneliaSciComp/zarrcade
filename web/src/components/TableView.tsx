@@ -51,8 +51,20 @@ export function TableView({ data, allData, columns, config, onRowClick }: TableV
           {data.map((row) => {
             const globalIndex = indexByRow.get(row) ?? -1;
             const rowKey = row[pathColumn] !== undefined ? String(row[pathColumn]) : `row-${globalIndex}`;
+            const handleRowKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onRowClick(globalIndex);
+              }
+            };
             return (
-              <tr key={rowKey} onClick={() => onRowClick(globalIndex)}>
+              <tr
+                key={rowKey}
+                role="button"
+                tabIndex={0}
+                onClick={() => onRowClick(globalIndex)}
+                onKeyDown={handleRowKeyDown}
+              >
                 {visibleColumns.map((col) => {
                   const raw = row[col];
                   const text = raw === undefined || raw === null ? '' : String(raw);

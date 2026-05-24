@@ -72,12 +72,22 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
       ref={ref}
       className="image-card"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${plainTitle}`}
       onClick={onClick}
-      style={{ cursor: 'pointer' }}
+      onKeyDown={handleKeyDown}
     >
       <div className="image-card-thumbnail">
         <img
@@ -94,6 +104,7 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
               className="overlay-button"
               onClick={handleCopyLink}
               title="Copy data URL"
+              aria-label="Copy data URL"
             >
               <i className={showCopied ? 'fa-regular fa-circle-check' : 'fa-regular fa-clipboard'} />
             </button>
