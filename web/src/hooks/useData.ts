@@ -56,7 +56,10 @@ export function useData(config: AppConfig | null): UseDataResult {
         const result = Papa.parse<Record<string, string>>(text, {
           header: true,
           delimiter: delimiter === 'auto' ? undefined : delimiter,
-          skipEmptyLines: true,
+          // 'greedy' drops not just blank lines but also rows where every
+          // field is empty/whitespace (e.g. trailing `,,,,,` lines), which
+          // would otherwise render as ghost cards with no path or metadata.
+          skipEmptyLines: 'greedy',
           transformHeader: (header) => header.trim(),
         });
 

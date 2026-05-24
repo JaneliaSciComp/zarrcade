@@ -117,18 +117,31 @@ export function getTitle(row: ImageRow, config: AppConfig): string {
   const template = config.display?.titleTemplate;
   const titleColumn = config.display?.titleColumn;
 
-  let raw: string;
+  let raw = '';
   if (template) {
     raw = template.replace(/\{([^}]+)\}/g, (_, key) => {
       const value = row[key];
       return value !== undefined ? String(value) : '';
     });
-  } else if (titleColumn && row[titleColumn] !== undefined) {
-    raw = String(row[titleColumn]);
-  } else {
+  } else if (titleColumn) {
+    const v = row[titleColumn];
+    raw = v !== undefined && v !== null ? String(v) : '';
+  }
+
+  // Template/column either wasn't configured or resolved to empty (rows
+  // sometimes have a path but no associated metadata). Fall back to the
+  // zarr's basename, then the raw path, then "Untitled".
+  if (!raw.trim()) {
     const pathColumn = config.data?.pathColumn || 'path';
     const path = row[pathColumn];
-    raw = path ? String(path) : 'Untitled';
+    if (path) {
+      const pathStr = String(path);
+      const lastSlash = pathStr.lastIndexOf('/');
+      const basename = lastSlash >= 0 ? pathStr.slice(lastSlash + 1) : pathStr;
+      raw = basename.replace(/\.zarr$/i, '') || pathStr;
+    } else {
+      raw = 'Untitled';
+    }
   }
 
   return sanitizeTitle(raw);
