@@ -139,7 +139,7 @@ export function useFilters(
           return values.includes(filterValue);
         }
 
-        return String(cellValue).toLowerCase().includes(filterValue.toLowerCase());
+        return String(cellValue) === filterValue;
       });
     });
   }, [data, activeFilters, filterConfigs]);
