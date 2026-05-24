@@ -6,6 +6,7 @@
  * Clicking a row opens that image's detail page.
  */
 
+import { useMemo } from 'react';
 import type { ImageRow, AppConfig } from '../types';
 import { getVisibleColumns } from '../utils/csv';
 
@@ -18,6 +19,13 @@ interface TableViewProps {
 }
 
 export function TableView({ data, allData, columns, config, onRowClick }: TableViewProps) {
+  // Row→index map; avoids O(n) allData.indexOf() per row inside the render.
+  const indexByRow = useMemo(() => {
+    const m = new Map<ImageRow, number>();
+    allData.forEach((row, i) => m.set(row, i));
+    return m;
+  }, [allData]);
+
   if (data.length === 0) {
     return (
       <div className="gallery-empty">
@@ -41,7 +49,7 @@ export function TableView({ data, allData, columns, config, onRowClick }: TableV
         </thead>
         <tbody>
           {data.map((row) => {
-            const globalIndex = allData.indexOf(row);
+            const globalIndex = indexByRow.get(row) ?? -1;
             const rowKey = row[pathColumn] !== undefined ? String(row[pathColumn]) : `row-${globalIndex}`;
             return (
               <tr key={rowKey} onClick={() => onRowClick(globalIndex)}>
