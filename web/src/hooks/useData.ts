@@ -87,7 +87,7 @@ export function useData(config: AppConfig | null): UseDataResult {
     };
 
     loadData();
-  }, [config?.dataUrl, config?.data?.delimiter]);
+  }, [config?.dataUrl, config?.data?.delimiter, config?.data?.pathColumn]);
 
   return { data, columns, loading, error };
 }

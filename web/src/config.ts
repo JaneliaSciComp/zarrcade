@@ -108,7 +108,7 @@ export async function loadConfig(): Promise<AppConfig | null> {
         loadedFromUrl = new URL('./config.local.json', window.location.href).href;
         loaded = true;
       }
-    } catch (e) {
+    } catch {
       // config.local.json not found, fall through
     }
 
@@ -120,7 +120,7 @@ export async function loadConfig(): Promise<AppConfig | null> {
           config = await response.json();
           loadedFromUrl = new URL('./config.json', window.location.href).href;
         }
-      } catch (e) {
+      } catch {
         console.warn('No config.json found, using defaults');
       }
     }
