@@ -74,6 +74,43 @@ const DEFAULT_CONFIG: Partial<AppConfig> = {
 };
 
 /**
+ * Try to load a local config file. Returns null when the file is absent
+ * (404/network error) so callers can silently fall through to the next
+ * source. A non-404 HTTP error or malformed JSON throws — those represent
+ * real misconfiguration the user needs to see.
+ */
+async function tryLoadLocalConfig(
+  path: string,
+): Promise<{ config: Partial<AppConfig>; loadedFromUrl: string } | null> {
+  let response: Response;
+  try {
+    response = await fetch(path);
+  } catch {
+    return null;
+  }
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load ${path}: ${response.status} ${response.statusText}`.trim(),
+    );
+  }
+  let parsed: Partial<AppConfig>;
+  try {
+    parsed = await response.json();
+  } catch (e) {
+    throw new Error(
+      `${path} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  return {
+    config: parsed,
+    loadedFromUrl: new URL(path, window.location.href).href,
+  };
+}
+
+/**
  * Load configuration from various sources.
  * Priority: `?config=` query param > /config.local.json (dev only) >
  *          /config.json > built-in defaults
@@ -88,40 +125,42 @@ export async function loadConfig(): Promise<AppConfig | null> {
   let loadedFromUrl: string | null = null;
 
   if (configUrl) {
-    // Load from URL parameter
+    // Explicit ?config=<url>: surface every failure mode to the user. A typo
+    // or 404 here is almost certainly the reason they're hitting the page,
+    // so swallowing it and rendering the Welcome screen would be misleading.
+    let response: Response;
     try {
-      const response = await fetch(configUrl);
-      if (response.ok) {
-        config = await response.json();
-        loadedFromUrl = new URL(configUrl, window.location.href).href;
-      }
+      response = await fetch(configUrl);
     } catch (e) {
-      console.warn('Failed to load config from URL param:', e);
+      throw new Error(
+        `Failed to fetch config from ${configUrl}: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
-  } else {
-    // Try config.local.json first (gitignored, for development)
-    let loaded = false;
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch config from ${configUrl}: ${response.status} ${response.statusText}`.trim(),
+      );
+    }
     try {
-      const localResponse = await fetch('./config.local.json');
-      if (localResponse.ok) {
-        config = await localResponse.json();
-        loadedFromUrl = new URL('./config.local.json', window.location.href).href;
-        loaded = true;
-      }
-    } catch {
-      // config.local.json not found, fall through
+      config = await response.json();
+    } catch (e) {
+      throw new Error(
+        `Config at ${configUrl} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
-
-    // Fall back to config.json
-    if (!loaded) {
-      try {
-        const response = await fetch('./config.json');
-        if (response.ok) {
-          config = await response.json();
-          loadedFromUrl = new URL('./config.json', window.location.href).href;
-        }
-      } catch {
-        console.warn('No config.json found, using defaults');
+    loadedFromUrl = new URL(configUrl, window.location.href).href;
+  } else {
+    // Local config files: a missing file is fine (fall through to defaults /
+    // Welcome), but malformed JSON in a file the user shipped should surface.
+    const local = await tryLoadLocalConfig('./config.local.json');
+    if (local) {
+      config = local.config;
+      loadedFromUrl = local.loadedFromUrl;
+    } else {
+      const main = await tryLoadLocalConfig('./config.json');
+      if (main) {
+        config = main.config;
+        loadedFromUrl = main.loadedFromUrl;
       }
     }
   }
