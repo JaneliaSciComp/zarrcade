@@ -91,7 +91,16 @@ Open [http://localhost:5173](http://localhost:5173) to browse the gallery.
 
 ## CLI Usage
 
-The CLI has three commands: **discover**, **mips**, and **embed**. Run from the repo root.
+The CLI has four commands:
+
+| Command | What it does |
+|---------|--------------|
+| **discover** | Walk a directory tree (local or S3) for OME-Zarr containers and emit a CSV manifest. |
+| **mips** | Generate Maximum Intensity Projection images and small thumbnails for each zarr. |
+| **thumbnails** | Resize an existing folder of raster images into smaller JPEGs. |
+| **embed** | Write existing thumbnail JPEGs into their zarr containers via the [thumbnails convention](https://github.com/clbarnes/zarr-convention-thumbnails), so the SPA can read them without a separate CSV column. |
+
+Run all commands from the repo root.
 
 ### Discover OME-Zarr Containers
 
@@ -141,6 +150,21 @@ pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --naming flat
 **Naming strategies:** `nested` (default) preserves the input directory layout under the output dir; `flat` uses each zarr's basename (e.g. `sample_a_thumbnail.jpg`).
 
 **Image processing options:** `--thumbnail-size`, `--mip-size`, `--clahe-limit`, `--p-lower`, `--p-upper`, `--max-gain`, `--target-max`, `--ignore-zeros`, `--k-bg`, `--min-dynamic`. Run `pixi run zarrcade mips --help` for full details.
+
+### Resize Existing Thumbnails
+
+If you already have rendered PNG/JPEG images (e.g. from another pipeline) and just want to shrink them to gallery-friendly sizes, use `thumbnails`:
+
+```bash
+# Resize every .png under a directory into a JPEG of the same name
+pixi run zarrcade thumbnails /path/to/images --size 300 --quality 85
+
+# Write outputs into a separate directory with a suffix
+pixi run zarrcade thumbnails /path/to/images -o /path/to/out \
+    --suffix _thumb --format jpg
+```
+
+Options: `--pattern` (glob, default `*.png`), `--size`, `--quality`, `--format` (`jpg`|`png`), `--suffix`, `--overwrite`.
 
 ### Embed Thumbnails into Zarr
 
@@ -244,15 +268,27 @@ The SPA supports these URL parameters for deep linking:
 
 ### Built-in Viewers
 
-These viewers are available by default (configure via `viewers` array):
+Zarrcade ships with these viewers pre-configured. If you don't set `viewers` in your config, Neuroglancer and Avivator appear on every image card; the others are defined but turned off.
 
-| Viewer | Default | Description |
-|--------|---------|-------------|
-| [Neuroglancer](https://github.com/google/neuroglancer) | Enabled | 3D volumetric viewer by Google |
-| [Avivator](https://github.com/hms-dbmi/viv) | Enabled | OME-NGFF viewer by HMS-DBMI |
-| [OME-NGFF Validator](https://ome.github.io/ome-ngff-validator/) | Disabled | Validates OME-NGFF compliance |
-| [Vol-E](https://volumeviewer.allencell.org/) | Disabled | 3D Cell Viewer by Allen Institute |
-| [BioNGFF](https://biongff.github.io/biongff-viewer/) | Disabled | BioNGFF web viewer |
+| Viewer | Shown by default? | Description |
+|--------|-------------------|-------------|
+| [Neuroglancer](https://github.com/google/neuroglancer) | Yes | 3D volumetric viewer by Google |
+| [Avivator](https://github.com/hms-dbmi/viv) | Yes | OME-NGFF viewer by HMS-DBMI |
+| [OME-NGFF Validator](https://ome.github.io/ome-ngff-validator/) | No | Validates OME-NGFF compliance |
+| [Vol-E](https://volumeviewer.allencell.org/) | No | 3D Cell Viewer by Allen Institute |
+| [BioNGFF](https://biongff.github.io/biongff-viewer/) | No | BioNGFF web viewer |
+
+**Customizing the list.** Setting `viewers` in `config.json` *replaces* the built-in list — it is not merged. To enable Vol-E alongside the defaults, redeclare every viewer you want to keep:
+
+```json
+"viewers": [
+  { "name": "Neuroglancer", "icon": "neuroglancer.png", "urlTemplate": "https://neuroglancer-demo.appspot.com/#!{URL}", "enabled": true },
+  { "name": "Avivator",     "icon": "vizarr_logo.png",  "urlTemplate": "https://janeliascicomp.github.io/viv/?image_url={ENCODED_URL}", "enabled": true },
+  { "name": "Vol-E",        "icon": "aics_website-3d-cell-viewer.png", "urlTemplate": "https://volumeviewer.allencell.org/viewer?url={ENCODED_URL}", "enabled": true }
+]
+```
+
+You can also add your own entries — any viewer that accepts a zarr URL via query string works. See the [`viewers[]` rows](#configuration-reference) above for the `urlTemplate` placeholders (`{URL}`, `{ENCODED_URL}`, `{NAME}`).
 
 
 ## Deployment
@@ -326,6 +362,7 @@ zarrcade/                       # repo root
 │   ├── commands/
 │   │   ├── discover.py         # zarrcade discover command
 │   │   ├── generate_mips.py    # zarrcade mips command
+│   │   ├── thumbnails.py       # zarrcade thumbnails command
 │   │   └── embed_thumbnails.py # zarrcade embed command
 │   └── core/
 │       ├── agent.py           # Image discovery protocol
