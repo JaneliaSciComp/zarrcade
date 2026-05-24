@@ -14,7 +14,6 @@ Zarrcade makes it easy to generate simple web applications for browsing, searchi
 * Static web gallery with full-text search and filterable metadata -- no backend required
 * One-click viewing in [Neuroglancer](https://github.com/google/neuroglancer), [Avivator](https://github.com/hms-dbmi/viv), and other OME-Zarr-compatible viewers
 * Customizable branding, title templates, and viewer configuration
-* Docker deployment with runtime configuration via volume mount
 * URL-shareable state (search terms, filters, pagination, detail view)
 
 
@@ -27,7 +26,7 @@ Zarrcade has two independent components:
 | **CLI** (`zarrcade/`) | Discover zarrs, generate MIPs/thumbnails, embed thumbnails into zarrs | Python (Click, zarr, fsspec, microfilm) |
 | **Web SPA** (`web/`) | Display searchable image gallery from CSV data | React + TypeScript (Vite, PapaParse, Pico CSS) |
 
-The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA is served as static files via nginx in Docker.
+The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA builds to static HTML/JS/CSS that can be served from any static file host.
 
 ```
 ┌─────────────┐         ┌─────────┐         ┌────────────┐
@@ -42,8 +41,7 @@ The CLI produces CSV files and thumbnail images. The SPA reads those CSV files d
 ### Prerequisites
 
 * [Pixi](https://pixi.sh/latest/) (for the CLI)
-* [Node.js](https://nodejs.org/) 20+ (for web development)
-* [Docker](https://www.docker.com/) (for deployment)
+* [Node.js](https://nodejs.org/) 20+ (for the web SPA)
 
 ### Example 1: Fly-eFISH
 
@@ -68,9 +66,11 @@ pixi run zarrcade mips --input-csv examples/flyefish.csv \
 pixi run zarrcade embed --input-csv examples/flyefish-with-thumbs.csv \
     --zarr-base-url https://janelia-data-examples.s3.amazonaws.com/fly-efish
 
-# Serve the gallery with Docker
-cd docker
-CONFIG_FILE=../examples/config-flyefish.json docker compose up
+# Serve the gallery locally
+cd web
+cp ../examples/config-flyefish.json public/config.local.json
+npm install
+npm run dev
 ```
 
 ### Example 2: OpenOrganelle
@@ -78,11 +78,13 @@ CONFIG_FILE=../examples/config-flyefish.json docker compose up
 This example uses pre-existing thumbnail URLs, so no MIP generation is needed:
 
 ```bash
-cd docker
-CONFIG_FILE=../examples/config-openorganelle.json docker compose up
+cd web
+cp ../examples/config-openorganelle.json public/config.local.json
+npm install
+npm run dev
 ```
 
-Open [http://localhost:8080](http://localhost:8080) to browse the gallery.
+Open [http://localhost:5173](http://localhost:5173) to browse the gallery.
 
 
 ## CLI Usage
@@ -251,75 +253,19 @@ These viewers are available by default (configure via `viewers` array):
 | [BioNGFF](https://biongff.github.io/biongff-viewer/) | Disabled | BioNGFF web viewer |
 
 
-## Docker Deployment
+## Deployment
 
-### Build and Run
-
-```bash
-cd docker
-docker compose build
-docker compose up
-```
-
-The gallery is served at [http://localhost:8080](http://localhost:8080).
+The SPA is a pure static site. `npm run build` in `web/` produces a `dist/` directory of HTML/JS/CSS that can be served by any static host (S3, GitHub Pages, Netlify, a plain web server, etc.).
 
 ### Custom Configuration
 
-Three ways to customize the SPA config for a running container:
-
-**1. Mount a config file at runtime**
-
-```bash
-CONFIG_FILE=/path/to/my-config.json docker compose up
-```
-
-Or with `docker run`:
-
-```bash
-docker run -p 8080:80 \
-    -v /path/to/config.json:/usr/share/nginx/html/config.json:ro \
-    zarrcade
-```
-
-**2. Point the SPA at a remote config URL**
-
-Set `CONFIG_URL` and the SPA will fetch the config client-side at load time — no volume mount required:
-
-```bash
-CONFIG_URL=https://s3.example.com/my-config.json docker compose up
-```
-
-```bash
-docker run -p 8080:80 -e CONFIG_URL=https://s3.example.com/my-config.json zarrcade
-```
-
-**3. Use the `?config=<url>` query parameter**
-
-The SPA already supports `?config=<url>` without any container changes. Equivalent to `CONFIG_URL`, just set per-session instead of per-deployment:
+The deployed `config.json` (next to `index.html`) is read at load time. You can also point the SPA at a different config:
 
 ```
-http://localhost:8080/?config=https://s3.example.com/my-config.json
+https://your-host.example.com/?config=https://s3.example.com/my-config.json
 ```
 
-### Publishing the Image to GHCR
-
-Releases are pushed to the GitHub Container Registry at `ghcr.io/janeliascicomp/zarrcade`:
-
-```bash
-# One-time: authenticate with a PAT that has write:packages scope
-echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
-
-# Build and push both <version> and latest tags
-docker/release.sh 2.0.0
-```
-
-Then anyone can run the released image without building locally:
-
-```bash
-docker run -p 8080:80 \
-    -e CONFIG_URL=https://example.com/my-config.json \
-    ghcr.io/janeliascicomp/zarrcade:latest
-```
+Priority: `?config=<url>` query param > `./config.local.json` (dev only, gitignored) > `./config.json` > built-in defaults.
 
 ### Serving Data Files
 
@@ -404,11 +350,6 @@ zarrcade/                       # repo root
 │       │                      # useTheme, useIntersectionObserver, useZarrThumbnail
 │       ├── utils/             # csv, viewers, clipboard, zarrThumbnails
 │       └── styles/            # CSS (Pico CSS framework)
-│
-├── docker/                     # Docker deployment
-│   ├── Dockerfile             # Multi-stage build (Node -> nginx)
-│   ├── docker-compose.yml
-│   └── nginx.conf             # nginx config with SPA routing and caching
 │
 └── examples/                   # Example datasets and configurations
     ├── flyefish.csv
