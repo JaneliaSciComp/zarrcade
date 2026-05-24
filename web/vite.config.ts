@@ -13,5 +13,12 @@ export default defineConfig({
   base: './',
   server: {
     host: '0.0.0.0',
+    watch: {
+      // NFS leaves stale .nfs* sidecar files when an open file is unlinked.
+      // Vite's chokidar watcher crashes ("UNKNOWN: unknown error, watch ...
+      // /.nfs<hex>") when it tries to watch one of these as it's vanishing.
+      // Excluding them keeps the dev server alive on NFS-mounted worktrees.
+      ignored: ['**/.nfs*'],
+    },
   },
 })
