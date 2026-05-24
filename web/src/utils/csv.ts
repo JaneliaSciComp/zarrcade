@@ -3,6 +3,7 @@
  */
 
 import type { ImageRow, AppConfig } from '../types';
+import { sanitizeTitle } from './sanitize';
 
 /**
  * Resolve a relative path against a base file URL.
@@ -103,32 +104,34 @@ export function getFullSizeImageUrl(row: ImageRow, config: AppConfig): string | 
 }
 
 /**
- * Get the display title for an image row
+ * Get the display title for an image row.
+ *
+ * The result is rendered into the DOM via dangerouslySetInnerHTML, so it
+ * MUST be sanitized before reaching this function's callers. Both the
+ * author-supplied template AND CSV cell substitutions are routed through
+ * the same DOMPurify pass — neither can be trusted: configs can be loaded
+ * via ?config=<url>, and CSV cells can contain whatever an upstream
+ * pipeline produced.
  */
 export function getTitle(row: ImageRow, config: AppConfig): string {
   const template = config.display?.titleTemplate;
   const titleColumn = config.display?.titleColumn;
 
-  // If template is configured, use it
+  let raw: string;
   if (template) {
-    return template.replace(/\{([^}]+)\}/g, (_, key) => {
+    raw = template.replace(/\{([^}]+)\}/g, (_, key) => {
       const value = row[key];
       return value !== undefined ? String(value) : '';
     });
+  } else if (titleColumn && row[titleColumn] !== undefined) {
+    raw = String(row[titleColumn]);
+  } else {
+    const pathColumn = config.data?.pathColumn || 'path';
+    const path = row[pathColumn];
+    raw = path ? String(path) : 'Untitled';
   }
 
-  // If title column is configured, use it
-  if (titleColumn) {
-    const value = row[titleColumn];
-    if (value !== undefined) {
-      return String(value);
-    }
-  }
-
-  // Fallback to path
-  const pathColumn = config.data?.pathColumn || 'path';
-  const path = row[pathColumn];
-  return path ? String(path) : 'Untitled';
+  return sanitizeTitle(raw);
 }
 
 /**
