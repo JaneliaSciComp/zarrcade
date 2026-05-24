@@ -3,6 +3,7 @@
  */
 
 import type { AppConfig, SlotContent } from '../types';
+import { sanitizeHtml } from '../utils/sanitize';
 
 interface FooterProps {
   config: AppConfig | null;
@@ -12,7 +13,11 @@ function Slot({ content }: { content?: SlotContent }) {
   if (!content) return null;
 
   if ('html' in content) {
-    return <span dangerouslySetInnerHTML={{ __html: content.html }} />;
+    // Configs are loaded via ?config=<url> from arbitrary origins; we must
+    // not trust the HTML they provide. DOMPurify strips scripts, event
+    // handlers, javascript: URLs, etc., while keeping common formatting
+    // and anchor tags.
+    return <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.html) }} />;
   }
   if ('text' in content) {
     return <span>{content.text}</span>;
