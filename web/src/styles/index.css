@@ -572,9 +572,12 @@ body {
 .table-view tbody tr {
   cursor: pointer;
   /* Rows have role="button" for keyboard accessibility; suppress Pico's
-     filled-button styling on the row element. */
+     filled-button styling (background AND inverse text color, which
+     otherwise made cells render white text on a near-white row). */
   background: none;
   --pico-background-color: transparent;
+  --pico-color: inherit;
+  color: inherit;
   border: none;
   padding: 0;
 }

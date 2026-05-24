@@ -261,8 +261,6 @@ function App() {
               />
             </div>
 
-            <hr className="gallery-rule" />
-
             {viewMode === 'table' ? (
               <TableView
                 data={paginatedData}
@@ -272,15 +270,17 @@ function App() {
                 onRowClick={handleImageClick}
               />
             ) : (
-              <Gallery
-                data={paginatedData}
-                allData={data}
-                config={config}
-                onImageClick={handleImageClick}
-              />
+              <>
+                <hr className="gallery-rule" />
+                <Gallery
+                  data={paginatedData}
+                  allData={data}
+                  config={config}
+                  onImageClick={handleImageClick}
+                />
+                <hr className="gallery-rule" />
+              </>
             )}
-
-            <hr className="gallery-rule" />
 
             <Pagination
               currentPage={currentPage}
