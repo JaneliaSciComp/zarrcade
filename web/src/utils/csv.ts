@@ -154,10 +154,14 @@ export function getVisibleColumns(columns: string[], config: AppConfig): string[
 }
 
 /**
- * Generate a CSV string from data rows and trigger a download
+ * Generate a CSV string from data rows and trigger a download.
+ *
+ * Exports every column — `hideColumns` only governs what the gallery and
+ * detail page show; the downloaded file is for offline analysis, so
+ * stripping internal columns (paths, thumbnail filenames, etc.) would
+ * make the export less useful, not more.
  */
-export function downloadCsv(data: ImageRow[], columns: string[], config: AppConfig, filename: string): void {
-  const visibleColumns = getVisibleColumns(columns, config);
+export function downloadCsv(data: ImageRow[], columns: string[], _config: AppConfig, filename: string): void {
   const escape = (val: string) => {
     if (val.includes(',') || val.includes('"') || val.includes('\n')) {
       return `"${val.replace(/"/g, '""')}"`;
@@ -165,9 +169,9 @@ export function downloadCsv(data: ImageRow[], columns: string[], config: AppConf
     return val;
   };
 
-  const header = visibleColumns.map(escape).join(',');
+  const header = columns.map(escape).join(',');
   const rows = data.map((row) =>
-    visibleColumns.map((col) => escape(String(row[col] ?? ''))).join(',')
+    columns.map((col) => escape(String(row[col] ?? ''))).join(',')
   );
   const csv = [header, ...rows].join('\n');
 
