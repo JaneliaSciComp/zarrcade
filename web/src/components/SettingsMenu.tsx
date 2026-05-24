@@ -64,7 +64,7 @@ export function SettingsMenu({ theme, onToggleTheme, extraGroups }: SettingsMenu
         title="Settings"
         onClick={() => setOpen((o) => !o)}
       >
-        <i className="fa-solid fa-ellipsis-vertical" />
+        <i className="fa-solid fa-bars" />
       </button>
 
       {open && (

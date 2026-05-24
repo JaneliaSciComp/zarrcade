@@ -206,24 +206,28 @@ body {
 }
 
 .settings-menu-trigger {
+  /* Pill button to match the paginator + view toggle — same teal background
+     and white icon. The bare kebab on the dark bar was too easy to miss. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  font-size: 1.25rem;
-  line-height: 1;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
   margin: 0;
-  padding: 0.4rem 0.55rem;
+  border: none;
+  background: var(--pico-primary-background);
+  color: white;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
   border-radius: var(--pico-border-radius);
   transition: background-color 0.2s;
 }
 
-.settings-menu-trigger:hover,
 .settings-menu-trigger[aria-expanded="true"] {
-  background-color: rgba(255, 255, 255, 0.12);
+  /* Match the active-page swatch when the menu is open. */
+  background-color: #134e4a;
 }
 
 .settings-menu-panel {
