@@ -2,7 +2,7 @@
  * Hook for client-side pagination
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { ImageRow } from '../types';
 
 interface UsePaginationResult {
@@ -17,40 +17,63 @@ interface UsePaginationResult {
   endIndex: number;
 }
 
+function readPageFromUrl(): number {
+  const params = new URLSearchParams(window.location.search);
+  const page = params.get('page');
+  if (page) {
+    const pageNum = parseInt(page, 10);
+    if (!isNaN(pageNum) && pageNum > 0) {
+      return pageNum;
+    }
+  }
+  return 1;
+}
+
 export function usePagination(
   data: ImageRow[],
   initialPageSize: number = 50
 ): UsePaginationResult {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(readPageFromUrl);
   const [pageSize, setPageSizeState] = useState(initialPageSize);
 
-  // Initialize page from URL
+  // Reset to page 1 when the user changes a filter/search (which changes
+  // the result set length), but NOT during the initial CSV load (0 → N),
+  // which would otherwise clobber a `?page=` deep link on refresh. We arm
+  // the reset only after we've seen non-zero data for the first time.
+  const prevLengthRef = useRef<number | null>(null);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const page = params.get('page');
-    if (page) {
-      const pageNum = parseInt(page, 10);
-      if (!isNaN(pageNum) && pageNum > 0) {
-        setCurrentPage(pageNum);
+    if (prevLengthRef.current === null) {
+      if (data.length > 0) {
+        prevLengthRef.current = data.length;
       }
+      return;
     }
-  }, []);
-
-  // Reset to page 1 when data changes (e.g., due to filtering)
-  useEffect(() => {
-    setCurrentPage(1);
+    if (prevLengthRef.current !== data.length) {
+      prevLengthRef.current = data.length;
+      setCurrentPage(1);
+    }
   }, [data.length]);
+
+  // Restore page on browser back/forward.
+  useEffect(() => {
+    const onPop = () => setCurrentPage(readPageFromUrl());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(data.length / pageSize));
   }, [data.length, pageSize]);
 
-  // Ensure current page is valid
+  // Ensure current page is valid. Skip while data is still loading (length
+  // 0 forces totalPages to 1, which would otherwise clobber a `?page=N>1`
+  // deep link on refresh before the CSV arrives).
   useEffect(() => {
+    if (data.length === 0) return;
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, data.length]);
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;

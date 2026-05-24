@@ -298,13 +298,32 @@ def make_mip_from_zarr(store, mip_path, adjust_channel_brightness=True, colors=N
 
 
 def make_thumbnail(mip_path, thumbnail_path, thumbnail_size=300, jpeg_quality=95):
-    """Create a thumbnail from the given maximum intensity projection (MIP)."""
+    """Create a thumbnail from the given maximum intensity projection (MIP).
+
+    Uses LANCZOS resampling to better preserve fine structures under large
+    downscale ratios. When the output is JPEG, chroma subsampling is disabled
+    (4:4:4) so colored edges — common in fluorescence MIPs — don't smear.
+    Output format is inferred from the file extension; pass a .png path for
+    lossless output.
+    """
     image = Image.open(mip_path)
     max_size = (thumbnail_size, thumbnail_size)
-    image.thumbnail(max_size)
-    aux_name, _ = os.path.splitext(mip_path)
+    image.thumbnail(max_size, resample=Image.Resampling.LANCZOS)
 
-    # Avoid "cannot write mode P as JPEG" error (e.g. when there is transparency)
-    image = image.convert("RGB")
+    ext = os.path.splitext(thumbnail_path)[1].lower()
+    save_kwargs = {}
+    if ext in ('.jpg', '.jpeg'):
+        # Avoid "cannot write mode P as JPEG" (e.g. paletted images with alpha).
+        image = image.convert("RGB")
+        save_kwargs = {
+            'quality': jpeg_quality,
+            'subsampling': 0,  # 4:4:4 — keep colored edges sharp
+            'optimize': True,
+        }
+    elif ext == '.png':
+        # Drop alpha for parity with JPEG output and a smaller file.
+        if image.mode not in ('RGB', 'L'):
+            image = image.convert("RGB")
+        save_kwargs = {'optimize': True}
 
-    image.save(thumbnail_path, quality=jpeg_quality)
+    image.save(thumbnail_path, **save_kwargs)

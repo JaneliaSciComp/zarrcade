@@ -6,7 +6,9 @@ import { useState } from 'react';
 import type { ImageRow, AppConfig } from '../types';
 import {
   getCsvThumbnailUrl,
+  getFullSizeImageUrl,
   getImagePath,
+  getPlainTitle,
   getTitle,
   getVisibleColumns,
   THUMBNAIL_PLACEHOLDER,
@@ -28,15 +30,20 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
   const [showCopied, setShowCopied] = useState(false);
 
   const imagePath = getImagePath(row, config);
+  const fullSizeImage = getFullSizeImageUrl(row, config);
   const csvThumbnail = getCsvThumbnailUrl(row, config);
+  // Only fall back to the zarr-embedded thumbnail when no CSV-provided image is available.
   const conventionThumbnail = useZarrThumbnail(
-    csvThumbnail ? null : imagePath,
+    fullSizeImage || csvThumbnail ? null : imagePath,
     THUMBNAIL_TARGET_SIZE,
     true
   );
-  const thumbnailUrl =
-    csvThumbnail ?? conventionThumbnail?.url ?? THUMBNAIL_PLACEHOLDER;
+  // Detail page prefers the full-size image when configured; falls back through
+  // the same chain as the gallery card.
+  const detailImageUrl =
+    fullSizeImage ?? csvThumbnail ?? conventionThumbnail?.url ?? THUMBNAIL_PLACEHOLDER;
   const title = getTitle(row, config);
+  const plainTitle = getPlainTitle(row, config);
   const viewers = getEnabledViewers(config.viewers);
   const visibleColumns = getVisibleColumns(columns, config);
 
@@ -86,13 +93,20 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
 
       <div className="image-detail-body">
         <div className="image-detail-thumbnail">
-          <img
-            src={thumbnailUrl}
-            alt={title}
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
-            }}
-          />
+          <a
+            href={detailImageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open image in a new tab"
+          >
+            <img
+              src={detailImageUrl}
+              alt={plainTitle}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
+              }}
+            />
+          </a>
         </div>
 
         <table className="image-detail-metadata">

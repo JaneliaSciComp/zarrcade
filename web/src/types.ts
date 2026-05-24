@@ -21,6 +21,9 @@ export interface DataConfig {
   baseUrl?: string;
   thumbnailColumn?: string;
   thumbnailBaseUrl?: string;
+  // Optional full-size image shown on the detail page in place of the thumbnail.
+  fullSizeColumn?: string;
+  fullSizeBaseUrl?: string;
 }
 
 export interface DisplayConfig {
@@ -30,9 +33,45 @@ export interface DisplayConfig {
   pageSize?: number;
 }
 
+/**
+ * A logo can be specified as a bare URL string (legacy) or as an object with
+ * an optional clickable href and accessible alt text.
+ */
+export type LogoSpec = string | { src: string; href?: string; alt?: string };
+
+/**
+ * Content for a named branding slot (e.g. footer.left).
+ *  - { html } — rendered via dangerouslySetInnerHTML (configs are author-controlled)
+ *  - { text } — rendered as plain text
+ *  - { image, href?, alt? } — rendered as an <img>, optionally wrapped in <a>
+ */
+export type SlotContent =
+  | { html: string }
+  | { text: string }
+  | { image: string; href?: string; alt?: string };
+
+/**
+ * Per-site item appended to the top-bar settings menu.
+ * Always an external link; uses an optional Font Awesome icon class.
+ */
+export interface BrandingMenuItem {
+  label: string;
+  href: string;
+  icon?: string;
+}
+
 export interface BrandingConfig {
-  headerLeftLogo?: string;
-  headerRightLogo?: string;
+  headerLeftLogo?: LogoSpec;
+  headerRightLogo?: LogoSpec;
+  /** CSS color applied to the top bar background (e.g. "#000"). */
+  headerBg?: string;
+  /** CSS color applied to the footer background. */
+  footerBg?: string;
+  /** Two-column footer slots. */
+  footer?: { left?: SlotContent; right?: SlotContent };
+  /** Site-defined items shown in the settings menu (under the page actions). */
+  menuItems?: BrandingMenuItem[];
+  /** Kept for back-compat with older configs. */
   footerLinks?: Array<{ label: string; url: string }>;
 }
 

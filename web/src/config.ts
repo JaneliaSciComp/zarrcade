@@ -2,7 +2,31 @@
  * Configuration loading for Zarrcade SPA
  */
 
-import type { AppConfig, Viewer } from './types';
+import type { AppConfig, BrandingConfig, Viewer } from './types';
+
+/**
+ * Mutate a BrandingConfig in place, turning every relative asset URL into an
+ * absolute URL resolved against the config file's location.
+ */
+function resolveBrandingAgainst(b: BrandingConfig, base: string): void {
+  const resolveStr = (s: string | undefined) =>
+    s ? new URL(s, base).href : s;
+
+  const resolveLogo = (logo: BrandingConfig['headerLeftLogo']) => {
+    if (!logo) return logo;
+    if (typeof logo === 'string') return resolveStr(logo);
+    return { ...logo, src: new URL(logo.src, base).href };
+  };
+
+  b.headerLeftLogo = resolveLogo(b.headerLeftLogo);
+  b.headerRightLogo = resolveLogo(b.headerRightLogo);
+
+  for (const slot of [b.footer?.left, b.footer?.right]) {
+    if (slot && 'image' in slot) {
+      slot.image = new URL(slot.image, base).href;
+    }
+  }
+}
 
 const DEFAULT_VIEWERS: Viewer[] = [
   {
@@ -50,65 +74,111 @@ const DEFAULT_CONFIG: Partial<AppConfig> = {
 };
 
 /**
- * Runtime-injected config URL. The Docker image substitutes this at container
- * startup from the CONFIG_URL env var; in dev the literal `${CONFIG_URL}`
- * placeholder is left in place and treated as absent.
+ * Try to load a local config file. Returns null when the file is absent
+ * (404/network error) so callers can silently fall through to the next
+ * source. A non-404 HTTP error or malformed JSON throws — those represent
+ * real misconfiguration the user needs to see.
  */
-function getInjectedConfigUrl(): string | null {
-  const raw = (window as unknown as { __ZARRCADE_CONFIG_URL__?: string })
-    .__ZARRCADE_CONFIG_URL__;
-  if (!raw || raw === '${CONFIG_URL}') return null;
-  return raw;
+async function tryLoadLocalConfig(
+  path: string,
+): Promise<{ config: Partial<AppConfig>; loadedFromUrl: string } | null> {
+  let response: Response;
+  try {
+    response = await fetch(path);
+  } catch {
+    return null;
+  }
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Failed to load ${path}: ${response.status} ${response.statusText}`.trim(),
+    );
+  }
+  let parsed: Partial<AppConfig>;
+  try {
+    parsed = await response.json();
+  } catch (e) {
+    throw new Error(
+      `${path} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
+    );
+  }
+  return {
+    config: parsed,
+    loadedFromUrl: new URL(path, window.location.href).href,
+  };
 }
 
 /**
  * Load configuration from various sources.
- * Priority: `?config=` query param > CONFIG_URL (Docker-injected) >
- *          /config.local.json (dev only) > /config.json > built-in defaults
+ * Priority: `?config=` query param > /config.local.json (dev only) >
+ *          /config.json > built-in defaults
  */
 export async function loadConfig(): Promise<AppConfig | null> {
   const urlParams = new URLSearchParams(window.location.search);
-  const configUrl = urlParams.get('config') ?? getInjectedConfigUrl();
+  const configUrl = urlParams.get('config');
 
   let config: Partial<AppConfig> = {};
+  // The absolute URL of the config file we actually loaded; used to resolve
+  // a relative dataUrl against the config's location rather than the app URL.
+  let loadedFromUrl: string | null = null;
 
   if (configUrl) {
-    // Load from URL parameter
+    // Explicit ?config=<url>: surface every failure mode to the user. A typo
+    // or 404 here is almost certainly the reason they're hitting the page,
+    // so swallowing it and rendering the Welcome screen would be misleading.
+    let response: Response;
     try {
-      const response = await fetch(configUrl);
-      if (response.ok) {
-        config = await response.json();
-      }
+      response = await fetch(configUrl);
     } catch (e) {
-      console.warn('Failed to load config from URL param:', e);
+      throw new Error(
+        `Failed to fetch config from ${configUrl}: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch config from ${configUrl}: ${response.status} ${response.statusText}`.trim(),
+      );
+    }
+    try {
+      config = await response.json();
+    } catch (e) {
+      throw new Error(
+        `Config at ${configUrl} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+    loadedFromUrl = new URL(configUrl, window.location.href).href;
   } else {
-    // Try config.local.json first (gitignored, for development)
-    let loaded = false;
-    try {
-      const localResponse = await fetch('./config.local.json');
-      if (localResponse.ok) {
-        config = await localResponse.json();
-        loaded = true;
-      }
-    } catch (e) {
-      // config.local.json not found, fall through
-    }
-
-    // Fall back to config.json
-    if (!loaded) {
-      try {
-        const response = await fetch('./config.json');
-        if (response.ok) {
-          config = await response.json();
-        }
-      } catch (e) {
-        console.warn('No config.json found, using defaults');
+    // Local config files: a missing file is fine (fall through to defaults /
+    // Welcome), but malformed JSON in a file the user shipped should surface.
+    const local = await tryLoadLocalConfig('./config.local.json');
+    if (local) {
+      config = local.config;
+      loadedFromUrl = local.loadedFromUrl;
+    } else {
+      const main = await tryLoadLocalConfig('./config.json');
+      if (main) {
+        config = main.config;
+        loadedFromUrl = main.loadedFromUrl;
       }
     }
   }
 
-  // Check for data URL override in query params
+  // Resolve a relative dataUrl against the config file's URL, so the CSV is
+  // looked up next to the JSON rather than next to the app's index.html.
+  if (config.dataUrl && loadedFromUrl) {
+    config.dataUrl = new URL(config.dataUrl, loadedFromUrl).href;
+  }
+
+  // Resolve branding asset URLs against the config file's URL too. This lets
+  // a site ship its own `ext/` folder next to zarrcade.json and reference
+  // assets by relative path.
+  if (loadedFromUrl && config.branding) {
+    resolveBrandingAgainst(config.branding, loadedFromUrl);
+  }
+
+  // Check for data URL override in query params (resolved against the app URL)
   const dataUrl = urlParams.get('data');
   if (dataUrl) {
     config.dataUrl = dataUrl;

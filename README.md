@@ -2,6 +2,8 @@
 
 ![logoz@0 1x](https://github.com/user-attachments/assets/21e45ddf-f53b-4391-9014-e1cad0243e7e)
 
+[![CI](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/ci.yml/badge.svg)](https://github.com/JaneliaSciComp/zarrcade/actions/workflows/ci.yml)
+
 Zarrcade makes it easy to generate simple web applications for browsing, searching, and visualizing collections of [OME-NGFF](https://github.com/ome/ngff) (i.e. OME-Zarr) images.
 
 <img alt="Zarrcade screenshot" src="https://github.com/user-attachments/assets/57895e8f-b427-43d3-bd81-bae2acb449a7" />
@@ -14,7 +16,6 @@ Zarrcade makes it easy to generate simple web applications for browsing, searchi
 * Static web gallery with full-text search and filterable metadata -- no backend required
 * One-click viewing in [Neuroglancer](https://github.com/google/neuroglancer), [Avivator](https://github.com/hms-dbmi/viv), and other OME-Zarr-compatible viewers
 * Customizable branding, title templates, and viewer configuration
-* Docker deployment with runtime configuration via volume mount
 * URL-shareable state (search terms, filters, pagination, detail view)
 
 
@@ -27,7 +28,7 @@ Zarrcade has two independent components:
 | **CLI** (`zarrcade/`) | Discover zarrs, generate MIPs/thumbnails, embed thumbnails into zarrs | Python (Click, zarr, fsspec, microfilm) |
 | **Web SPA** (`web/`) | Display searchable image gallery from CSV data | React + TypeScript (Vite, PapaParse, Pico CSS) |
 
-The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA is served as static files via nginx in Docker.
+The CLI produces CSV files and thumbnail images. The SPA reads those CSV files directly in the browser -- there is no backend server or database. The SPA builds to static HTML/JS/CSS that can be served from any static file host.
 
 ```
 ┌─────────────┐         ┌─────────┐         ┌────────────┐
@@ -42,8 +43,7 @@ The CLI produces CSV files and thumbnail images. The SPA reads those CSV files d
 ### Prerequisites
 
 * [Pixi](https://pixi.sh/latest/) (for the CLI)
-* [Node.js](https://nodejs.org/) 20+ (for web development)
-* [Docker](https://www.docker.com/) (for deployment)
+* [Node.js](https://nodejs.org/) 20+ (for the web SPA)
 
 ### Example 1: Fly-eFISH
 
@@ -68,9 +68,11 @@ pixi run zarrcade mips --input-csv examples/flyefish.csv \
 pixi run zarrcade embed --input-csv examples/flyefish-with-thumbs.csv \
     --zarr-base-url https://janelia-data-examples.s3.amazonaws.com/fly-efish
 
-# Serve the gallery with Docker
-cd docker
-CONFIG_FILE=../examples/config-flyefish.json docker compose up
+# Serve the gallery locally
+cd web
+cp ../examples/config-flyefish.json public/config.local.json
+npm install
+npm run dev
 ```
 
 ### Example 2: OpenOrganelle
@@ -78,16 +80,27 @@ CONFIG_FILE=../examples/config-flyefish.json docker compose up
 This example uses pre-existing thumbnail URLs, so no MIP generation is needed:
 
 ```bash
-cd docker
-CONFIG_FILE=../examples/config-openorganelle.json docker compose up
+cd web
+cp ../examples/config-openorganelle.json public/config.local.json
+npm install
+npm run dev
 ```
 
-Open [http://localhost:8080](http://localhost:8080) to browse the gallery.
+Open [http://localhost:5173](http://localhost:5173) to browse the gallery.
 
 
 ## CLI Usage
 
-The CLI has three commands: **discover**, **mips**, and **embed**. Run from the repo root.
+The CLI has four commands:
+
+| Command | What it does |
+|---------|--------------|
+| **discover** | Walk a directory tree (local or S3) for OME-Zarr containers and emit a CSV manifest. |
+| **mips** | Generate Maximum Intensity Projection images and small thumbnails for each zarr. |
+| **thumbnails** | Resize an existing folder of raster images into smaller JPEGs. |
+| **embed** | Write existing thumbnail JPEGs into their zarr containers via the [thumbnails convention](https://github.com/clbarnes/zarr-convention-thumbnails), so the SPA can read them without a separate CSV column. |
+
+Run all commands from the repo root.
 
 ### Discover OME-Zarr Containers
 
@@ -137,6 +150,21 @@ pixi run zarrcade mips /path/to/zarrs -o /output/thumbnails --naming flat
 **Naming strategies:** `nested` (default) preserves the input directory layout under the output dir; `flat` uses each zarr's basename (e.g. `sample_a_thumbnail.jpg`).
 
 **Image processing options:** `--thumbnail-size`, `--mip-size`, `--clahe-limit`, `--p-lower`, `--p-upper`, `--max-gain`, `--target-max`, `--ignore-zeros`, `--k-bg`, `--min-dynamic`. Run `pixi run zarrcade mips --help` for full details.
+
+### Resize Existing Thumbnails
+
+If you already have rendered PNG/JPEG images (e.g. from another pipeline) and just want to shrink them to gallery-friendly sizes, use `thumbnails`:
+
+```bash
+# Resize every .png under a directory into a JPEG of the same name
+pixi run zarrcade thumbnails /path/to/images --size 300 --quality 85
+
+# Write outputs into a separate directory with a suffix
+pixi run zarrcade thumbnails /path/to/images -o /path/to/out \
+    --suffix _thumb --format jpg
+```
+
+Options: `--pattern` (glob, default `*.png`), `--size`, `--quality`, `--format` (`jpg`|`png`), `--suffix`, `--overwrite`.
 
 ### Embed Thumbnails into Zarr
 
@@ -240,86 +268,42 @@ The SPA supports these URL parameters for deep linking:
 
 ### Built-in Viewers
 
-These viewers are available by default (configure via `viewers` array):
+Zarrcade ships with these viewers pre-configured. If you don't set `viewers` in your config, Neuroglancer and Avivator appear on every image card; the others are defined but turned off.
 
-| Viewer | Default | Description |
-|--------|---------|-------------|
-| [Neuroglancer](https://github.com/google/neuroglancer) | Enabled | 3D volumetric viewer by Google |
-| [Avivator](https://github.com/hms-dbmi/viv) | Enabled | OME-NGFF viewer by HMS-DBMI |
-| [OME-NGFF Validator](https://ome.github.io/ome-ngff-validator/) | Disabled | Validates OME-NGFF compliance |
-| [Vol-E](https://volumeviewer.allencell.org/) | Disabled | 3D Cell Viewer by Allen Institute |
-| [BioNGFF](https://biongff.github.io/biongff-viewer/) | Disabled | BioNGFF web viewer |
+| Viewer | Shown by default? | Description |
+|--------|-------------------|-------------|
+| [Neuroglancer](https://github.com/google/neuroglancer) | Yes | 3D volumetric viewer by Google |
+| [Avivator](https://github.com/hms-dbmi/viv) | Yes | OME-NGFF viewer by HMS-DBMI |
+| [OME-NGFF Validator](https://ome.github.io/ome-ngff-validator/) | No | Validates OME-NGFF compliance |
+| [Vol-E](https://volumeviewer.allencell.org/) | No | 3D Cell Viewer by Allen Institute |
+| [BioNGFF](https://biongff.github.io/biongff-viewer/) | No | BioNGFF web viewer |
 
+**Customizing the list.** Setting `viewers` in `config.json` *replaces* the built-in list — it is not merged. To enable Vol-E alongside the defaults, redeclare every viewer you want to keep:
 
-## Docker Deployment
-
-### Build and Run
-
-```bash
-cd docker
-docker compose build
-docker compose up
+```json
+"viewers": [
+  { "name": "Neuroglancer", "icon": "neuroglancer.png", "urlTemplate": "https://neuroglancer-demo.appspot.com/#!{URL}", "enabled": true },
+  { "name": "Avivator",     "icon": "vizarr_logo.png",  "urlTemplate": "https://janeliascicomp.github.io/viv/?image_url={ENCODED_URL}", "enabled": true },
+  { "name": "Vol-E",        "icon": "aics_website-3d-cell-viewer.png", "urlTemplate": "https://volumeviewer.allencell.org/viewer?url={ENCODED_URL}", "enabled": true }
+]
 ```
 
-The gallery is served at [http://localhost:8080](http://localhost:8080).
+You can also add your own entries — any viewer that accepts a zarr URL via query string works. See the [`viewers[]` rows](#configuration-reference) above for the `urlTemplate` placeholders (`{URL}`, `{ENCODED_URL}`, `{NAME}`).
+
+
+## Deployment
+
+The SPA is a pure static site. `npm run build` in `web/` produces a `dist/` directory of HTML/JS/CSS that can be served by any static host (S3, GitHub Pages, Netlify, a plain web server, etc.).
 
 ### Custom Configuration
 
-Three ways to customize the SPA config for a running container:
-
-**1. Mount a config file at runtime**
-
-```bash
-CONFIG_FILE=/path/to/my-config.json docker compose up
-```
-
-Or with `docker run`:
-
-```bash
-docker run -p 8080:80 \
-    -v /path/to/config.json:/usr/share/nginx/html/config.json:ro \
-    zarrcade
-```
-
-**2. Point the SPA at a remote config URL**
-
-Set `CONFIG_URL` and the SPA will fetch the config client-side at load time — no volume mount required:
-
-```bash
-CONFIG_URL=https://s3.example.com/my-config.json docker compose up
-```
-
-```bash
-docker run -p 8080:80 -e CONFIG_URL=https://s3.example.com/my-config.json zarrcade
-```
-
-**3. Use the `?config=<url>` query parameter**
-
-The SPA already supports `?config=<url>` without any container changes. Equivalent to `CONFIG_URL`, just set per-session instead of per-deployment:
+The deployed `config.json` (next to `index.html`) is read at load time. You can also point the SPA at a different config:
 
 ```
-http://localhost:8080/?config=https://s3.example.com/my-config.json
+https://your-host.example.com/?config=https://s3.example.com/my-config.json
 ```
 
-### Publishing the Image to GHCR
-
-Releases are pushed to the GitHub Container Registry at `ghcr.io/janeliascicomp/zarrcade`:
-
-```bash
-# One-time: authenticate with a PAT that has write:packages scope
-echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
-
-# Build and push both <version> and latest tags
-docker/release.sh 2.0.0
-```
-
-Then anyone can run the released image without building locally:
-
-```bash
-docker run -p 8080:80 \
-    -e CONFIG_URL=https://example.com/my-config.json \
-    ghcr.io/janeliascicomp/zarrcade:latest
-```
+Priority: `?config=<url>` query param > `./config.local.json` (dev only, gitignored) > `./config.json` > built-in defaults.
 
 ### Serving Data Files
 
@@ -378,6 +362,7 @@ zarrcade/                       # repo root
 │   ├── commands/
 │   │   ├── discover.py         # zarrcade discover command
 │   │   ├── generate_mips.py    # zarrcade mips command
+│   │   ├── thumbnails.py       # zarrcade thumbnails command
 │   │   └── embed_thumbnails.py # zarrcade embed command
 │   └── core/
 │       ├── agent.py           # Image discovery protocol
@@ -404,11 +389,6 @@ zarrcade/                       # repo root
 │       │                      # useTheme, useIntersectionObserver, useZarrThumbnail
 │       ├── utils/             # csv, viewers, clipboard, zarrThumbnails
 │       └── styles/            # CSS (Pico CSS framework)
-│
-├── docker/                     # Docker deployment
-│   ├── Dockerfile             # Multi-stage build (Node -> nginx)
-│   ├── docker-compose.yml
-│   └── nginx.conf             # nginx config with SPA routing and caching
 │
 └── examples/                   # Example datasets and configurations
     ├── flyefish.csv

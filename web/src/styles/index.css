@@ -1,7 +1,9 @@
 /* Zarrcade SPA Styles - Based on Pico CSS */
 
-/* Import Pico CSS from CDN */
-@import url('https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css');
+/* Bundled via npm so we work offline / behind firewalls and aren't exposed
+   to CDN compromise. */
+@import url('@picocss/pico/css/pico.min.css');
+@import url('@fortawesome/fontawesome-free/css/all.min.css');
 
 /* Base typography + sizing vars (theme-neutral) */
 :root {
@@ -157,9 +159,11 @@ body {
   background-color: #1e293b;
   color: white;
   padding: 0.5rem 1rem;
-  display: flex;
+  /* Grid with equal-width side columns so the title stays optically
+     centered even when one logo slot is empty. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   min-height: 60px;
 }
 
@@ -170,11 +174,24 @@ body {
   gap: 1rem;
 }
 
+.top-bar-right {
+  justify-content: flex-end;
+}
+
+.top-bar-center {
+  min-width: 0;
+  padding: 0 1rem;
+  text-align: center;
+}
+
 .top-bar-center h1 {
   margin: 0;
   font-size: 1.5rem;
   color: white;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .top-bar-logo {
@@ -182,19 +199,90 @@ body {
   height: auto;
 }
 
-/* Theme Toggle */
-.theme-toggle {
-  background: none;
+/* Settings Menu */
+.settings-menu {
+  position: relative;
+  /* Visually separate the kebab from the adjacent right logo. */
+  margin-left: 0.75rem;
+  margin-right: 0.25rem;
+}
+
+.settings-menu-trigger {
+  /* Pill button to match the paginator + view toggle — same teal background
+     and white icon. The bare kebab on the dark bar was too easy to miss. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  margin: 0;
   border: none;
+  background: var(--pico-primary-background);
+  color: white;
   cursor: pointer;
-  font-size: 1.5rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 1.05rem;
+  line-height: 1;
   border-radius: var(--pico-border-radius);
   transition: background-color 0.2s;
 }
 
-.theme-toggle:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.settings-menu-trigger[aria-expanded="true"] {
+  /* Match the active-page swatch when the menu is open. */
+  background-color: #134e4a;
+}
+
+.settings-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  /* Wide enough that the BioFile Finder label fits on one line. */
+  min-width: 290px;
+  white-space: nowrap;
+  background: var(--pico-background-color);
+  color: var(--pico-color);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 0.25rem;
+  z-index: 100;
+}
+
+.settings-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  /* Override Pico's default button margin-bottom which otherwise pushes the
+     second menu item down. */
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  font-size: 1rem;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: calc(var(--pico-border-radius) - 2px);
+}
+
+.settings-menu-item:hover,
+.settings-menu-item:focus-visible {
+  background-color: var(--pico-secondary-background);
+  outline: none;
+}
+
+.settings-menu-item i {
+  width: 1.4rem;
+  font-size: 1.15rem;
+  text-align: center;
+}
+
+.settings-menu-sep {
+  border: 0;
+  border-top: 1px solid var(--pico-muted-border-color);
+  margin: 0.25rem 0;
 }
 
 /* Controls (Search + Filters) */
@@ -239,32 +327,6 @@ body {
   margin: 0;
 }
 
-/* Gallery Actions */
-.gallery-actions {
-  display: flex;
-  gap: 1.5rem;
-  justify-content: center;
-  margin-bottom: 0;
-}
-
-.gallery-action-link {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--pico-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.gallery-action-link:hover {
-  color: var(--pico-primary-hover);
-}
-
 /* Gallery Grid */
 .gallery {
   display: grid;
@@ -272,6 +334,14 @@ body {
   gap: 1.5rem;
   margin-top: 2rem;
   margin-bottom: 2rem;
+}
+
+/* Horizontal rules that bracket the gallery / table, separating it from
+   the controls above and the bottom pagination row below. */
+.gallery-rule {
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--pico-muted-border-color);
 }
 
 .gallery-empty {
@@ -285,6 +355,30 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  cursor: pointer;
+  border-radius: var(--pico-border-radius);
+  /* Make the focus ring sit outside the card edges so it's visible against
+     a contrasting page background. */
+  outline-offset: 2px;
+  /* The card div has role="button" for keyboard accessibility; Pico styles
+     [role="button"] like an actual <button> (filled background, padding,
+     border). Reset those so the card stays a transparent container. */
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: none;
+  --pico-background-color: transparent;
+}
+
+.image-card:focus {
+  outline: none;
+}
+
+.image-card:focus-visible {
+  outline: 2px solid var(--pico-primary);
 }
 
 .image-card-thumbnail {
@@ -306,11 +400,42 @@ body {
   transition: opacity 0.2s;
 }
 
-.image-card-thumbnail:hover img {
+/* Loading skeleton — a soft shimmering box. Shown until a thumbnail is
+   decoded (or until we confirm there isn't one and swap in the icon). */
+.image-card-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--pico-border-radius);
+  background: linear-gradient(
+    100deg,
+    var(--pico-muted-border-color) 0%,
+    color-mix(in srgb, var(--pico-muted-border-color) 60%, var(--pico-background-color)) 50%,
+    var(--pico-muted-border-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: image-card-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes image-card-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image-card-skeleton {
+    animation: none;
+  }
+}
+
+.image-card:hover .image-card-thumbnail img,
+.image-card:focus-within .image-card-thumbnail img {
   opacity: 0.8;
 }
 
-/* Card Overlay */
+/* Card Overlay
+   visibility (not just opacity) so the overlay's <button>/<a> elements are
+   removed from the tab order when the card isn't hovered or focused —
+   otherwise keyboard users would tab through invisible controls. */
 .image-card-overlay {
   position: absolute;
   top: 0;
@@ -322,12 +447,16 @@ body {
   justify-content: center;
   padding-top: 0.5rem;
   opacity: 0;
-  transition: opacity 0.2s;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0s linear 0.2s;
   pointer-events: none;
 }
 
-.image-card-thumbnail:hover .image-card-overlay {
+.image-card:hover .image-card-overlay,
+.image-card:focus-within .image-card-overlay {
   opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s, visibility 0s linear 0s;
 }
 
 .overlay-buttons {
@@ -378,12 +507,138 @@ body {
 }
 
 /* Pagination */
+.pagination-row {
+  display: flex;
+  /* Bottom-align so the single-row view toggle lines up with the pagination
+     button row (which sits below the "Showing X–Y of Z items" info text). */
+  align-items: flex-end;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.pagination-row > .pagination {
+  flex: 1;
+  margin: 0;
+}
+
 .pagination {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
   margin: 2rem 0;
+}
+
+/* View Toggle (Gallery vs Table) */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+  overflow: hidden;
+}
+
+.view-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Match the pagination button footprint so the row aligns visually. */
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  /* Same teal-on-white as a non-current paginator page. */
+  background: var(--pico-primary-background);
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-radius: 0;
+}
+
+.view-toggle-button + .view-toggle-button {
+  border-left: 1px solid var(--pico-muted-border-color);
+}
+
+.view-toggle-button.is-active {
+  /* Match the active pagination page swatch so both groups read as
+     "currently selected" with one visual vocabulary. */
+  background-color: #134e4a;
+  color: white;
+  font-weight: 700;
+}
+
+/* Table View */
+.table-view {
+  overflow-x: auto;
+  margin: 1rem 0 2rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: var(--pico-border-radius);
+}
+
+.table-view table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.table-view thead th {
+  position: sticky;
+  top: 0;
+  /* Match the Reset button (Pico .secondary). */
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+.table-view tbody tr {
+  cursor: pointer;
+  /* Rows have role="button" for keyboard accessibility; suppress Pico's
+     filled-button styling (background AND inverse text color, which
+     otherwise made cells render white text on a near-white row). */
+  background: none;
+  --pico-background-color: transparent;
+  --pico-color: inherit;
+  color: inherit;
+  border: none;
+  padding: 0;
+}
+
+.table-view tbody tr:nth-child(even) {
+  /* Very subtle zebra — just enough to scan across rows. */
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.table-view tbody tr:hover,
+.table-view tbody tr:focus-visible {
+  background: var(--pico-primary-background);
+  color: white;
+  outline: none;
+}
+
+/* Pico sets an opaque background-color on every td. Make tbody cells
+   transparent so the row's zebra + hover backgrounds are visible.
+   thead th keeps its opaque background (needed for position: sticky). */
+.table-view tbody td {
+  background: transparent;
+}
+
+.table-view tbody td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  vertical-align: top;
+}
+
+.table-cell-truncate {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pagination-info {
@@ -460,18 +715,35 @@ body {
   gap: 1rem;
 }
 
-.footer-links {
+.footer-side {
   display: flex;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
 }
 
-.footer-links a {
-  color: white;
+.footer-right {
+  margin-left: auto;
+  text-align: right;
+}
+
+.footer a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.footer a:hover {
   text-decoration: none;
 }
 
-.footer-links a:hover {
-  text-decoration: underline;
+.footer-image {
+  max-height: 40px;
+  height: auto;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
 }
 
 /* Image Detail Page */
@@ -517,6 +789,9 @@ body {
   font-size: 0.85rem;
   padding: 0.4rem 0.75rem;
   margin: 0;
+  /* Match the 20px viewer icon so the copy button isn't shorter than the
+     icon-bearing viewer buttons. */
+  line-height: 20px;
 }
 
 .image-detail-viewer-icon {
@@ -536,11 +811,14 @@ body {
 }
 
 .image-detail-thumbnail img {
-  max-width: 400px;
-  max-height: 400px;
+  /* Allow the image to grow up to 50% of the viewport width
+     (and a sensible portion of the height) while preserving aspect ratio. */
+  max-width: 50vw;
+  max-height: 80vh;
   width: auto;
   height: auto;
   border-radius: var(--pico-border-radius);
+  cursor: zoom-in;
 }
 
 .image-detail-metadata {
@@ -561,14 +839,7 @@ body {
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .top-bar {
-    flex-wrap: wrap;
     gap: 0.5rem;
-  }
-
-  .top-bar-center {
-    order: -1;
-    width: 100%;
-    text-align: center;
   }
 
   .gallery {

@@ -3,6 +3,7 @@
  */
 
 import type { ImageRow, AppConfig } from '../types';
+import { sanitizeTitle, stripTags } from './sanitize';
 
 /**
  * Resolve a relative path against a base file URL.
@@ -75,32 +76,86 @@ export function getCsvThumbnailUrl(row: ImageRow, config: AppConfig): string | n
 }
 
 /**
- * Get the display title for an image row
+ * Resolve a CSV-provided full-size image URL, or return null if the row has none.
+ * Mirrors getCsvThumbnailUrl but uses fullSizeColumn / fullSizeBaseUrl.
+ */
+export function getFullSizeImageUrl(row: ImageRow, config: AppConfig): string | null {
+  const fullSizeColumn = config.data?.fullSizeColumn;
+  if (!fullSizeColumn) return null;
+
+  const value = row[fullSizeColumn];
+  if (!value) return null;
+
+  const str = String(value);
+  if (str.startsWith('http://') || str.startsWith('https://')) {
+    return str;
+  }
+
+  const base = config.data?.fullSizeBaseUrl;
+  if (base) {
+    return `${base.replace(/\/$/, '')}/${str.replace(/^\//, '')}`;
+  }
+
+  if (config.dataUrl) {
+    return resolveRelativeUrl(str, config.dataUrl);
+  }
+
+  return str;
+}
+
+/**
+ * Get the display title for an image row.
+ *
+ * The result is rendered into the DOM via dangerouslySetInnerHTML, so it
+ * MUST be sanitized before reaching this function's callers. Both the
+ * author-supplied template AND CSV cell substitutions are routed through
+ * the same DOMPurify pass — neither can be trusted: configs can be loaded
+ * via ?config=<url>, and CSV cells can contain whatever an upstream
+ * pipeline produced.
  */
 export function getTitle(row: ImageRow, config: AppConfig): string {
   const template = config.display?.titleTemplate;
   const titleColumn = config.display?.titleColumn;
 
-  // If template is configured, use it
+  let raw = '';
   if (template) {
-    return template.replace(/\{([^}]+)\}/g, (_, key) => {
+    raw = template.replace(/\{([^}]+)\}/g, (_, key) => {
       const value = row[key];
       return value !== undefined ? String(value) : '';
     });
+  } else if (titleColumn) {
+    const v = row[titleColumn];
+    raw = v !== undefined && v !== null ? String(v) : '';
   }
 
-  // If title column is configured, use it
-  if (titleColumn) {
-    const value = row[titleColumn];
-    if (value !== undefined) {
-      return String(value);
+  // Template/column either wasn't configured or resolved to empty (rows
+  // sometimes have a path but no associated metadata). Fall back to the
+  // zarr's basename, then the raw path, then "Untitled".
+  if (!raw.trim()) {
+    const pathColumn = config.data?.pathColumn || 'path';
+    const path = row[pathColumn];
+    if (path) {
+      const pathStr = String(path);
+      const lastSlash = pathStr.lastIndexOf('/');
+      const basename = lastSlash >= 0 ? pathStr.slice(lastSlash + 1) : pathStr;
+      raw = basename.replace(/\.zarr$/i, '') || pathStr;
+    } else {
+      raw = 'Untitled';
     }
   }
 
-  // Fallback to path
-  const pathColumn = config.data?.pathColumn || 'path';
-  const path = row[pathColumn];
-  return path ? String(path) : 'Untitled';
+  return sanitizeTitle(raw);
+}
+
+/**
+ * Plain-text version of the title for use in `alt` attributes,
+ * `document.title`, copy/paste, and screen readers — anywhere markup
+ * would be noisy or wrong. Same trust posture as getTitle: the source
+ * string is untrusted, so the output is run through DOMPurify with
+ * everything stripped.
+ */
+export function getPlainTitle(row: ImageRow, config: AppConfig): string {
+  return stripTags(getTitle(row, config));
 }
 
 /**
@@ -112,10 +167,14 @@ export function getVisibleColumns(columns: string[], config: AppConfig): string[
 }
 
 /**
- * Generate a CSV string from data rows and trigger a download
+ * Generate a CSV string from data rows and trigger a download.
+ *
+ * Exports every column — `hideColumns` only governs what the gallery and
+ * detail page show; the downloaded file is for offline analysis, so
+ * stripping internal columns (paths, thumbnail filenames, etc.) would
+ * make the export less useful, not more.
  */
-export function downloadCsv(data: ImageRow[], columns: string[], config: AppConfig, filename: string): void {
-  const visibleColumns = getVisibleColumns(columns, config);
+export function downloadCsv(data: ImageRow[], columns: string[], _config: AppConfig, filename: string): void {
   const escape = (val: string) => {
     if (val.includes(',') || val.includes('"') || val.includes('\n')) {
       return `"${val.replace(/"/g, '""')}"`;
@@ -123,9 +182,9 @@ export function downloadCsv(data: ImageRow[], columns: string[], config: AppConf
     return val;
   };
 
-  const header = visibleColumns.map(escape).join(',');
+  const header = columns.map(escape).join(',');
   const rows = data.map((row) =>
-    visibleColumns.map((col) => escape(String(row[col] ?? ''))).join(',')
+    columns.map((col) => escape(String(row[col] ?? ''))).join(',')
   );
   const csv = [header, ...rows].join('\n');
 

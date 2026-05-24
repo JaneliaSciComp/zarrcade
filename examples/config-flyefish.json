@@ -10,7 +10,7 @@
 
   "display": {
     "titleColumn": "File Name",
-    "hideColumns": ["Probes", "File Name", "Projection"],
+    "hideColumns": ["Probes", "File Name", "Projection", "Thumbnail"],
     "pageSize": 50
   },
 

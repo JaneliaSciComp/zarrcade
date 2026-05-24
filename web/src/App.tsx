@@ -11,10 +11,13 @@ import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useTheme } from './hooks/useTheme';
 import { downloadCsv, getBioFileFinderUrl } from './utils/csv';
+import { copyToClipboard } from './utils/clipboard';
 import { TopBar } from './components/TopBar';
 import { SearchBar } from './components/SearchBar';
 import { FilterDropdowns } from './components/FilterDropdowns';
 import { Gallery } from './components/Gallery';
+import { TableView } from './components/TableView';
+import { ViewToggle, type ViewMode } from './components/ViewToggle';
 import { Pagination } from './components/Pagination';
 import { ImageDetail } from './components/ImageDetail';
 import { Footer } from './components/Footer';
@@ -25,6 +28,7 @@ function App() {
   const [configError, setConfigError] = useState<string | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('gallery');
   const { theme, toggleTheme } = useTheme();
 
   // Load configuration
@@ -39,6 +43,12 @@ function App() {
         setConfigLoaded(true);
       });
   }, []);
+
+  // Sync the browser tab title with the configured title; fall back to
+  // "Zarrcade" for error / Welcome / loading states.
+  useEffect(() => {
+    document.title = !configError && config?.title ? config.title : 'Zarrcade';
+  }, [config?.title, configError]);
 
   // Load data
   const { data, columns, loading, error: dataError } = useData(config);
@@ -68,24 +78,38 @@ function App() {
     endIndex,
   } = usePagination(filteredData, pageSize);
 
-  // Initialize detail view from URL and handle popstate (back button)
+  // Initialize detail view and view mode from URL; re-read on popstate.
   useEffect(() => {
-    const readDetailFromUrl = () => {
+    const readFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
       const detailParam = params.get('detail');
       if (detailParam !== null) {
         const index = parseInt(detailParam, 10);
-        if (!isNaN(index)) {
-          setSelectedImageIndex(index);
-          return;
-        }
+        setSelectedImageIndex(!isNaN(index) ? index : null);
+      } else {
+        setSelectedImageIndex(null);
       }
-      setSelectedImageIndex(null);
+
+      const viewParam = params.get('view');
+      setViewMode(viewParam === 'table' ? 'table' : 'gallery');
     };
 
-    readDetailFromUrl();
-    window.addEventListener('popstate', readDetailFromUrl);
-    return () => window.removeEventListener('popstate', readDetailFromUrl);
+    readFromUrl();
+    window.addEventListener('popstate', readFromUrl);
+    return () => window.removeEventListener('popstate', readFromUrl);
+  }, []);
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    const params = new URLSearchParams(window.location.search);
+    if (mode === 'gallery') {
+      params.delete('view');
+    } else {
+      params.set('view', mode);
+    }
+    const qs = params.toString();
+    const newUrl = `${window.location.pathname}${qs ? '?' + qs : ''}`;
+    window.history.pushState({}, '', newUrl);
   }, []);
 
   // Handle reset (clear search and filters)
@@ -164,9 +188,42 @@ function App() {
     );
   }
 
+  const pageActions = [
+    {
+      label: 'Copy link to current view',
+      icon: 'fa-solid fa-link',
+      onClick: () => copyToClipboard(window.location.href),
+    },
+    ...(selectedImage
+      ? []
+      : [
+          {
+            label: 'Download metadata as CSV',
+            icon: 'fa-solid fa-download',
+            onClick: () => downloadCsv(data, columns, config, 'metadata.csv'),
+          },
+          {
+            label: 'View collection in BioFile Finder',
+            icon: 'fa-solid fa-table-cells',
+            href: getBioFileFinderUrl(config),
+          },
+        ]),
+  ];
+
+  const siteItems = (config.branding?.menuItems || []).map((item) => ({
+    label: item.label,
+    icon: item.icon || 'fa-solid fa-link',
+    href: item.href,
+  }));
+
   return (
     <div className="app">
-      <TopBar config={config} theme={theme} onToggleTheme={toggleTheme} />
+      <TopBar
+        config={config}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        menuGroups={[pageActions, siteItems]}
+      />
 
       <main className="main-content">
         {selectedImage ? (
@@ -192,38 +249,38 @@ function App() {
               />
             </div>
 
-            <div className="gallery-actions">
-              <button
-                className="gallery-action-link"
-                onClick={() => downloadCsv(filteredData, columns, config, 'metadata.csv')}
-              >
-                <i className="fa-solid fa-download" /> Download metadata as CSV
-              </button>
-              <a
-                className="gallery-action-link"
-                href={getBioFileFinderUrl(config)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <i className="fa-solid fa-table-cells" /> View collection in BioFile Finder
-              </a>
+            <div className="pagination-row">
+              <ViewToggle value={viewMode} onChange={handleViewModeChange} />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                startIndex={startIndex}
+                endIndex={endIndex}
+                onPageChange={goToPage}
+              />
             </div>
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={totalItems}
-              startIndex={startIndex}
-              endIndex={endIndex}
-              onPageChange={goToPage}
-            />
-
-            <Gallery
-              data={paginatedData}
-              allData={data}
-              config={config}
-              onImageClick={handleImageClick}
-            />
+            {viewMode === 'table' ? (
+              <TableView
+                data={paginatedData}
+                allData={data}
+                columns={columns}
+                config={config}
+                onRowClick={handleImageClick}
+              />
+            ) : (
+              <>
+                <hr className="gallery-rule" />
+                <Gallery
+                  data={paginatedData}
+                  allData={data}
+                  config={config}
+                  onImageClick={handleImageClick}
+                />
+                <hr className="gallery-rule" />
+              </>
+            )}
 
             <Pagination
               currentPage={currentPage}
