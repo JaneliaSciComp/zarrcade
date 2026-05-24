@@ -44,6 +44,12 @@ function App() {
       });
   }, []);
 
+  // Sync the browser tab title with the configured title; fall back to
+  // "Zarrcade" for error / Welcome / loading states.
+  useEffect(() => {
+    document.title = !configError && config?.title ? config.title : 'Zarrcade';
+  }, [config?.title, configError]);
+
   // Load data
   const { data, columns, loading, error: dataError } = useData(config);
 
