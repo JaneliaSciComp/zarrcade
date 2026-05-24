@@ -400,6 +400,33 @@ body {
   transition: opacity 0.2s;
 }
 
+/* Loading skeleton — a soft shimmering box. Shown until a thumbnail is
+   decoded (or until we confirm there isn't one and swap in the icon). */
+.image-card-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--pico-border-radius);
+  background: linear-gradient(
+    100deg,
+    var(--pico-muted-border-color) 0%,
+    color-mix(in srgb, var(--pico-muted-border-color) 60%, var(--pico-background-color)) 50%,
+    var(--pico-muted-border-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: image-card-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes image-card-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image-card-skeleton {
+    animation: none;
+  }
+}
+
 .image-card:hover .image-card-thumbnail img,
 .image-card:focus-within .image-card-thumbnail img {
   opacity: 0.8;

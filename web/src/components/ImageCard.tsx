@@ -43,19 +43,46 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
     inView
   );
 
-  const resolvedUrl = csvThumbnail ?? conventionThumbnail?.url ?? null;
+  // Thumbnail resolution is a tri-state:
+  //   'loading'   — we haven't determined yet (waiting on viewport, zarr.json
+  //                 fetch, or the image to decode)
+  //   'image'     — we have a thumbnail URL, decoded and ready to render
+  //   'empty'     — we've confirmed there is no thumbnail; render the zarr
+  //                 fallback icon
+  type ThumbState =
+    | { kind: 'loading' }
+    | { kind: 'image'; url: string }
+    | { kind: 'empty' };
+  const [thumbState, setThumbState] = useState<ThumbState>({ kind: 'loading' });
 
-  // Preload the resolved thumbnail. Only display it once it has decoded;
-  // until then, show the placeholder. This prevents stale images from the
-  // previous page sticking around on slow connections.
-  const [displayUrl, setDisplayUrl] = useState<string>(THUMBNAIL_PLACEHOLDER);
+  // resolvedUrl: undefined = still resolving, null = nothing to load, string = URL
+  let resolvedUrl: string | null | undefined;
+  if (csvThumbnail) {
+    resolvedUrl = csvThumbnail;
+  } else if (conventionThumbnail === undefined) {
+    resolvedUrl = undefined;
+  } else if (conventionThumbnail === null) {
+    resolvedUrl = null;
+  } else {
+    resolvedUrl = conventionThumbnail.url;
+  }
+
   useEffect(() => {
-    setDisplayUrl(THUMBNAIL_PLACEHOLDER);
-    if (!resolvedUrl) return;
+    if (resolvedUrl === undefined) {
+      setThumbState({ kind: 'loading' });
+      return;
+    }
+    if (resolvedUrl === null) {
+      setThumbState({ kind: 'empty' });
+      return;
+    }
+    // We have a URL; preload it so we don't flash a partially-decoded image
+    // and don't keep stale pixels from the previous page on slow connections.
+    setThumbState({ kind: 'loading' });
     const img = new Image();
     let cancelled = false;
-    img.onload = () => { if (!cancelled) setDisplayUrl(resolvedUrl); };
-    img.onerror = () => { if (!cancelled) setDisplayUrl(THUMBNAIL_PLACEHOLDER); };
+    img.onload = () => { if (!cancelled) setThumbState({ kind: 'image', url: resolvedUrl }); };
+    img.onerror = () => { if (!cancelled) setThumbState({ kind: 'empty' }); };
     img.src = resolvedUrl;
     return () => {
       cancelled = true;
@@ -90,14 +117,22 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
       onKeyDown={handleKeyDown}
     >
       <div className="image-card-thumbnail">
-        <img
-          src={displayUrl}
-          alt={plainTitle}
-          loading="lazy"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
-          }}
-        />
+        {thumbState.kind === 'loading' ? (
+          <div
+            className="image-card-skeleton"
+            role="img"
+            aria-label="Loading thumbnail"
+          />
+        ) : (
+          <img
+            src={thumbState.kind === 'image' ? thumbState.url : THUMBNAIL_PLACEHOLDER}
+            alt={plainTitle}
+            loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
+            }}
+          />
+        )}
         <div className="image-card-overlay">
           <div className="overlay-buttons" onClick={(e) => e.stopPropagation()}>
             <button
