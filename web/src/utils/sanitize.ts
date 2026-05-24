@@ -35,6 +35,16 @@ export function sanitizeHtml(html: string): string {
   return clean;
 }
 
+/**
+ * Reduce an HTML title fragment to plain text, suitable for use in an
+ * <img alt> attribute or anywhere else that expects no markup. Scripts and
+ * similarly dangerous nodes are dropped entirely (rather than letting their
+ * content leak through) so the result is safe to put in any attribute.
+ */
+export function stripTags(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+}
+
 // Force external links opened from sanitized HTML to be safe by default.
 // DOMPurify lets us hook into the parse pipeline to tweak nodes before
 // serialization.

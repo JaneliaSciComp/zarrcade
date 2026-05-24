@@ -7,6 +7,7 @@ import type { ImageRow, AppConfig, Viewer } from '../types';
 import {
   getCsvThumbnailUrl,
   getImagePath,
+  getPlainTitle,
   getTitle,
   THUMBNAIL_PLACEHOLDER,
 } from '../utils/csv';
@@ -29,6 +30,7 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
   const imagePath = getImagePath(row, config);
   const csvThumbnail = getCsvThumbnailUrl(row, config);
   const title = getTitle(row, config);
+  const plainTitle = getPlainTitle(row, config);
   const viewers = getEnabledViewers(config.viewers);
 
   const { ref, inView } = useIntersectionObserver<HTMLDivElement>({
@@ -80,7 +82,7 @@ export function ImageCard({ row, config, onClick }: ImageCardProps) {
       <div className="image-card-thumbnail">
         <img
           src={displayUrl}
-          alt={title}
+          alt={plainTitle}
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;

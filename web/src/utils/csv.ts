@@ -3,7 +3,7 @@
  */
 
 import type { ImageRow, AppConfig } from '../types';
-import { sanitizeTitle } from './sanitize';
+import { sanitizeTitle, stripTags } from './sanitize';
 
 /**
  * Resolve a relative path against a base file URL.
@@ -132,6 +132,17 @@ export function getTitle(row: ImageRow, config: AppConfig): string {
   }
 
   return sanitizeTitle(raw);
+}
+
+/**
+ * Plain-text version of the title for use in `alt` attributes,
+ * `document.title`, copy/paste, and screen readers — anywhere markup
+ * would be noisy or wrong. Same trust posture as getTitle: the source
+ * string is untrusted, so the output is run through DOMPurify with
+ * everything stripped.
+ */
+export function getPlainTitle(row: ImageRow, config: AppConfig): string {
+  return stripTags(getTitle(row, config));
 }
 
 /**

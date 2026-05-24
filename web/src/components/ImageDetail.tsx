@@ -8,6 +8,7 @@ import {
   getCsvThumbnailUrl,
   getFullSizeImageUrl,
   getImagePath,
+  getPlainTitle,
   getTitle,
   getVisibleColumns,
   THUMBNAIL_PLACEHOLDER,
@@ -42,6 +43,7 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
   const detailImageUrl =
     fullSizeImage ?? csvThumbnail ?? conventionThumbnail?.url ?? THUMBNAIL_PLACEHOLDER;
   const title = getTitle(row, config);
+  const plainTitle = getPlainTitle(row, config);
   const viewers = getEnabledViewers(config.viewers);
   const visibleColumns = getVisibleColumns(columns, config);
 
@@ -99,7 +101,7 @@ export function ImageDetail({ row, columns, config, onBack }: ImageDetailProps) 
           >
             <img
               src={detailImageUrl}
-              alt={title}
+              alt={plainTitle}
               onError={(e) => {
                 (e.target as HTMLImageElement).src = THUMBNAIL_PLACEHOLDER;
               }}
