@@ -2,7 +2,7 @@
  * Hook for text search across all columns
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { ImageRow } from '../types';
 
 interface UseSearchResult {
@@ -11,17 +11,19 @@ interface UseSearchResult {
   searchResults: ImageRow[];
 }
 
-export function useSearch(data: ImageRow[]): UseSearchResult {
-  const [searchTerm, setSearchTerm] = useState('');
+function readSearchFromUrl(): string {
+  return new URLSearchParams(window.location.search).get('search') ?? '';
+}
 
-  // Initialize from URL
-  useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const term = params.get('search');
-    if (term) {
-      setSearchTerm(term);
-    }
-  });
+export function useSearch(data: ImageRow[]): UseSearchResult {
+  const [searchTerm, setSearchTerm] = useState(readSearchFromUrl);
+
+  // Restore on browser back/forward.
+  useEffect(() => {
+    const onPop = () => setSearchTerm(readSearchFromUrl());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // Update URL when search changes
   const updateSearchTerm = useCallback((term: string) => {

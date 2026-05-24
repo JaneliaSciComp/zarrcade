@@ -13,27 +13,33 @@ interface UseFiltersResult {
   filterOptions: Record<string, string[]>;
 }
 
+function readFiltersFromUrl(filterConfigs: FilterConfig[]): FilterState {
+  const params = new URLSearchParams(window.location.search);
+  const initial: FilterState = {};
+  filterConfigs.forEach((config) => {
+    const value = params.get(config.column);
+    if (value) {
+      initial[config.column] = value;
+    }
+  });
+  return initial;
+}
+
 export function useFilters(
   data: ImageRow[],
   filterConfigs: FilterConfig[]
 ): UseFiltersResult {
-  const [activeFilters, setActiveFilters] = useState<FilterState>({});
+  const [activeFilters, setActiveFilters] = useState<FilterState>(() =>
+    readFiltersFromUrl(filterConfigs),
+  );
 
-  // Initialize filters from URL
+  // Re-read when the filter configs themselves change (config arrives async),
+  // and on browser back/forward.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initial: FilterState = {};
-
-    filterConfigs.forEach((config) => {
-      const value = params.get(config.column);
-      if (value) {
-        initial[config.column] = value;
-      }
-    });
-
-    if (Object.keys(initial).length > 0) {
-      setActiveFilters(initial);
-    }
+    setActiveFilters(readFiltersFromUrl(filterConfigs));
+    const onPop = () => setActiveFilters(readFiltersFromUrl(filterConfigs));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, [filterConfigs]);
 
   // Compute unique values for each filter column
