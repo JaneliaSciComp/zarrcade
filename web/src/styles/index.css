@@ -59,6 +59,13 @@ a {
   text-underline-offset: 2px;
 }
 
+/* Suppress the underline on anchors that wrap an image (logos, viewer
+   buttons). Without this, when the image fails to load, the alt text
+   inherits the link underline and looks struck through. */
+a:has(> img) {
+  text-decoration: none;
+}
+
 /* Base Layout */
 * {
   box-sizing: border-box;
