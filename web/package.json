@@ -1,24 +1,53 @@
 {
-  "name": "zarrcade-web",
-  "version": "2.0.0",
-  "description": "Web gallery for OME-Zarr images",
+  "name": "@janelia/zarrcade",
+  "version": "3.0.0",
+  "description": "Static web gallery for browsing, searching, and visualizing collections of OME-NGFF (OME-Zarr) images. Ships a prebuilt SPA plus a small CLI to scaffold a deployable site.",
+  "license": "BSD-3-Clause",
   "type": "module",
+  "homepage": "https://github.com/JaneliaSciComp/zarrcade",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JaneliaSciComp/zarrcade.git",
+    "directory": "web"
+  },
+  "bugs": {
+    "url": "https://github.com/JaneliaSciComp/zarrcade/issues"
+  },
+  "keywords": [
+    "ome-zarr",
+    "ome-ngff",
+    "zarr",
+    "gallery",
+    "viewer",
+    "bioimage",
+    "microscopy",
+    "static-site"
+  ],
+  "bin": {
+    "zarrcade": "./bin/zarrcade.js"
+  },
+  "files": [
+    "dist",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "dev:host": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
-  },
-  "dependencies": {
-    "@fortawesome/fontawesome-free": "^7.2.0",
-    "@picocss/pico": "^2.1.1",
-    "papaparse": "^5.4.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "lint": "eslint .",
+    "prepack": "npm run build && node scripts/prepack.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@fortawesome/fontawesome-free": "^7.2.0",
+    "@picocss/pico": "^2.1.1",
     "@types/dompurify": "^3.0.5",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18.3.12",
@@ -29,6 +58,9 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
     "globals": "^15.12.0",
+    "papaparse": "^5.4.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.15.0",
     "vite": "^6.0.1"
