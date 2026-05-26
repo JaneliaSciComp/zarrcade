@@ -96,6 +96,14 @@ async function tryLoadLocalConfig(
       `Failed to load ${path}: ${response.status} ${response.statusText}`.trim(),
     );
   }
+  // Dev servers (Vite, webpack-dev-server) often answer a missing static
+  // file with the SPA index.html at 200 instead of a 404. Treat an HTML
+  // response as "file not present" so we fall through to the next source
+  // rather than failing with a misleading JSON parse error.
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('text/html')) {
+    return null;
+  }
   let parsed: Partial<AppConfig>;
   try {
     parsed = await response.json();

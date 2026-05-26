@@ -709,10 +709,11 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1600px;
-  margin: 0 auto;
   flex-wrap: wrap;
   gap: 1rem;
+  /* Span the full viewport width (only constrained by the footer's own
+     padding gutter) so the left/right slots hug the screen edges rather
+     than the gallery's 1600px max-width. */
 }
 
 .footer-side {
