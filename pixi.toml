@@ -7,7 +7,105 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64"]
 
 [tasks]
-zarrcade = "python -m zarrcade"
+zarrcade = { cmd = "python -m zarrcade", description = "Run the zarrcade CLI (pass a subcommand and its options)" }
+
+[tasks.discover]
+description = "Scan a directory tree for OME-Zarr containers and write a metadata CSV"
+cmd = """
+python -m zarrcade discover '{{ path }}' \
+  {{ ("--output '" ~ output ~ "'") if output else '' }} \
+  --format {{ format }} \
+  --max-depth '{{ max_depth }}' \
+  {{ '--include-metadata' if include_metadata == 'true' else '' }} \
+  {{ ("--exclude '" ~ exclude ~ "'") if exclude else '' }} \
+  {{ ("--base-url '" ~ base_url ~ "'") if base_url else '' }} \
+  {{ '-v' if verbose == 'true' else '' }}"""
+args = [
+  "path",
+  { arg = "output", default = "images.csv" },
+  { arg = "format", choices = ["csv", "tsv"], default = "csv" },
+  { arg = "max_depth", default = "10" },
+  { arg = "include_metadata", choices = ["true", "false"], default = "false" },
+  { arg = "exclude", default = "" },
+  { arg = "base_url", default = "" },
+  { arg = "verbose", choices = ["true", "false"], default = "false" },
+]
+env = { PYTHONUNBUFFERED = "1" }
+
+[tasks.mips]
+description = "Generate MIPs and thumbnails for every OME-Zarr under a directory"
+cmd = """
+python -m zarrcade mips '{{ input_path }}' \
+  --output '{{ output_dir }}' \
+  --naming {{ naming }} \
+  --thumbnail-size '{{ thumbnail_size }}' \
+  --p-lower '{{ p_lower }}' \
+  --p-upper '{{ p_upper }}' \
+  {{ ("--output-csv '" ~ output_csv ~ "'") if output_csv else '' }} \
+  {{ '--skip-existing' if skip_existing == 'true' else '' }} \
+  {{ '-v' if verbose == 'true' else '' }}"""
+args = [
+  "input_path",
+  { arg = "output_dir", default = "./thumbnails" },
+  { arg = "naming", choices = ["nested", "flat"], default = "nested" },
+  { arg = "thumbnail_size", default = "300" },
+  { arg = "p_lower", default = "0.1" },
+  { arg = "p_upper", default = "99.5" },
+  { arg = "output_csv", default = "" },
+  { arg = "skip_existing", choices = ["true", "false"], default = "false" },
+  { arg = "verbose", choices = ["true", "false"], default = "false" },
+]
+env = { PYTHONUNBUFFERED = "1" }
+
+[tasks.thumbnails]
+description = "Resize raster images (e.g. MIP PNGs) into smaller thumbnails"
+cmd = """
+python -m zarrcade thumbnails '{{ input_dir }}' \
+  {{ ("--output '" ~ output_dir ~ "'") if output_dir else '' }} \
+  --pattern '{{ pattern }}' \
+  --size '{{ size }}' \
+  --quality '{{ quality }}' \
+  --format {{ format }} \
+  {{ ("--suffix '" ~ suffix ~ "'") if suffix else '' }} \
+  {{ '--overwrite' if overwrite == 'true' else '' }} \
+  {{ '-v' if verbose == 'true' else '' }}"""
+args = [
+  "input_dir",
+  { arg = "output_dir", default = "" },
+  { arg = "pattern", default = "*.png" },
+  { arg = "size", default = "300" },
+  { arg = "quality", default = "90" },
+  { arg = "format", choices = ["jpg", "png"], default = "jpg" },
+  { arg = "suffix", default = "" },
+  { arg = "overwrite", choices = ["true", "false"], default = "false" },
+  { arg = "verbose", choices = ["true", "false"], default = "false" },
+]
+env = { PYTHONUNBUFFERED = "1" }
+
+[tasks.embed]
+description = "Embed thumbnails into zarr containers per the thumbnails convention"
+cmd = """
+python -m zarrcade embed --input-csv '{{ input_csv }}' \
+  {{ ("--zarr-base-url '" ~ zarr_base_url ~ "'") if zarr_base_url else '' }} \
+  {{ ("--thumbnail-base-url '" ~ thumbnail_base_url ~ "'") if thumbnail_base_url else '' }} \
+  --size '{{ size }}' \
+  --jpeg-quality '{{ jpeg_quality }}' \
+  --p-lower '{{ p_lower }}' \
+  --p-upper '{{ p_upper }}' \
+  {{ '--skip-existing' if skip_existing == 'true' else '' }} \
+  {{ '-v' if verbose == 'true' else '' }}"""
+args = [
+  "input_csv",
+  { arg = "zarr_base_url", default = "" },
+  { arg = "thumbnail_base_url", default = "" },
+  { arg = "size", default = "300" },
+  { arg = "jpeg_quality", default = "95" },
+  { arg = "p_lower", default = "0.0" },
+  { arg = "p_upper", default = "99.9" },
+  { arg = "skip_existing", choices = ["true", "false"], default = "false" },
+  { arg = "verbose", choices = ["true", "false"], default = "false" },
+]
+env = { PYTHONUNBUFFERED = "1" }
 
 [dependencies]
 python = "3.10.*"
